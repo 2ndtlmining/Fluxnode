@@ -1,4 +1,4 @@
-# Fluxnode
+# Flux-node Website
 [Frontend website](http://flux-node.com)
 
 ## Application Overview
