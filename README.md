@@ -1,5 +1,5 @@
 # Flux-node Website
-[Frontend website](http://flux-node.com)
+[Frontend website](https://fluxnode.app.runonflux.io)
 
 ## Application Overview
 
