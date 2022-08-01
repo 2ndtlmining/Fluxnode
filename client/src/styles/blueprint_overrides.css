@@ -1,0 +1,26 @@
+.bp4-heading {
+    font-weight: 500;
+}
+.bp4-html-select:not(.bp4-minimal) select {
+    background-image: none !important;
+}
+.bp4-control-indicator {
+    background-image: none !important;
+}
+
+.bp4-heading {
+    margin: 0;
+    padding: 0;
+}
+
+.bp4-radio-group .bp4-label:not(.txt-wrap),
+.bp4-form-group .bp4-label:not(.txt-wrap) {
+    white-space: nowrap;
+}
+
+.bp4-input-group:not([class*='bp4-intent-']) .bp4-input {
+    border: 1px solid rgb(56, 61, 63);
+}
+.bp4-input-group:not([class*='bp4-intent-']) .bp4-input:not(:focus) {
+    box-shadow: none;
+}

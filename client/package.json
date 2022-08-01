@@ -1,0 +1,74 @@
+{
+  "name": "flux-app",
+  "version": "1.0.0",
+  "private": true,
+  "homepage": ".",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "formatter": "prettier --config-precedence cli-override --ignore-unknown --config \".prettierrc.toml\"",
+    "format": "yarn run formatter --write ."
+  },
+  "dependencies": {
+    "@blueprintjs/core": "^4.5.1",
+    "@blueprintjs/icons": "^4.3.0",
+    "@blueprintjs/popover2": "^1.4.1",
+    "@fontsource/barlow": "^4.5.7",
+    "@fontsource/roboto": "^4.5.7",
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/react": "^13.0.0",
+    "@testing-library/user-event": "^13.2.1",
+    "bootstrap": "^5.1.3",
+    "dayjs": "^1.11.3",
+    "localforage": "^1.10.0",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.4.0",
+    "react-dom": "^18.2.0",
+    "react-grid-system": "^8.1.5",
+    "react-helmet": "^6.1.0",
+    "react-icons": "^4.4.0",
+    "react-router-dom": "6",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^2.7.1",
+    "preval.macro": "^5.0.0",
+    "sass": "^1.52.3"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "eqeqeq": "off",
+      "no-unused-vars": "off",
+      "no-useless-escape": "off",
+      "no-useless-call": "off",
+      "no-useless-concat": "off",
+      "no-useless-constructor": "off",
+      "no-useless-rename": "off",
+      "no-useless-return": "off",
+      "no-useless-computed-key": "off",
+      "react/jsx-no-target-blank": "off",
+      "no-unused-expressions": "off",
+      "no-func-assign": "off",
+      "no-cond-assign": "off",
+      "no-mixed-operators": "off",
+      "no-sequences": "off"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

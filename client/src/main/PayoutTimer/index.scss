@@ -1,0 +1,93 @@
+@import 'styles/functional';
+
+.timer {
+    // background-color: #333333;
+    border-radius: 7px;
+    display: inline-block;
+    overflow: hidden;
+}
+
+.timer-header {
+    padding: 20px 20px 15px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .title {
+        font-weight: 500;
+        font-size: 21px;
+        color: #c22762;
+        @include rule-mode-dark() {
+            color: #f5498b;
+        }
+    }
+}
+
+.timer-node-logo {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    .pyt-i-wrap {
+        box-sizing: content-box;
+        display: inline-block;
+        padding: 15px;
+        border-radius: 100px;
+
+        width: 18px;
+        min-width: 18px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        &::after {
+            content: '';
+            margin-top: 100%;
+        }
+    }
+
+    .pyt-node-tier {
+        margin-top: 8px;
+    }
+
+    margin-right: 30px;
+}
+
+.timer-blocks {
+    height: 100%;
+    display: inline-flex;
+    align-items: stretch;
+    padding: 0 24px 0 16px;
+}
+
+.timer-block {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    flex-direction: column;
+
+    * {
+        font-family: 'Barlow';
+    }
+}
+
+.timer-number {
+    font-size: 40px;
+    margin-top: 28px;
+    font-weight: 500;
+}
+.timer-info {
+    font-size: 14px;
+    margin-top: 12px;
+    margin-bottom: 15px;
+}
+
+.v-rule {
+    background-color: rgb(187, 181, 172);
+    width: 2px;
+    margin: 35px 20px;
+}

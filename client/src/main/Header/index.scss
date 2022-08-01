@@ -1,0 +1,66 @@
+@import 'styles/functional';
+
+.dashboard {
+    width: 100%;
+    background-color: #eff0f4;
+    @include rule-mode-dark() {
+        background-color: #202224;
+    }
+
+    padding: 15px 70px 20px;
+
+    overflow: hidden;
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-auto-rows: auto;
+    grid-gap: 15px;
+}
+
+.dcell {
+    min-height: 80px;
+
+    box-shadow: 5px 4px 15px rgba(17, 20, 24, 0.15);
+    border-radius: 8px;
+}
+
+.dcell-hover {
+}
+.cell-tooltip-box {
+    font-size: 0.96rem;
+    .ct-name {
+        color: #ced1db;
+        font-weight: 500;
+    }
+    .ct-val {
+        color: #fff;
+        font-weight: 600;
+    }
+}
+
+/* =================================== */
+
+@mixin def-dash-cell($slug, $background, $color, $backgroundDark, $colorDark) {
+    @at-root .dash-cell__#{$slug} {
+        color: $color;
+        background-color: $background;
+        @include rule-mode-dark() {
+            background-color: $backgroundDark;
+            color: $colorDark;
+        }
+    }
+}
+
+@include def-dash-cell(flux-usd, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66));
+
+@include def-dash-cell(nodes-total, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221));
+
+@include def-dash-cell(nodes-nimbus, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66));
+
+@include def-dash-cell(nodes-stratus, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96));
+
+@include def-dash-cell(nodes-cumulus, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217));
+
+@include def-dash-cell(amount-flux, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223));
+
+@include def-dash-cell(amount-usd, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69));

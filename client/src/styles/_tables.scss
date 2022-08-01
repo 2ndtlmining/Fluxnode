@@ -1,0 +1,160 @@
+@import 'styles/functional';
+
+$primary: #20c997;
+
+/* ======================= */
+
+$table-text-color: #495057;
+
+$table-header-border-color: #d9dcde;
+$table-row-border-color: #e9ecef;
+$table-header-background: #f8f9fa;
+$table-row-background: #ffffff;
+
+.table-wrapper {
+    display: flex;
+    max-width: 100%;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.table-header {
+    margin: 0;
+    padding: 14px 20px;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+
+    > .title {
+        font-weight: 500;
+        font-size: 21px;
+    }
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    margin: 0 0 0px 0;
+    border-collapse: collapse;
+
+    tbody {
+        background-color: $table-row-background; // done
+    }
+
+    th,
+    td {
+        cursor: default;
+        border-style: solid;
+        text-align: center;
+        color: $table-text-color; // donw
+
+        &.al {
+            text-align: left;
+        }
+        &.ar {
+            text-align: right;
+        }
+    }
+
+    th {
+        font-weight: 500;
+        padding: 14px 10px;
+
+        border-width: 2px 1px;
+        border-color: $table-header-border-color;
+
+        background-color: $table-header-background;
+        &:hover {
+            background-color: $table-row-border-color;
+        }
+    }
+
+    tr.rsmall th {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    td {
+        padding: 5px 10px;
+        border-width: 2px 0 2px 0;
+        border-color: $table-row-border-color;
+    }
+
+    tbody tr {
+        td {
+            position: relative;
+            transition: 0.2s all ease;
+            &:before,
+            &:after {
+                transition: 0.2s all ease;
+                content: '';
+                left: 0;
+                right: 0;
+                position: absolute;
+                height: 1px;
+                background: $primary;
+                width: 100%;
+                opacity: 0;
+                visibility: hidden;
+            }
+            &:before {
+                top: -1px;
+            }
+            &:after {
+                bottom: -1px;
+            }
+        }
+        &:hover,
+        &.active {
+            td {
+                background: rgba($primary, 0.03);
+                &:before,
+                &:after {
+                    opacity: 1;
+                    visibility: visible;
+                }
+            }
+        }
+    }
+}
+
+.table.adp-table {
+    th,
+    td {
+        color: $table-text-color;
+
+        @include rule-mode-dark() {
+            color: rgb(181, 175, 166);
+        }
+    }
+
+    tbody {
+        background-color: transparent;
+    }
+
+    th {
+        background-color: $table-header-background;
+        &:hover {
+            background-color: $table-row-border-color;
+        }
+        @include rule-mode-dark() {
+            background-color: rgb(27, 30, 31);
+            &:hover {
+                background-color: rgb(35, 38, 39);
+            }
+        }
+    }
+
+    td {
+        border-color: $table-row-border-color;
+        @include rule-mode-dark() {
+            border-color: rgb(35, 38, 39);
+        }
+    }
+}

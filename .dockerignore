@@ -1,0 +1,17 @@
+**/.git/
+**/node_modules/
+**/.gitignore
+
+
+# ----------------
+
+*
+
+!/conf/*
+!/service/*
+
+!/client/build/*
+
+!/api/src/*
+!/api/Cargo.toml
+!/api/Cargo.lock

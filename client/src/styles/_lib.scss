@@ -1,0 +1,41 @@
+@import 'styles/functional';
+
+.adp-text-normal {
+    color: rgb(28, 33, 39);
+    @include rule-mode-dark() {
+        color: rgb(211, 207, 201);
+    }
+}
+
+.adp-text-muted {
+    color: rgb(108, 117, 125);
+    @include rule-mode-dark() {
+        color: rgb(158, 150, 137);
+    }
+}
+
+.adp-bg-normal {
+    background-color: #ffffff;
+    @include rule-mode-dark() {
+        background-color: #181a1b !important;
+    }
+}
+
+.adp-bg-faded {
+    background-color: #f8f9fa;
+    @include rule-mode-dark() {
+        background-color: #1b1e1f !important;
+    }
+}
+
+.adp-border {
+    @include rule-mode-dark() {
+        border: 1px solid rgb(56, 61, 63);
+    }
+}
+
+.adp-border-color {
+    @include rule-mode-dark() {
+        border-color: rgb(56, 61, 63) !important;
+    }
+}

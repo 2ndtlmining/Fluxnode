@@ -1,0 +1,166 @@
+// Regular CSS imports do not work with relative path
+@import 'styles/normalize_elements.css';
+@import 'styles/blueprint_overrides.css';
+
+* {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 21px !important;
+    background-color: #ffffff;
+    padding: 0;
+    margin: 0;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+    overflow: hidden;
+}
+
+code {
+    font-family: 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+#root {
+    min-width: 100vw;
+    min-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.App {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.center-text-flow {
+    display: inline-flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+}
+.center-text-flow-mid {
+    @extend .center-text-flow;
+    display: flex;
+    justify-content: center;
+}
+
+.center-everything {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-txt-wrap {
+    white-space: nowrap;
+}
+
+.icon-text-sm {
+    margin: 0 3px;
+}
+.icon-text-md {
+    margin: 0 6px;
+}
+.icon-text-lg {
+    margin: 0 10px;
+}
+
+.margin-b-xl {
+    margin-bottom: 25px;
+}
+.margin-b-l {
+    margin-bottom: 15px;
+}
+.margin-b-m {
+    margin-bottom: 9px;
+}
+.margin-b-s {
+    margin-bottom: 6px;
+}
+
+.margin-t-xl {
+    margin-top: 25px;
+}
+.margin-t-l {
+    margin-top: 15px;
+}
+.margin-t-m {
+    margin-top: 9px;
+}
+.margin-t-s {
+    margin-top: 6px;
+}
+
+.margin-v-xl {
+    @extend .margin-b-xl;
+    @extend .margin-t-xl;
+}
+.margin-v-l {
+    @extend .margin-b-l;
+    @extend .margin-t-l;
+}
+.margin-v-m {
+    @extend .margin-b-m;
+    @extend .margin-t-m;
+}
+.margin-v-s {
+    @extend .margin-b-s;
+    @extend .margin-t-s;
+}
+
+.margin-l-xl {
+    margin-left: 25px;
+}
+.margin-l-l {
+    margin-left: 15px;
+}
+.margin-l-m {
+    margin-left: 9px;
+}
+.margin-l-s {
+    margin-left: 6px;
+}
+
+.margin-r-xl {
+    margin-right: 25px;
+}
+.margin-r-l {
+    margin-right: 15px;
+}
+.margin-r-m {
+    margin-right: 9px;
+}
+.margin-r-s {
+    margin-right: 6px;
+}
+
+.margin-h-xl {
+    @extend .margin-l-xl;
+    @extend .margin-r-xl;
+}
+.margin-h-l {
+    @extend .margin-l-l;
+    @extend .margin-r-l;
+}
+.margin-h-m {
+    @extend .margin-l-m;
+    @extend .margin-r-m;
+}
+.margin-h-s {
+    @extend .margin-l-s;
+    @extend .margin-r-s;
+}
+
+.no-bg {
+    background-color: transparent;
+}
+
+@import 'styles/lib';

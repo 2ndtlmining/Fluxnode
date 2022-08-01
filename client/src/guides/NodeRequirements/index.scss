@@ -1,0 +1,40 @@
+.req-block {
+    margin: 10px 10px;
+}
+
+.tier-name {
+    color: #bd6bbd;
+    margin-bottom: 25px;
+
+    font-size: 1.5em;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+.flx-value-highlight {
+    text-transform: uppercase;
+    color: #5d91ff;
+    font-size: 1.8em;
+
+    font-weight: 600;
+}
+
+.req-paragraph {
+    color: rgba(49, 52, 87, 0.6);
+    .bp4-dark & {
+        color: rgba(255, 255, 255, 0.8);
+    }
+}
+
+.block-rew-title {
+    color: #2fc29e;
+    font-size: 1.4em;
+}
+
+.reqs-holder {
+    display: flex;
+    flex-direction: row;
+    > .req-block {
+        flex: 1;
+    }
+}

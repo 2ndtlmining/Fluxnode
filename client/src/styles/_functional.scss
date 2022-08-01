@@ -1,0 +1,13 @@
+@use 'sass:selector';
+
+@mixin qualify($element-selector) {
+    @at-root #{$element-selector + &} {
+        @content;
+    }
+}
+
+@mixin rule-mode-dark() {
+    @at-root #{selector.nest('.app-mode-dark', &)} {
+        @content;
+    }
+}

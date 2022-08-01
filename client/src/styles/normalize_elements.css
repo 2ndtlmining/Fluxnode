@@ -1,0 +1,42 @@
+:focus,
+:focus-visible,
+:visited {
+    outline: 0 !important;
+    -moz-outline-style: none !important;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    margin: 0;
+    padding: 0;
+    font-weight: 500;
+}
+
+a {
+    text-decoration: none;
+    background-color: transparent;
+}
+
+hr {
+    box-sizing: content-box;
+    height: 0;
+    overflow: visible;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border: 0;
+}
+
+table th,
+table td {
+    white-space: nowrap;
+}

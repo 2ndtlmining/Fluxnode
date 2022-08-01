@@ -1,0 +1,9 @@
+singleQuote = true
+jsxSingleQuote = true
+bracketSpacing = true
+printWidth = 120
+semi = true
+trailingComma = "none"
+bracketSameLine = false
+arrowParens = "always"
+embeddedLanguageFormatting = "off"

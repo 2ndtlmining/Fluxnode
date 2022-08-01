@@ -1,0 +1,98 @@
+@import 'styles/functional';
+
+.guide-text {
+    *:not(a) {
+        color: rgb(73, 80, 87);
+    }
+    color: rgb(73, 80, 87);
+
+    @include rule-mode-dark() {
+        *:not(a) {
+            color: rgb(181, 175, 166);
+        }
+        color: rgb(181, 175, 166);
+    }
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 500;
+    overflow-wrap: break-word;
+}
+
+.card-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.video-name {
+    color: rgba(49, 52, 87, 0.8);
+    @include rule-mode-dark() {
+        color: rgba(170, 185, 207, 0.8);
+    }
+}
+
+.app-text-muted {
+    color: #656b70 !important;
+    @include rule-mode-dark() {
+        color: rgb(165, 157, 145) !important;
+    }
+    font-weight: 400;
+    font-size: 1.2rem;
+}
+
+.tb-code {
+    margin: 0 0 15px 0;
+    font-size: 0.85rem;
+    padding: 10px 15px;
+    border-radius: 7px;
+
+    background-color: #eceff1;
+    color: rgb(73, 80, 87);
+
+    @include rule-mode-dark() {
+        background-color: #212425;
+        color: rgb(181, 174, 164);
+    }
+
+    &.code-inline {
+        display: inline;
+        // white-space: normal;
+        padding: 4px 6px;
+        border-radius: 6px;
+        margin: 0px 7px;
+    }
+}
+
+div.accordion-body {
+    background-color: #f5f9fd;
+    @include rule-mode-dark() {
+        background-color: #1b1e1f;
+    }
+}
+
+.maintenance-faq {
+    .accordion-body {
+        p {
+            font-size: 14px;
+        }
+    }
+
+    .mn-list {
+        li {
+            margin: 7px 0px;
+        }
+    }
+
+    @include rule-mode-dark() {
+        div.accordion-item {
+            background-color: transparent;
+
+            .accordion-button {
+                // background-color: unset !important;
+                // background-color: transparent !important;
+                background-color: #2b2a33 !important;
+            }
+        }
+    }
+}

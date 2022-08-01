@@ -1,0 +1,94 @@
+.v-footer {
+    background-color: #101823;
+
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.container-fluid {
+    width: 100%;
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.footer-heading {
+    font-size: 18px;
+    margin-bottom: 20px;
+    font-weight: 400;
+    letter-spacing: normal;
+    line-height: 1.5;
+
+    color: #fff;
+}
+
+.v-footer .links-list {
+    li {
+        list-style: none;
+        margin: 0 10px 0 0;
+        display: inline-block;
+
+        a {
+            height: 40px;
+            width: 40px;
+            display: block;
+            border-radius: 50%;
+            position: relative;
+
+            // background: rgba(0, 0, 0, 0.05);
+            background-color: rgba(210, 230, 210, 0.075);
+        }
+
+        .footer-logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -webkit-transform: translate(-50%, -50%);
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+    }
+}
+
+.v-footer {
+    .hl-addr-name,
+    p {
+        color: rgba(232, 230, 227, 0.5);
+        font-size: 1rem;
+    }
+
+    .donate-list {
+        list-style: none;
+    }
+
+    .hl-addr-name {
+        font-weight: 500;
+    }
+    .hl-addr-val {
+        color: rgb(181, 175, 166);
+    }
+
+    .hl-app-version {
+        font-weight: 500;
+    }
+}
+
+.v-footer .donation-heading {
+    font-size: 24px;
+    margin-bottom: 10px;
+    position: relative;
+    top: -5px;
+}
+
+.v-footer p.donation-info {
+    font-weight: 500;
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 14px;
+}
+
+.line {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
