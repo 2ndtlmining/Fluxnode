@@ -91,7 +91,7 @@ class AppGuidesView extends React.Component {
                 </a>
               </li>
               <li>
-                Mutlinode:{' '}
+                Multinode:{' '}
                 <a
                   className='ms-1 link-primary'
                   href='https://medium.com/@oGGoldie/flux-multi-node-server-setup-7cd8887fe268'
@@ -103,7 +103,7 @@ class AppGuidesView extends React.Component {
             <h4 className='mt-4 mb-2 section-title'>Video Guides</h4>
             <p className='fs-6 mt-3 mb-3 app-text-muted'>
               Setting up a FluxNode is easy, you just need to be comfortable with working on the command line. There are
-              multiple ways to setup a FluxNode and here we share the most used ones for beginers. Below are a series of
+              multiple ways to setup a FluxNode and here we share the most used ones for beginners. Below are a series of
               video guides which walk you through the setup process bit by bit.
             </p>
             <div className='container-fluid mt-4'>
