@@ -276,7 +276,8 @@ class AppGuidesView extends React.Component {
             <p>
               They are claimable in the Fusion app inside Zelcore. Select <strong>Parallel Mining Claim</strong> from
               the three dots top right. You will only see a claimable amount if your Flux-Token amount is higher than
-              the fees required to claim. To see your Parallel Asset balance go here: ...
+              the fees required to claim. To see your Parallel Asset balance return to the home screen and specify
+              your wallet address and hit the search button.
             </p>
           </Accordion.Body>
         </Accordion.Item>
