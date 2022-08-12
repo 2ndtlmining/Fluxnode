@@ -470,6 +470,17 @@ sudo systemctl restart zelcash
             </p>
           </Accordion.Body>
         </Accordion.Item>
+        <Accordion.Item eventKey='12'>
+          <Accordion.Header>{this.renderBullet(24)} What is a Maintenance Window?</Accordion.Header>
+          <Accordion.Body>
+            <p>
+              A Flux node is confirmed on the Flux network every 120 to 160 blocks, thus 240 to 320 minutes.
+              Maintenance is allowed between confirmation to perform patching, updates or any needed
+              maintenance on your node without losing your place in the queue.
+            </p>
+          </Accordion.Body>
+        </Accordion.Item>
+        
       </Accordion>
     );
 
