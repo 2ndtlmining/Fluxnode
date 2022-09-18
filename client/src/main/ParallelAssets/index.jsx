@@ -141,7 +141,12 @@ export function ParallelAssets({ summary }) {
               logoUrl='https://runonflux.io/images/terra-avalanche-flux-parallel-logo.png'
               assetName={'AVAX'}
             />
-
+            <PAssetCard
+              paInfo={summary.assets.erg}
+              blockStyle='erg'
+              logoUrl='/pa-logos/ergo-logo.svg'
+              assetName={'Ergo'}
+            />
             <PAssetCard
               paInfo={{}}
               blockStyle='eth'

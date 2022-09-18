@@ -19,6 +19,7 @@ import {
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 
+const API_NODE_BENCHMARK_INFO_ENDPOINT = '/benchmark/getinfo';
 const API_NODE_LAST_BENCHMARK_ENDPOINT = '/benchmark/getbenchmarks';
 const API_FLUX_VERSION_ENDPOINT = '/flux/version';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -55,7 +56,8 @@ export function create_global_store() {
       stratus: tier_global_projections()
     },
     wallet_amount_flux: 0,
-    fluxos_latest_version: fluxos_version_desc(0, 0, 0)
+    fluxos_latest_version: fluxos_version_desc(0, 0, 0),
+    bench_latest_version: fluxos_version_desc(0, 0, 0)
   };
 }
 
@@ -100,13 +102,14 @@ function fill_rewards(gstore) {
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [resCurrency, resWallet, resFluxNodes, resFluxVersion] = await Promise.allSettled([
+  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
     walletAddress == null
       ? Promise.reject(new Error('Empty address'))
       : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
     fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     fetch('https://api.runonflux.io/flux/version'),
+    fetch('https://api.runonflux.io/benchmark/getinfo'),
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -139,9 +142,15 @@ export async function fetch_global_stats(walletAddress = null) {
     store.fluxos_latest_version = fluxos_version_desc_parse(json.data);
   }
 
+  if (resBenchInfo.status == 'fulfilled') {
+    const res = resBenchInfo.value;
+    const json = await res.json();
+    store.bench_latest_version = fluxos_version_desc_parse(json['data']['version']);
+  }
+
 
   fill_rewards(store);
-  window.gstore_current = store;
+  window.gstore = store;
 
   return store;
 }
@@ -194,6 +203,7 @@ function empty_flux_node() {
     last_reward: '-',
     next_reward: '-',
     benchmark_status: 'unknown', // 'unknown' | 'failed' | 'passed' | 'offline' | 'running'
+    bench_version: fluxos_version_desc(0, 0, 0),
     flux_os: fluxos_version_desc(0, 0, 0),
     cores: 0,
     threads: 0,
@@ -272,6 +282,11 @@ function make_offline(fluxNode) {
   return undefined;
 }
 
+function _fillPartial_bench_info(fluxNode, bench_info) {
+  if (bench_info !== null)
+    fluxNode.bench_version = fluxos_version_desc_parse(bench_info['version']);
+}
+
 function _fillPartial_benchmarks(fluxNode, benchmarks) {
   if (benchmarks === null) return make_offline(fluxNode);
 
@@ -329,6 +344,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
     let targetNode = jsonData['node']['results'];
 
+    _fillPartial_bench_info(fluxNode, targetNode['bench_info'].data);
     _fillPartial_benchmarks(fluxNode, targetNode['benchmarks'].data);
     _fillPartial_version(fluxNode, targetNode['version'].data);
     _fillPartial_apps(fluxNode, targetNode['apps'].data);
@@ -340,18 +356,21 @@ else {
     let server = 'http://' + make_node_ip(fluxNode);
 
     const promiseFluxVersion = fetch(server + API_FLUX_VERSION_ENDPOINT, { ...REQUEST_OPTIONS_API });
+    const promiseBenchInfo = fetch(server + API_NODE_BENCHMARK_INFO_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseBenchmarkData = fetch(server + API_NODE_LAST_BENCHMARK_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseAppList = fetch(server + API_FLUX_APPLIST_ENDPOINT, { ...REQUEST_OPTIONS_API });
 
     let reqSuccess;
 
     let resultVersion;
+    let resultBenchInfo;
     let resultBench;
     let resultAppList;
 
     try {
-      [resultVersion, resultBench, resultAppList] = await Promise.all([
+      [resultVersion, resultBenchInfo, resultBench, resultAppList] = await Promise.all([
         promiseFluxVersion,
+        promiseBenchInfo,
         promiseBenchmarkData,
         promiseAppList
       ]);
@@ -361,7 +380,8 @@ else {
     }
 
     if (reqSuccess) {
-      _fillPartial_benchmarks(fluxNode, (await resultBench.json()).data);
+      _fillPartial_bench_info(fluxNode, (await resultBench.json()).data);
+      _fillPartial_benchmarks(fluxNode, (await resultBenchInfo.json()).data);
       _fillPartial_version(fluxNode, (await resultVersion.json()).data);
       _fillPartial_apps(fluxNode, (await resultAppList.json()).data);
     }
@@ -427,7 +447,8 @@ export function pa_summary_full() {
       bsc: single_pa_info(),
       trn: single_pa_info(),
       sol: single_pa_info(),
-      avx: single_pa_info()
+      avx: single_pa_info(),
+      erg: single_pa_info(),
     }
   };
 }
@@ -482,6 +503,9 @@ export async function wallet_pas_summary(walletAddress) {
         case 'avax':
           targetPAInfo = summary.assets.avx;
           break;
+        case 'erg':
+          targetPAInfo = summary.assets.erg;
+          break;
 
         default:
           break;
@@ -505,6 +529,7 @@ export async function wallet_pas_summary(walletAddress) {
     summary.assets.trn.fusion_fee = fees['trx'];
     summary.assets.sol.fusion_fee = fees['sol'];
     summary.assets.avx.fusion_fee = fees['avax'];
+    summary.assets.erg.fusion_fee = fees['erg'];
   }
 
   return summary;

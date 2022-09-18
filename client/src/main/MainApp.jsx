@@ -417,6 +417,7 @@ class MainApp extends React.Component {
           parentLoading={this.state.isNodesLoading}
           onRefreshRequest={this.onRefreshRequest}
           activeAddress={this.state.activeAddress}
+          initGStore={this.state.gstore}
         />
 
         {this.state.isWalletAvailable ? (

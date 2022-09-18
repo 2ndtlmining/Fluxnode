@@ -157,7 +157,7 @@ const ColumnHelp = (name, valueSuffix) => (
 
 function NodeGridTable(nodes, gstore) {
 
-  const is_fluxos_outdated = (fluxos) => fv_compare(fluxos, gstore.fluxos_latest_version) == -1;
+  const nodeRowBuilder = _CreateNodeBuilder(gstore);
 
   return (
     <>
@@ -215,6 +215,18 @@ function NodeGridTable(nodes, gstore) {
                     </>
                   }
                 />
+                <TooltipTableHeader
+                  name='Flux Bench version'
+                  tooltipContent={
+                    <>
+                      <div>Version of the Flux Benchmark that your node is currently running</div>
+                      <div>
+                        <strong>Latest version:&nbsp;</strong>
+                        {fluxos_version_string(gstore.bench_latest_version)}
+                      </div>
+                    </>
+                  }
+                />
                 <TooltipTableHeader name='EPS' tooltipContent={ColumnHelp('eps')} />
                 <TooltipTableHeader name='RAM' tooltipContent={ColumnHelp('ram', ' GB')} />
                 <TooltipTableHeader name='Cores' tooltipContent={ColumnHelp('cores')} />
@@ -240,7 +252,7 @@ function NodeGridTable(nodes, gstore) {
               </tr>
             </thead>
             <tbody>
-              {nodes.length == 0 ? NodesPlaceholder() : nodes.map((node) => (!node ? null : _NodeRow(node, is_fluxos_outdated)))}
+              {nodes.length == 0 ? NodesPlaceholder() : nodes.map((node) => (!node ? null : nodeRowBuilder(node)))}
             </tbody>
           </table>
         </div>
@@ -282,6 +294,61 @@ function _failed_specs(node) {
 const _FAILED_PROPS = { className: 'text-danger fw-bolder' };
 const MarkIfFailed = (failureInfo) => (name) => failureInfo[name] ? _FAILED_PROPS : {};
 
+function _CreateNodeBuilder(gstore)
+{
+  const is_fluxos_outdated = (fluxos) => fv_compare(fluxos, gstore.fluxos_latest_version) == -1;
+  const is_bench_outdated = (bench_version) => fv_compare(bench_version, gstore.bench_latest_version) == -1;
+
+  return function(node) {
+    let dashboardUrl = `http://${node.ip_full.host}:${node.ip_full.active_port_os}`;
+
+    // = "failed node props"
+    const flp = MarkIfFailed(_failed_specs(node));
+
+    return (
+      <tr key={node.id}>
+        <td className='al'>
+          {node.ip_display ? (
+            <a target='_blank' href={dashboardUrl}>
+              {node.ip_display}
+            </a>
+          ) : (
+            '-'
+          )}
+        </td>
+        <td>{NodeTierView(node.tier)}</td>
+        <td>{node.rank}</td>
+        <td>{node.last_reward}</td>
+        <td>{node.next_reward}</td>
+        <td>{NodeStatusView(node.benchmark_status, node.flux_os, is_fluxos_outdated)}</td>
+        <td className={is_fluxos_outdated(node.flux_os) ? 'fw-bolder outdated-flux-ver' : ''}>
+          {fluxos_version_string(node.flux_os)}
+        </td>
+        <td className={is_bench_outdated(node.bench_version) ? 'fw-bolder outdated-flux-ver' : ''}>
+          {fluxos_version_string(node.bench_version)}
+        </td>
+        <td {...flp('eps')}>{node.eps.toFixed(2)}</td>
+        <td {...flp('ram')}>{node.ram.toFixed(2)} GB</td>
+        <td {...flp('cores')}>{node.cores}</td>
+        <td {...flp('threads')}>{node.threads}</td>
+        <td {...flp('dws')}>{node.dws.toFixed(2)}</td>
+        <td {...flp('total_storage')}>{node.total_storage.toFixed(2)} GB</td>
+        <td {...flp('down_speed')}>{node.down_speed.toFixed(2)} Mb/s</td>
+        <td {...flp('up_speed')}>{node.up_speed.toFixed(2)} Mb/s</td>
+        <td>{node.last_benchmark}</td>
+        <td>
+          <a target='_blank' href={`${dashboardUrl}/apps/localapps`}>
+            <Tag round minimal large interactive intent={node.appCount == 0 ? 'none' : 'success'}>
+              {node.appCount}
+            </Tag>
+          </a>
+        </td>
+      </tr>
+    );
+  };
+};
+
+/*
 function _NodeRow(node, is_fluxos_outdated) {
   let dashboardUrl = `http://${node.ip_full.host}:${node.ip_full.active_port_os}`;
 
@@ -326,6 +393,8 @@ function _NodeRow(node, is_fluxos_outdated) {
     </tr>
   );
 }
+*/
+
 
 export class WalletNodes extends React.Component {
   constructor(props) {
@@ -339,7 +408,7 @@ export class WalletNodes extends React.Component {
 
       nodes: [],
       health: wallet_health_full(),
-      gstore: create_global_store()
+      gstore: null
     };
   }
 
@@ -475,7 +544,7 @@ export class WalletNodes extends React.Component {
             />
           </div>
         </div>
-        {NodeGridTable(this.state.nodes, this.state.gstore)}
+        {NodeGridTable(this.state.nodes, this.state.gstore || this.props.initGStore)}
       </>
     );
   }
