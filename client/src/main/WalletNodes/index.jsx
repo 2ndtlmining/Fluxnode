@@ -18,7 +18,8 @@ import {
   fill_health,
   fillPartialNode,
   transformRawNode,
-  isWalletDOSState
+  isWalletDOSState,
+  calc_mtn_window
 } from 'main/apidata';
 
 
@@ -93,7 +94,7 @@ function NodesPlaceholder() {
   // prettier-ignore
   return (
     <tr>
-      <td colSpan='17'>No Nodes</td>
+      <td colSpan='19'>No Nodes</td>
     </tr>
   );
 }
@@ -198,6 +199,22 @@ function NodeGridTable(nodes, gstore) {
                           Note: This might show "Passed" even when the actual requirements are not met by the node. This
                           happens when the Flux benchmarking system for that particular node does not enforce
                           requirements compliance.
+                        </i>
+                      </div>
+                    </div>
+                  }
+                />
+                <TooltipTableHeader
+                  name='Maintenance'
+                  tooltipContent={
+                    <div style={{ maxWidth: 300 }}>
+                      <div>
+                        <strong>Maintenance Window: </strong> It shows the amount of time in minutes, a node operator must perform maintenance since the last time the node was confirmed on the network. Every node is confirmed between 240 – 320 minutes.
+                      </div>
+                      <hr />
+                      <div>
+                        <i>
+                          Closed = Do not perform maintenance, your node will be confirmed soon.
                         </i>
                       </div>
                     </div>
@@ -321,6 +338,7 @@ function _CreateNodeBuilder(gstore)
         <td>{node.last_reward}</td>
         <td>{node.next_reward}</td>
         <td>{NodeStatusView(node.benchmark_status, node.flux_os, is_fluxos_outdated)}</td>
+        <td>{calc_mtn_window(node.last_confirmed_height, gstore.current_block_height)}</td>
         <td className={is_fluxos_outdated(node.flux_os) ? 'fw-bolder outdated-flux-ver' : ''}>
           {fluxos_version_string(node.flux_os)}
         </td>

@@ -57,7 +57,8 @@ export function create_global_store() {
     },
     wallet_amount_flux: 0,
     fluxos_latest_version: fluxos_version_desc(0, 0, 0),
-    bench_latest_version: fluxos_version_desc(0, 0, 0)
+    bench_latest_version: fluxos_version_desc(0, 0, 0),
+    current_block_height: 0,
   };
 }
 
@@ -102,7 +103,7 @@ function fill_rewards(gstore) {
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo] = await Promise.allSettled([
+  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
     walletAddress == null
       ? Promise.reject(new Error('Empty address'))
@@ -110,6 +111,7 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     fetch('https://api.runonflux.io/flux/version'),
     fetch('https://api.runonflux.io/benchmark/getinfo'),
+    fetch('https://api.runonflux.io/daemon/getinfo'),
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -146,6 +148,13 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = resBenchInfo.value;
     const json = await res.json();
     store.bench_latest_version = fluxos_version_desc_parse(json['data']['version']);
+  }
+
+
+  if (resFluxInfo.status == 'fulfilled') {
+    const res = resFluxInfo.value;
+    const json = await res.json();
+    store.current_block_height = json['data']['blocks'];
   }
 
 
@@ -214,12 +223,27 @@ function empty_flux_node() {
     down_speed: 0,
     up_speed: 0,
     last_benchmark: '-',
-    appCount: 0
+    appCount: 0,
+
+    last_confirmed_height: 0,
+    // maintenance_win: '-'
   };
 }
 
 function calc_next_reward(rank) {
   return format_minutes(rank * 2);
+}
+
+export function calc_mtn_window(last_confirmed_height, current_height)
+{
+  const BLOCK_RATE = 120;
+
+  const win = BLOCK_RATE - (current_height - last_confirmed_height);
+
+  if (win <= 0)
+    return 'Closed';
+
+  return format_minutes(win * 2);
 }
 
 const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
@@ -273,6 +297,7 @@ export function transformRawNode(node) {
   fluxNode.rank = node['rank'] || 0;
   fluxNode.last_reward = dayjs.unix(node['lastpaid']).format(DISPLAY_DATE_FORMAT);
   fluxNode.next_reward = calc_next_reward(node.rank);
+  fluxNode.last_confirmed_height = node['last_confirmed_height'] || 0;
 
   return fluxNode;
 }
