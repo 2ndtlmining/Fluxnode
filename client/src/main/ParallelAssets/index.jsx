@@ -144,15 +144,8 @@ export function ParallelAssets({ summary }) {
             <PAssetCard
               paInfo={summary.assets.erg}
               blockStyle='erg'
-              logoUrl='/pa-logos/ergo-logo.svg'
+              logoUrl='https://cryptologos.cc/logos/ergo-erg-logo.png'
               assetName={'Ergo'}
-            />
-            <PAssetCard
-              paInfo={{}}
-              blockStyle='eth'
-              placeholder
-              logoUrl='https://runonflux.io/images/Mask-Group-1142x.png'
-              assetName={'Atom'}
             />
           </div>
         </Col>
