@@ -341,7 +341,7 @@ fluxbench-cli restartnodebenchmarks
           </Accordion.Body>
         </Accordion.Item>
         <Accordion.Item eventKey='5'>
-          <Accordion.Header>{this.renderBullet(17)} How to top your node?</Accordion.Header>
+          <Accordion.Header>{this.renderBullet(17)} How to stop your node?</Accordion.Header>
           <Accordion.Body>
             <p>
               Run
