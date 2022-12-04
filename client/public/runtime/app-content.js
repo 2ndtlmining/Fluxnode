@@ -114,7 +114,7 @@ window.gContent.GUIDE_VIDEOS = [
     url: 'https://www.youtube.com/embed/8RsRfggaVlg'
   },
   {
-    title: `How To Start A Flux Node | Beginners Guide`,
-    url: 'https://www.youtube.com/embed/znqIqR1WM60'
+    title: `Flux Node security`,
+    url: 'https://www.youtube.com/embed/QoMxIQ7co70'
   }
 ];
