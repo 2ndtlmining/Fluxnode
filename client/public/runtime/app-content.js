@@ -103,7 +103,7 @@ window.gContent.GUIDE_VIDEOS = [
   },
   {
     title: `How to setup Flux Watchdog`,
-    url: 'https://www.youtube.com/embed/RQRSwpLTMYU'
+    url: 'https://www.youtube.com/embed/VryPE_kje5k'
   },
   {
     title: `How to perform Flux Node patching`,
