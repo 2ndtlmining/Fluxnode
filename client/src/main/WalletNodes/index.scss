@@ -91,3 +91,11 @@
 .outdated-flux-ver {
     color: #c87619 !important;
 }
+
+/* ============= CUSTOM =============== */
+.closed-maintenance-window {
+    color:red !important;
+    @include rule-mode-dark() {
+        color: yellow !important;
+    }
+}

@@ -206,6 +206,7 @@ function NodeGridTable(nodes, gstore) {
                 />
                 <TooltipTableHeader
                   name='Maintenance'
+                  className='maintenance-tooltip-label'
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
@@ -315,12 +316,15 @@ function _CreateNodeBuilder(gstore)
 {
   const is_fluxos_outdated = (fluxos) => fv_compare(fluxos, gstore.fluxos_latest_version) == -1;
   const is_bench_outdated = (bench_version) => fv_compare(bench_version, gstore.bench_latest_version) == -1;
+  const is_mtn_closed = (mtn) => typeof mtn === 'string' && mtn === 'Closed';
 
   return function(node) {
     let dashboardUrl = `http://${node.ip_full.host}:${node.ip_full.active_port_os}`;
 
     // = "failed node props"
     const flp = MarkIfFailed(_failed_specs(node));
+
+    const mtn_value = calc_mtn_window(node.last_confirmed_height, gstore.current_block_height);
 
     return (
       <tr key={node.id}>
@@ -338,7 +342,7 @@ function _CreateNodeBuilder(gstore)
         <td>{node.last_reward}</td>
         <td>{node.next_reward}</td>
         <td>{NodeStatusView(node.benchmark_status, node.flux_os, is_fluxos_outdated)}</td>
-        <td>{calc_mtn_window(node.last_confirmed_height, gstore.current_block_height)}</td>
+        <td className={is_mtn_closed(mtn_value) ? 'fw-bolder closed-maintenance-window' : ''}>{mtn_value}</td>
         <td className={is_fluxos_outdated(node.flux_os) ? 'fw-bolder outdated-flux-ver' : ''}>
           {fluxos_version_string(node.flux_os)}
         </td>
