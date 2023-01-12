@@ -57,38 +57,38 @@ function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder }) {
     <div className={'adp-text-normal pa-card' + ` pa-grad-${blockStyle}`}>
       <div className='logo-wrapper'>
         <div className='logo adp-bg-normal'>
-          <img src={logoUrl} alt={assetName + ' logo'} />
+          {logoUrl && <img src={logoUrl} alt={assetName + ' logo'} />}
         </div>
       </div>
       <div className='border-bottom adp-border-color pa-name'>{assetName}</div>
       <div className='info-area'>
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : paInfo.possible_claimable.toFixed(2)}</span> Possible
-            Claimable
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.possible_claimable.toFixed(2)} Possible
+            Claimable`}</span> 
           </div>
         </div>
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : paInfo.amount_claimed.toFixed(2)}</span> Claimed Amount
-          </div>
-        </div>
-
-        <div className='border-bottom adp-border-color pt-2 pb-2'>
-          <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : paInfo.fusion_fee.toFixed(2)}</span> Fusion Fee
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.amount_claimed.toFixed(2)} Claimed Amount`}</span>
           </div>
         </div>
 
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : paInfo.paid.toFixed(2)}</span> Fees Paid
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.fusion_fee.toFixed(2)} Fusion Fee`}</span> 
+          </div>
+        </div>
+
+        <div className='border-bottom adp-border-color pt-2 pb-2'>
+          <div className='text-center fs-6 text-wrap'>
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.paid.toFixed(2)} Fees Paid`}</span> 
           </div>
         </div>
 
         <div className='pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : paInfo.amount_received.toFixed(2)}</span> Received Amount
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.amount_received.toFixed(2)} Received Amount`}</span>
           </div>
         </div>
       </div>
@@ -146,6 +146,20 @@ export function ParallelAssets({ summary }) {
               blockStyle='erg'
               logoUrl='https://cryptologos.cc/logos/ergo-erg-logo.png'
               assetName={'Ergo'}
+            />
+            <PAssetCard
+              paInfo=''
+              blockStyle=''
+              logoUrl=''
+              assetName=''
+              placeholder
+            />
+            <PAssetCard
+              paInfo=''
+              blockStyle=''
+              logoUrl=''
+              assetName=''
+              placeholder
             />
           </div>
         </Col>
