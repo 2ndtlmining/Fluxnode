@@ -259,7 +259,7 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        The amount of time in seconds, the highest value item depending on on the data retrieved from the API.
+                        Uptime is the amount of time this node has been consistently on since the last restart.
                       </div>
                     </div>
                   }
