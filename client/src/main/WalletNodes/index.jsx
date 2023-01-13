@@ -259,7 +259,7 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        Uptime is the amount of time this node has been consistently on since the last restart.
+                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
                       </div>
                     </div>
                   }
