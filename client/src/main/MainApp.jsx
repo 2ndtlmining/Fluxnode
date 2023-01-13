@@ -1,43 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './MainApp.scss';
 
 import { Helmet } from 'react-helmet';
 
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { Container, Row, Col } from 'react-grid-system';
+import { Col, Container, Row } from 'react-grid-system';
 
-import { DashboardCells } from 'main/Header';
-import { WalletNodes } from 'main/WalletNodes';
-import { ParallelAssets } from 'main/ParallelAssets';
 import { AppToaster } from 'main/AppToaster';
+import { DashboardCells } from 'main/Header';
+import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
+import { WalletNodes } from 'main/WalletNodes';
 
 import {
-  mergeRefs,
-  Icon,
-  Button,
-  Spinner,
-  InputGroup,
-  FormGroup,
-  Menu,
-  MenuItem,
-  MenuDivider
+  Button, FormGroup, Icon, InputGroup, Menu,
+  MenuItem, mergeRefs, Spinner
 } from '@blueprintjs/core';
-import { Classes as PClasses, Popover2 } from '@blueprintjs/popover2';
+import { Popover2 } from '@blueprintjs/popover2';
 
 import {
-  fetch_global_stats,
-  create_global_store,
-  pa_summary_full,
-  wallet_pas_summary,
-  validateAddress,
-  isWalletDOSState
+  create_global_store, fetch_global_stats, isWalletDOSState, pa_summary_full, validateAddress, wallet_pas_summary
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
 
-import { dayjs, sleep, blurAllInputs } from 'utils';
+import { LayoutContext } from 'contexts/LayoutContext';
+import { blurAllInputs } from 'utils';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
@@ -419,23 +408,26 @@ class MainApp extends React.Component {
           activeAddress={this.state.activeAddress}
           initGStore={this.state.gstore}
         />
-
-        {this.state.isWalletAvailable ? (
-          <div className='pa-area border-top adp-border-color'>
-            <h1 className='fs-3 text-center text-success p-3 border-bottom adp-border-color center-text-flow-mid pa-heading'>
-              <Icon icon='comparison' size={30} className='me-3' />
-              Parallel Assets
-            </h1>
-            <br />
-            {this.state.isPALoading ? (
-              <Spinner intent='primary' size={150} />
+        <LayoutContext.Consumer>
+          {({ enableParallelAssetsTab }) =>
+            enableParallelAssetsTab && this.state.isWalletAvailable ? (
+              <div className='pa-area border-top adp-border-color'>
+                <h1 className='fs-3 text-center text-success p-3 border-bottom adp-border-color center-text-flow-mid pa-heading'>
+                  <Icon icon='comparison' size={30} className='me-3' />
+                  Parallel Assets
+                </h1>
+                <br />
+                {this.state.isPALoading ? (
+                  <Spinner intent='primary' size={150} />
+                ) : (
+                  <ParallelAssets summary={this.state.walletPASummary} />
+                )}
+              </div>
             ) : (
-              <ParallelAssets summary={this.state.walletPASummary} />
-            )}
-          </div>
-        ) : (
-          <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
-        )}
+              <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
+            )
+          }
+        </LayoutContext.Consumer>
       </>
     );
   }

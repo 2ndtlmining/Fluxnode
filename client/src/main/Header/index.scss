@@ -40,27 +40,49 @@
 
 /* =================================== */
 
-@mixin def-dash-cell($slug, $background, $color, $backgroundDark, $colorDark) {
+@mixin def-dash-cell($slug, $background, $color, $backgroundDark, $colorDark, $size) {
     @at-root .dash-cell__#{$slug} {
         color: $color;
         background-color: $background;
+        max-width: $size !important;
+        max-height: $size !important;
+        min-width: $size !important;
+        min-height: $size !important;
         @include rule-mode-dark() {
             background-color: $backgroundDark;
             color: $colorDark;
+            max-width: $size !important;
+            max-height: $size !important;
+            min-width: $size !important;
+            min-height: $size !important;
         }
     }
 }
 
-@include def-dash-cell(flux-usd, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66));
+@include def-dash-cell(flux-usd, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66), 28px);
 
-@include def-dash-cell(nodes-total, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221));
+@include def-dash-cell(flux-usd-small, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66), 22px);
 
-@include def-dash-cell(nodes-nimbus, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66));
+@include def-dash-cell(nodes-total, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221), 28px);
 
-@include def-dash-cell(nodes-stratus, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96));
+@include def-dash-cell(nodes-total-small, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221), 22px);
 
-@include def-dash-cell(nodes-cumulus, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217));
+@include def-dash-cell(nodes-nimbus, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66), 28px);
 
-@include def-dash-cell(amount-flux, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223));
+@include def-dash-cell(nodes-nimbus-small, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66), 22px);
 
-@include def-dash-cell(amount-usd, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69));
+@include def-dash-cell(nodes-stratus, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96), 28px);
+
+@include def-dash-cell(nodes-stratus-small, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96), 22px);
+
+@include def-dash-cell(nodes-cumulus, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217), 28px);
+
+@include def-dash-cell(nodes-cumulus-small, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217), 22px);
+
+@include def-dash-cell(amount-flux, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223), 28px);
+
+@include def-dash-cell(amount-flux-small, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223), 22px);
+
+@include def-dash-cell(amount-usd, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69), 28px);
+
+@include def-dash-cell(amount-usd-small, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69), 22px);
