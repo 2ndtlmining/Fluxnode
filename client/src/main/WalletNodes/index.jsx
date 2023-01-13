@@ -4,7 +4,7 @@ import './index.scss';
 import { Icon, Button, Tag, Spinner, ProgressBar, NonIdealState, NonIdealStateIconSize } from '@blueprintjs/core';
 import { Classes as PClasses, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 
-import { sleep, output_json_source } from 'utils';
+import { sleep, output_json_source, format_seconds } from 'utils';
 
 import { Projection } from './Projection';
 import { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
@@ -255,6 +255,16 @@ function NodeGridTable(nodes, gstore) {
                 <TooltipTableHeader name='Upload' tooltipContent={ColumnHelp('net_up_speed', ' Mb')} />
                 <TooltipTableHeader name='Last Benchmark' tooltipContent={<>Last time benchmarks was updated</>} />
                 <TooltipTableHeader
+                  name='Uptime'
+                  tooltipContent={
+                    <div style={{ maxWidth: 300 }}>
+                      <div>
+                        The amount of time in seconds, the highest value item depending on on the data retrieved from the API.
+                      </div>
+                    </div>
+                  }
+                />
+                <TooltipTableHeader
                   name='Apps'
                   tooltipContent={
                     <>
@@ -358,6 +368,7 @@ function _CreateNodeBuilder(gstore)
         <td {...flp('down_speed')}>{node.down_speed.toFixed(2)} Mb/s</td>
         <td {...flp('up_speed')}>{node.up_speed.toFixed(2)} Mb/s</td>
         <td>{node.last_benchmark}</td>
+        <td> {format_seconds(node.uptime)} </td>
         <td>
           <a target='_blank' href={`${dashboardUrl}/apps/localapps`}>
             <Tag round minimal large interactive intent={node.appCount == 0 ? 'none' : 'success'}>
