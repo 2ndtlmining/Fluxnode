@@ -1,20 +1,24 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
 import './Application.scss';
 
+import { initStore } from 'persistance/store';
 import reportWebVitals from './reportWebVitals';
-import { appStore, initStore } from 'persistance/store';
 
-import { Helmet } from 'react-helmet';
-import { AppNavbar } from 'components/Navbar';
-import { FooterRendered } from 'components/Footer';
-import { ScreenClassProvider, setConfiguration as setGridConfiguration } from 'react-grid-system';
 import { Spinner } from '@blueprintjs/core';
-import { BrowserRouter, HashRouter, Router, Routes, Route, Navigate } from 'react-router-dom';
+import { FooterRendered } from 'components/Footer';
+import { AppNavbar } from 'components/Navbar';
+import { ScreenClassProvider, setConfiguration as setGridConfiguration } from 'react-grid-system';
+import { Helmet } from 'react-helmet';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 
-import MainApp from 'main/MainApp';
+import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import AppGuidesView from 'guides/GuidesView';
+import MainApp from 'main/MainApp';
 import NotFoundView from 'notfound/index';
+import { FocusStyleManager } from "@blueprintjs/core";
+
+// Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
+FocusStyleManager.onlyShowFocusOnTabs();
 
 setGridConfiguration({
   gridColumns: 24,
@@ -76,44 +80,46 @@ class Application extends React.Component {
 
     return (
       <ScreenClassProvider>
-        <Helmet defaultTitle='FluxNode' titleTemplate='%s | FluxNode'>
-          <meta charSet='utf-8' />
-          <meta name='description' content='Overview for flux node wallets' />
-        </Helmet>
-        <div className={'App' + (darkMode ? ' ' + DARK_MODE_CLASS : '')}>
-          <AppRouter>
-            <AppNavbar theme={darkMode ? 'dark' : 'light'} onThemeSwitch={() => this.setDarkMode(!darkMode)} />
-            <Routes>
-              <Route exact path='/' element={<Navigate to='/nodes' replace />} />
+        <LayoutConfigurationProvider>
+          <Helmet defaultTitle='FluxNode' titleTemplate='%s | FluxNode'>
+            <meta charSet='utf-8' />
+            <meta name='description' content='Overview for flux node wallets' />
+          </Helmet>
+          <div className={'App' + (darkMode ? ' ' + DARK_MODE_CLASS : '')}>
+            <AppRouter>
+              <AppNavbar theme={darkMode ? 'dark' : 'light'} onThemeSwitch={() => this.setDarkMode(!darkMode)} />
+              <Routes>
+                <Route exact path='/' element={<Navigate to='/nodes' replace />} />
 
-              <Route
-                path='/nodes'
-                element={
-                  <React.Suspense fallback={<PageLoader />}>
-                    <MainApp />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path='/guide'
-                element={
-                  <React.Suspense fallback={<PageLoader />}>
-                    <AppGuidesView />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path='*'
-                element={
-                  <React.Suspense fallback={<PageLoader />}>
-                    <NotFoundView />
-                  </React.Suspense>
-                }
-              />
-            </Routes>
-            {FooterRendered}
-          </AppRouter>
-        </div>
+                <Route
+                  path='/nodes'
+                  element={
+                    <React.Suspense fallback={<PageLoader />}>
+                      <MainApp />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path='/guide'
+                  element={
+                    <React.Suspense fallback={<PageLoader />}>
+                      <AppGuidesView />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path='*'
+                  element={
+                    <React.Suspense fallback={<PageLoader />}>
+                      <NotFoundView />
+                    </React.Suspense>
+                  }
+                />
+              </Routes>
+              {FooterRendered}
+            </AppRouter>
+          </div>
+        </LayoutConfigurationProvider>
       </ScreenClassProvider>
     );
   }

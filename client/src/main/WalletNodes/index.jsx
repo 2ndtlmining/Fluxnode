@@ -21,7 +21,7 @@ import {
   isWalletDOSState,
   calc_mtn_window
 } from 'main/apidata';
-
+import { LayoutContext } from 'contexts/LayoutContext';
 
 function NodeTierView(tier) {
   if (tier == 'CUMULUS')
@@ -86,6 +86,21 @@ function NodeStatusView(status, fluxos, is_fluxos_outdated) {
   return (
     <Tag round large intent='none' rightIcon='lock'>
       Unknown
+    </Tag>
+  );
+}
+
+function NodeMaintenanceStatusView(status, is_mtn_closed) {
+  if (is_mtn_closed(status))
+    return (
+      <Tag className='closed-maintenance-window' round large fill intent='warning' rightIcon='issue' color='white'>
+        {status}
+      </Tag>
+    );
+
+  return (
+    <Tag round large fill intent='success' rightIcon='tick-circle'>
+      {status}
     </Tag>
   );
 }
@@ -210,13 +225,13 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        <strong>Maintenance Window: </strong> It shows the amount of time in minutes, a node operator must perform maintenance since the last time the node was confirmed on the network. Every node is confirmed between 240 – 320 minutes.
+                        <strong>Maintenance Window: </strong> It shows the amount of time in minutes, a node operator
+                        must perform maintenance since the last time the node was confirmed on the network. Every node
+                        is confirmed between 240 – 320 minutes.
                       </div>
                       <hr />
                       <div>
-                        <i>
-                          Closed = Do not perform maintenance, your node will be confirmed soon.
-                        </i>
+                        <i>Closed = Do not perform maintenance, your node will be confirmed soon.</i>
                       </div>
                     </div>
                   }
@@ -322,13 +337,12 @@ function _failed_specs(node) {
 const _FAILED_PROPS = { className: 'text-danger fw-bolder' };
 const MarkIfFailed = (failureInfo) => (name) => failureInfo[name] ? _FAILED_PROPS : {};
 
-function _CreateNodeBuilder(gstore)
-{
+function _CreateNodeBuilder(gstore) {
   const is_fluxos_outdated = (fluxos) => fv_compare(fluxos, gstore.fluxos_latest_version) == -1;
   const is_bench_outdated = (bench_version) => fv_compare(bench_version, gstore.bench_latest_version) == -1;
-  const is_mtn_closed = (mtn) => typeof mtn === 'string' && mtn === 'Closed';
+  const is_mtn_closed = (mtn) => typeof mtn === 'string' && mtn.toLowerCase() === 'closed';
 
-  return function(node) {
+  return function (node) {
     let dashboardUrl = `http://${node.ip_full.host}:${node.ip_full.active_port_os}`;
 
     // = "failed node props"
@@ -352,7 +366,7 @@ function _CreateNodeBuilder(gstore)
         <td>{node.last_reward}</td>
         <td>{node.next_reward}</td>
         <td>{NodeStatusView(node.benchmark_status, node.flux_os, is_fluxos_outdated)}</td>
-        <td className={is_mtn_closed(mtn_value) ? 'fw-bolder closed-maintenance-window' : ''}>{mtn_value}</td>
+        <td>{NodeMaintenanceStatusView(mtn_value, is_mtn_closed)}</td>
         <td className={is_fluxos_outdated(node.flux_os) ? 'fw-bolder outdated-flux-ver' : ''}>
           {fluxos_version_string(node.flux_os)}
         </td>
@@ -379,7 +393,7 @@ function _CreateNodeBuilder(gstore)
       </tr>
     );
   };
-};
+}
 
 /*
 function _NodeRow(node, is_fluxos_outdated) {
@@ -427,7 +441,6 @@ function _NodeRow(node, is_fluxos_outdated) {
   );
 }
 */
-
 
 export class WalletNodes extends React.Component {
   constructor(props) {
@@ -588,11 +601,21 @@ export class WalletNodes extends React.Component {
     const loadingHealth = parentLoading || this.state.loadingHealth;
     const loadingNodeList = parentLoading || this.state.loadingNodeList;
 
+    const estimatedEarningsTab = (
+      <LayoutContext.Consumer>
+        {({ enableEstimatedEarningsTab }) =>
+          enableEstimatedEarningsTab ? (
+            <div className='health-wrapper mb-3 mx-1 p-0'>
+              <Projection loading={loadingHealth} health={this.state.health} />
+            </div>
+          ) : null
+        }
+      </LayoutContext.Consumer>
+    );
+
     return (
       <div className='wallet-nodes-area'>
-        <div className='health-wrapper mb-3 mx-1 p-0'>
-          <Projection loading={loadingHealth} health={this.state.health} />
-        </div>
+        {estimatedEarningsTab}
         <div className='adp-border overview-wrapper mb-3 p-0 shadow-lg rounded-3 adp-bg-normal'>
           {this.renderNodeOverview(loadingHealth, loadingNodeList)}
         </div>

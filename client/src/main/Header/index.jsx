@@ -30,6 +30,8 @@ import {
 } from 'react-icons/fi';
 
 import { fluxos_version_string } from 'main/flux_version';
+import { LayoutContext } from 'contexts/LayoutContext';
+import { useContext } from 'react';
 
 function TierRewardsProjectionView({ rewards }) {
   return (
@@ -95,17 +97,22 @@ function CellTooltip({ children, tooltipContent }) {
   );
 }
 
-const RenderedFluxIcon = <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
+const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
 export function DashboardCells({ gstore: gs }) {
+  const { normalFontSize } = useContext(LayoutContext);
+
+  const iconSize = normalFontSize ? '28px' : '22px';
+  const smallIconWrapper = normalFontSize ? '' : '-small';
+
   return (
     <div className='dashboard bp4-dark'>
       <Cell
         name='Flux USD Value'
         value={'$' + gs.flux_price_usd.toFixed(3)}
-        icon={<FiDollarSign />}
-        iconWrapClassName='dash-cell__flux-usd'
-        small={true}
+        icon={<FiDollarSign size={iconSize} />}
+        iconWrapClassName={'dash-cell__flux-usd' + smallIconWrapper}
+        small={!normalFontSize}
       />
       <CellTooltip tooltipContent={<FluxOSVersionView versionDesc={gs.fluxos_latest_version} />}>
         {(ref, tooltipProps) => (
@@ -114,9 +121,9 @@ export function DashboardCells({ gstore: gs }) {
             {...tooltipProps}
             name='Total Nodes'
             value={gs.node_count.total}
-            icon={<FiHash />}
-            iconWrapClassName='dash-cell__nodes-total'
-            small={false}
+            icon={<FiHash size={iconSize} />}
+            iconWrapClassName={'dash-cell__nodes-total' + smallIconWrapper}
+            small={!normalFontSize}
             cellHover
           />
         )}
@@ -128,9 +135,9 @@ export function DashboardCells({ gstore: gs }) {
             {...tooltipProps}
             name='Cumulus Nodes'
             value={gs.node_count.cumulus}
-            icon={<FiZap />}
-            iconWrapClassName='dash-cell__nodes-cumulus'
-            small={false}
+            icon={<FiZap size={iconSize} />}
+            iconWrapClassName={'dash-cell__nodes-cumulus' + smallIconWrapper}
+            small={!normalFontSize}
             cellHover
           />
         )}
@@ -142,9 +149,9 @@ export function DashboardCells({ gstore: gs }) {
             {...tooltipProps}
             name='Nimbus Nodes'
             value={gs.node_count.nimbus}
-            icon={<FiCpu />}
-            iconWrapClassName='dash-cell__nodes-nimbus'
-            small={false}
+            icon={<FiCpu size={iconSize} />}
+            iconWrapClassName={'dash-cell__nodes-nimbus' + smallIconWrapper}
+            small={!normalFontSize}
             cellHover
           />
         )}
@@ -156,9 +163,9 @@ export function DashboardCells({ gstore: gs }) {
             {...tooltipProps}
             name='Stratus Nodes'
             value={gs.node_count.stratus}
-            icon={<FiPackage />}
-            iconWrapClassName='dash-cell__nodes-stratus'
-            small={false}
+            icon={<FiPackage size={iconSize} />}
+            iconWrapClassName={'dash-cell__nodes-stratus' + smallIconWrapper}
+            small={!normalFontSize}
             cellHover
           />
         )}
@@ -166,16 +173,16 @@ export function DashboardCells({ gstore: gs }) {
       <Cell
         name='Flux Amount'
         value={gs.wallet_amount_flux}
-        icon={RenderedFluxIcon}
-        iconWrapClassName='dash-cell__amount-flux'
-        small={true}
+        icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
+        iconWrapClassName={'dash-cell__amount-flux' + smallIconWrapper}
+        small={!normalFontSize}
       />
       <Cell
         name='Wallet USD'
         value={format_flux_usd(gs.wallet_amount_flux, gs.flux_price_usd)}
-        icon={<FiFolder />}
-        iconWrapClassName='dash-cell__amount-usd'
-        small={true}
+        icon={<FiFolder size={iconSize} />}
+        iconWrapClassName={'dash-cell__amount-usd' + smallIconWrapper}
+        small={!normalFontSize}
       />
     </div>
   );
