@@ -54,6 +54,7 @@ array_constant!(
         NamedEndpointDesc("benchmarks", "/benchmark/getbenchmarks"),
         NamedEndpointDesc("apps", "/apps/installedapps"),
         NamedEndpointDesc("version", "/flux/version"),
+        NamedEndpointDesc("uptime", "/flux/uptime"),
     ]
 );
 

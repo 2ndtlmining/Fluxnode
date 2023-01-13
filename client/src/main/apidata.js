@@ -224,6 +224,7 @@ function empty_flux_node() {
     up_speed: 0,
     last_benchmark: '-',
     appCount: 0,
+    uptime: 0,
 
     last_confirmed_height: 0,
     // maintenance_win: '-'
@@ -345,6 +346,10 @@ function _fillPartial_apps(fluxNode, installedApps) {
   if (installedApps !== null) fluxNode.appCount = installedApps.length;
 }
 
+function _fillPartial_uptime(fluxNode, uptime) {
+  if (uptime !== null) fluxNode.uptime = uptime;
+}
+
 const make_node_ip = (fluxNode) => fluxNode.ip_full.host + ':' + fluxNode.ip_full.active_port_api;
 
 let _fetchAndFillNodeInfo;
@@ -373,6 +378,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
     _fillPartial_benchmarks(fluxNode, targetNode['benchmarks'].data);
     _fillPartial_version(fluxNode, targetNode['version'].data);
     _fillPartial_apps(fluxNode, targetNode['apps'].data);
+    _fillPartial_uptime(fluxNode, targetNode['uptime'].data);
   };
 }
 // FLUXNODE_INFO_API_MODE == 'debug'

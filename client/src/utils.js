@@ -33,7 +33,10 @@ export function split_duration(duration) {
 window.split_duration = split_duration;
 
 export function format_duration(duration) {
-  const { days, hours, minutes } = split_duration(duration);
+  const { days, hours, minutes, seconds } = split_duration(duration);
+
+  if(days == 0 && hours == 0 && minutes ==0)
+    return `${seconds} seconds`;
 
   if (days == 0 && hours == 0)
     return `${minutes} mins`;
@@ -45,6 +48,10 @@ export function format_duration(duration) {
 
 export function format_minutes(mins) {
   return format_duration(make_duration({ minutes: mins }));
+}
+
+export function format_seconds(seconds) {
+  return format_duration(make_duration({ seconds: seconds }));
 }
 
 export function sleep(ms) {
