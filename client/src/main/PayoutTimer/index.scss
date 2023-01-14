@@ -12,16 +12,23 @@
 .timer-header {
     padding: 20px 20px 15px;
 
-    display: flex;
+    display: block;
     justify-content: space-between;
     align-items: center;
 
     .title {
         font-weight: 500;
         font-size: 21px;
+        margin-bottom: 5px;
         color: #c22762;
         @include rule-mode-dark() {
             color: #f5498b;
+        }
+    }
+    @media all and (min-width: 768px) {
+        display: flex;
+        .title {
+            margin-bottom: initial;
         }
     }
 }
@@ -80,9 +87,12 @@
 }
 
 .timer-number {
-    font-size: 40px;
+    font-size: 25px;
     margin-top: 28px;
     font-weight: 500;
+    @media all and (min-width: 768px) {
+        font-size: 40px;
+    }
 }
 .timer-info {
     font-size: 14px;

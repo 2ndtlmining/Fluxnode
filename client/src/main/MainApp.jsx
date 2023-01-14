@@ -13,7 +13,7 @@ import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
 import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
-import { MostHostedDApp } from './MostHostedDApp';
+import { MostHostedApp } from './MostHostedApp';
 
 import {
   Button, FormGroup, Icon, InputGroup, Menu,
@@ -65,8 +65,8 @@ class MainApp extends React.Component {
     this._bestUptimeRef = React.createRef();
     this.bestUptime = null;
 
-    this._mostHostedDAppRef = React.createRef();
-    this.mostHostedDApp = null;
+    this._mostHostedAppRef = React.createRef();
+    this.mostHostedApp = null;
 
     this.mounted = false;
     this.setSearch = null;
@@ -87,7 +87,7 @@ class MainApp extends React.Component {
     window.historyListRef = this._historyListRef;
     window.payoutTimer = this.payoutTimer = this._payoutTimerRef.current;
     window.bestUptime = this.bestUptime = this._bestUptimeRef.current;
-    window.mostHostedDApp = this.mostHostedDApp = this._mostHostedDAppRef.current;
+    window.mostHostedApp = this.mostHostedApp = this._mostHostedAppRef.current;
 
     this.setSearch = this.props.router.search[1];
 
@@ -146,6 +146,8 @@ class MainApp extends React.Component {
     });
 
     this.payoutTimer.pauseAndHide();
+    this.bestUptime.loading();
+    this.mostHostedApp.loading();
 
     const oldAddress = this.state.activeAddress;
     const walletView = this.walletNodes.current;
@@ -167,7 +169,9 @@ class MainApp extends React.Component {
       const isWalletAvailable = oldAddress != null;
       this.setState({ isWalletAvailable });
 
-      if (isWalletAvailable) this.payoutTimer.resumeAndShow();
+      if (isWalletAvailable) {
+        this.payoutTimer.resumeAndShow();
+      }
 
       AppToaster.show({
         intent: 'danger',
@@ -204,10 +208,10 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedDAppNode }) => {
-      this.payoutTimer.receiveNode(highestRankedNode);
-      this.bestUptime.receiveNode(bestUptimeNode);
-      this.mostHostedDApp.receiveNode(mostHostedDAppNode);
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedAppNode }) => {
+      highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
+      bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
+      mostHostedAppNode && this.mostHostedApp.receiveNode(mostHostedAppNode);
     });
 
     const summary = await wallet_pas_summary(address);
@@ -416,7 +420,7 @@ class MainApp extends React.Component {
               <BestUptime ref={this._bestUptimeRef} />
             </Col>
             <Col md={12} lg={8}>
-              <MostHostedDApp ref={this._mostHostedDAppRef} />
+              <MostHostedApp ref={this._mostHostedAppRef} />
             </Col>
           </Row>
         </Container>

@@ -19,7 +19,8 @@ import {
   fillPartialNode,
   transformRawNode,
   isWalletDOSState,
-  calc_mtn_window
+  calc_mtn_window,
+  fetchMostHostedLocalApps
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 
@@ -515,23 +516,10 @@ export class WalletNodes extends React.Component {
 
     const health = wallet_health_full();
 
-    let highestRankedNode = null;
-
-    let bestUptimeNode = null;
-
-    let mostHostedDAppNode = null;
-
     for (const walletNodeRaw of walletNodesRaw) {
       const pNode = transformRawNode(walletNodeRaw);
 
       partialNodes.push(pNode);
-
-      /* Highest rank is the once which has the lowest value */
-      if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
-
-      if (bestUptimeNode === null || pNode.uptime > bestUptimeNode.uptime) bestUptimeNode = pNode;
-
-      if (mostHostedDAppNode === null || pNode.appCount > mostHostedDAppNode.appCount) mostHostedDAppNode = pNode;
 
       switch (pNode.tier) {
         case 'CUMULUS':
@@ -548,14 +536,29 @@ export class WalletNodes extends React.Component {
           break;
       }
     }
-    if (highestRankedNode != null && bestUptimeNode != null && mostHostedDAppNode != null) onCalculateNodes({ highestRankedNode, bestUptimeNode, mostHostedDAppNode });
-
     health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
 
     let nodes = await this._loadNodes(partialNodes);
     this.setState({ loadingNodeList: false, nodes });
+
+    let highestRankedNode = null;
+
+    let bestUptimeNode = null;
+
+    let mostHostedAppNode = null;
+
+    for (const node of nodes) {
+      /* Highest rank is the once which has the lowest value */
+      if (!highestRankedNode || node.rank < highestRankedNode.rank) highestRankedNode = node;
+
+      if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
+
+      if (mostHostedAppNode === null || node.appCount > mostHostedAppNode.appCount) mostHostedAppNode = node;
+    }
+
+    onCalculateNodes({ highestRankedNode, bestUptimeNode, mostHostedAppNode });
   }
 
   handleRefreshClick = () => {

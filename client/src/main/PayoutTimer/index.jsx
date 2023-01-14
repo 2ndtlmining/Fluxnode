@@ -7,6 +7,7 @@ import { IconContext } from 'react-icons';
 
 import * as utils from 'utils';
 import { pad_start } from 'utils';
+import { Spinner } from '@blueprintjs/core';
 
 const split_minutes = (asMinutes) => utils.split_duration(utils.ds.duration({ minutes: asMinutes }));
 
@@ -35,7 +36,7 @@ export class PayoutTimer extends React.Component {
       restTime: { days: 0, hours: 0, minutes: 0 },
       seconds: 0,
       hidden: true,
-
+      dataLoading: true,
       nodeIpDef: {},
       nodeIp: '',
       nodeTier: ''
@@ -89,6 +90,7 @@ export class PayoutTimer extends React.Component {
         restTime: { days, hours, minutes },
         seconds: 0,
         hidden: false,
+        dataLoading: false,
         nodeIpDef: node.ip_full,
         nodeIp: node.ip_display,
         nodeTier: node.tier
@@ -130,27 +132,29 @@ export class PayoutTimer extends React.Component {
   };
 
   render() {
-    const { hidden, nodeIp, nodeIpDef } = this.state;
+    const { hidden, nodeIp, nodeIpDef, dataLoading } = this.state;
 
     const tMap = tierMapping[this.state.nodeTier] || {};
     const LogoComp = tMap.logo;
 
     return (
-      <>
-        <div className='timer'>
-          <div className='timer-header'>
-            <div className='title'>Next Payout</div>
-            <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
-              <strong>Node IP:&nbsp;</strong>
-              {nodeIp ? (
-                <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
-                  {nodeIp}
-                </a>
-              ) : (
-                <i> -Unknown- </i>
-              )}
-            </div>
+      <div className='timer'>
+        <div className='timer-header'>
+          <div className='title'>Next Payout</div>
+          <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+            <strong>Node IP:&nbsp;</strong>
+            {nodeIp ? (
+              <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
+                {nodeIp}
+              </a>
+            ) : (
+              <i> -Unknown- </i>
+            )}
           </div>
+        </div>
+        {dataLoading ? (
+          <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />
+        ) : (
           <div className='timer-blocks'>
             <div className={'timer-node-logo' + (hidden ? ' d-none' : '')}>
               <div className={'pyt-i-wrap dash-cell__nodes-' + tMap.styleSet}>
@@ -182,8 +186,8 @@ export class PayoutTimer extends React.Component {
               <span className='adp-text-normal timer-info'>Seconds</span>
             </div>
           </div>
-        </div>
-      </>
+        )}
+      </div>
     );
   }
 }

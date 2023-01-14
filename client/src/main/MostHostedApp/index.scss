@@ -12,16 +12,23 @@
 .most-hosted-d-app-header {
     padding: 20px 20px 15px;
 
-    display: flex;
+    display: block;
     justify-content: space-between;
     align-items: center;
 
     .title {
         font-weight: 500;
         font-size: 21px;
+        margin-bottom: 5px;
         color: #2686d0;
         @include rule-mode-dark() {
             color: rgb(66, 221, 217);
+        }
+    }
+    @media all and (min-width: 1024px) {
+        display: flex;
+        .title {
+            margin-bottom: initial;
         }
     }
 }
