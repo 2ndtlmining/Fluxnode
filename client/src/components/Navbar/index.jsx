@@ -1,9 +1,11 @@
-import React from 'react';
+import { useState } from 'react';
 
-import { Navbar, Button, Alignment } from '@blueprintjs/core';
+import { Alignment, Button, Menu, Navbar, Switch } from '@blueprintjs/core';
 
+import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
+import { LayoutContext } from 'contexts/LayoutContext';
 import { matchPath, useMatch } from 'react-router';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 window.matchPath = matchPath;
 window.useMatch = useMatch;
@@ -14,6 +16,8 @@ const APP_LOGO_THEME_LIGHT = '/app-logo.svg';
 const APP_LOGO_THEME_DARK = '/app-logo-dark.svg';
 
 export function AppNavbar({ onThemeSwitch, theme }) {
+  const [isSettingMenuOpen, setSettingMenuOpen] = useState(false);
+
   theme = theme || 'light';
   let navigate = useNavigate();
 
@@ -41,6 +45,65 @@ export function AppNavbar({ onThemeSwitch, theme }) {
           icon={theme == 'light' ? 'flash' : 'moon'}
           onClick={() => onThemeSwitch()}
         />
+        <LayoutContext.Consumer>
+          {({
+            enableEstimatedEarningsTab,
+            enableParallelAssetsTab,
+            normalFontSize,
+            onToggleEstimatedEarningsTab,
+            onToggleParallelAssetsTab,
+            onToggleChangeFontSize
+          }) => (
+            <Popover2
+              content={
+                <Menu shouldDismissPopover={false}>
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enableEstimatedEarningsTab}
+                        label='Estimated Earnings'
+                        onChange={onToggleEstimatedEarningsTab}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enableParallelAssetsTab}
+                        label='Parallel Assets'
+                        onChange={onToggleParallelAssetsTab}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                  shouldDismissPopover={false}
+                  text={
+                    <Switch
+                      shouldDismissPopover={false}
+                      alignIndicator='right'
+                      checked={normalFontSize}
+                      label={`Font Size: ${normalFontSize ? 'Normal' : 'Small'}`}
+                      onChange={onToggleChangeFontSize}
+                    />
+                  }
+                />
+                </Menu>
+              }
+              interactionKind='click'
+              isOpen={isSettingMenuOpen}
+              onInteraction={(state) => setSettingMenuOpen(state)}
+              placement='bottom'
+            >
+              <Button large minimal intent='primary' icon={'cog'} />
+            </Popover2>
+          )}
+        </LayoutContext.Consumer>
       </Navbar.Group>
     </Navbar>
   );
