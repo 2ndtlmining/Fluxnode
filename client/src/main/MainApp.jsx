@@ -12,6 +12,8 @@ import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
 import { WalletNodes } from 'main/WalletNodes';
+import { BestUptime } from 'main/BestUptime';
+import { MostHostedDApp } from './MostHostedDApp';
 
 import {
   Button, FormGroup, Icon, InputGroup, Menu,
@@ -60,6 +62,12 @@ class MainApp extends React.Component {
     this._payoutTimerRef = React.createRef();
     this.payoutTimer = null;
 
+    this._bestUptimeRef = React.createRef();
+    this.bestUptime = null;
+
+    this._mostHostedDAppRef = React.createRef();
+    this.mostHostedDApp = null;
+
     this.mounted = false;
     this.setSearch = null;
 
@@ -78,6 +86,8 @@ class MainApp extends React.Component {
 
     window.historyListRef = this._historyListRef;
     window.payoutTimer = this.payoutTimer = this._payoutTimerRef.current;
+    window.bestUptime = this.bestUptime = this._bestUptimeRef.current;
+    window.mostHostedDApp = this.mostHostedDApp = this._mostHostedDAppRef.current;
 
     this.setSearch = this.props.router.search[1];
 
@@ -194,8 +204,10 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, (highestRankedNode) => {
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedDAppNode }) => {
       this.payoutTimer.receiveNode(highestRankedNode);
+      this.bestUptime.receiveNode(bestUptimeNode);
+      this.mostHostedDApp.receiveNode(mostHostedDAppNode);
     });
 
     const summary = await wallet_pas_summary(address);
@@ -380,14 +392,11 @@ class MainApp extends React.Component {
         {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
         <Container fluid style={{ margin: '20px 20px' }}>
-          <Row>
-            <Col style={{ paddingBottom: '10px' }} md={12}>
-              <PayoutTimer ref={this._payoutTimerRef} />
-            </Col>
+          <Row justify='center'>
             <Col style={{ paddingBottom: '10px' }} md={9}>
               {this.renderAddressInput()}
             </Col>
-            <Col md={3}>
+            <Col md={6}>
               <FormGroup label='&nbsp;'>
                 <Button
                   fill
@@ -397,6 +406,17 @@ class MainApp extends React.Component {
                   icon='array-string'
                 />
               </FormGroup>
+            </Col>
+          </Row>
+          <Row style={{ paddingBottom: '10px' }}>
+            <Col md={24} lg={8}>
+              <PayoutTimer ref={this._payoutTimerRef} />
+            </Col>
+            <Col md={12} lg={8}>
+              <BestUptime ref={this._bestUptimeRef} />
+            </Col>
+            <Col md={12} lg={8}>
+              <MostHostedDApp ref={this._mostHostedDAppRef} />
             </Col>
           </Row>
         </Container>

@@ -1,6 +1,6 @@
 @import 'styles/functional';
 
-.timer {
+.best-uptime {
     // background-color: #333333;
     width: 100%;
     border-radius: 7px;
@@ -9,7 +9,7 @@
     overflow: hidden;
 }
 
-.timer-header {
+.best-uptime-header {
     padding: 20px 20px 15px;
 
     display: flex;
@@ -19,14 +19,14 @@
     .title {
         font-weight: 500;
         font-size: 21px;
-        color: #c22762;
+        color: #d07e26;
         @include rule-mode-dark() {
-            color: #f5498b;
+            color: rgb(221, 146, 66);
         }
     }
 }
 
-.timer-node-logo {
+.best-uptime-node-logo {
     display: inline-flex;
     flex-direction: column;
     justify-content: center;
@@ -58,7 +58,7 @@
     margin-right: 30px;
 }
 
-.timer-blocks {
+.best-uptime-blocks {
     width: 100%;
     height: 100%;
     display: inline-flex;
@@ -67,7 +67,7 @@
     padding: 0 24px 0 16px;
 }
 
-.timer-block {
+.best-uptime-block {
     height: 100%;
     display: flex;
     align-items: center;
@@ -79,19 +79,14 @@
     }
 }
 
-.timer-number {
+.best-uptime-number {
     font-size: 40px;
     margin-top: 28px;
     font-weight: 500;
 }
-.timer-info {
+.best-uptime-info {
+    text-transform: capitalize;
     font-size: 14px;
     margin-top: 12px;
     margin-bottom: 15px;
-}
-
-.v-rule {
-    background-color: rgb(187, 181, 172);
-    width: 2px;
-    margin: 35px 5px;
 }

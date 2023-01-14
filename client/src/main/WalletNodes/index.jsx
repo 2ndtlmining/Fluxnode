@@ -274,7 +274,8 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
+                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the
+                        timer.
                       </div>
                     </div>
                   }
@@ -499,7 +500,7 @@ export class WalletNodes extends React.Component {
     return partialNodes;
   }
 
-  async processAddress(address, gstore, onCalculateHighestNode) {
+  async processAddress(address, gstore, onCalculateNodes) {
     this.setState({
       loadingHealth: true,
       loadingNodeList: true,
@@ -516,13 +517,21 @@ export class WalletNodes extends React.Component {
 
     let highestRankedNode = null;
 
-    for (let i = 0; i < walletNodesRaw.length; ++i) {
-      const pNode = transformRawNode(walletNodesRaw[i]);
+    let bestUptimeNode = null;
+
+    let mostHostedDAppNode = null;
+
+    for (const walletNodeRaw of walletNodesRaw) {
+      const pNode = transformRawNode(walletNodeRaw);
 
       partialNodes.push(pNode);
 
       /* Highest rank is the once which has the lowest value */
       if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
+
+      if (bestUptimeNode === null || pNode.uptime > bestUptimeNode.uptime) bestUptimeNode = pNode;
+
+      if (mostHostedDAppNode === null || pNode.appCount > mostHostedDAppNode.appCount) mostHostedDAppNode = pNode;
 
       switch (pNode.tier) {
         case 'CUMULUS':
@@ -539,7 +548,7 @@ export class WalletNodes extends React.Component {
           break;
       }
     }
-    if (highestRankedNode != null) onCalculateHighestNode(highestRankedNode);
+    if (highestRankedNode != null && bestUptimeNode != null && mostHostedDAppNode != null) onCalculateNodes({ highestRankedNode, bestUptimeNode, mostHostedDAppNode });
 
     health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
