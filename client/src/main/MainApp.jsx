@@ -15,14 +15,16 @@ import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
 import { MostHostedApp } from './MostHostedApp';
 
-import {
-  Button, FormGroup, Icon, InputGroup, Menu,
-  MenuItem, mergeRefs, Spinner
-} from '@blueprintjs/core';
+import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
 
 import {
-  create_global_store, fetch_global_stats, isWalletDOSState, pa_summary_full, validateAddress, wallet_pas_summary
+  create_global_store,
+  fetch_global_stats,
+  isWalletDOSState,
+  pa_summary_full,
+  validateAddress,
+  wallet_pas_summary
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -208,11 +210,17 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedAppNode }) => {
-      highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
-      bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
-      mostHostedAppNode && this.mostHostedApp.receiveNode(mostHostedAppNode);
-    });
+    walletView.processAddress(
+      address,
+      gstore,
+      (highestRankedNode) => {
+        highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
+      },
+      ({ bestUptimeNode, mostHostedAppNode }) => {
+        bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
+        mostHostedAppNode && this.mostHostedApp.receiveNode(mostHostedAppNode);
+      }
+    );
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });

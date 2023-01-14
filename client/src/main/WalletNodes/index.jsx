@@ -501,7 +501,7 @@ export class WalletNodes extends React.Component {
     return partialNodes;
   }
 
-  async processAddress(address, gstore, onCalculateNodes) {
+  async processAddress(address, gstore, onCalculateHighestRankNodes, onCalculateBestUptimeAndMostHostedAppNodes) {
     this.setState({
       loadingHealth: true,
       loadingNodeList: true,
@@ -514,12 +514,17 @@ export class WalletNodes extends React.Component {
 
     let partialNodes = [];
 
+    let highestRankedNode = null;
+
     const health = wallet_health_full();
 
     for (const walletNodeRaw of walletNodesRaw) {
       const pNode = transformRawNode(walletNodeRaw);
 
       partialNodes.push(pNode);
+
+       /* Highest rank is the once which has the lowest value */
+      if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
 
       switch (pNode.tier) {
         case 'CUMULUS':
@@ -536,6 +541,9 @@ export class WalletNodes extends React.Component {
           break;
       }
     }
+
+    if (highestRankedNode != null) onCalculateHighestRankNodes(highestRankedNode);
+
     health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
@@ -543,22 +551,16 @@ export class WalletNodes extends React.Component {
     let nodes = await this._loadNodes(partialNodes);
     this.setState({ loadingNodeList: false, nodes });
 
-    let highestRankedNode = null;
-
     let bestUptimeNode = null;
 
     let mostHostedAppNode = null;
 
     for (const node of nodes) {
-      /* Highest rank is the once which has the lowest value */
-      if (!highestRankedNode || node.rank < highestRankedNode.rank) highestRankedNode = node;
-
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
-
       if (mostHostedAppNode === null || node.appCount > mostHostedAppNode.appCount) mostHostedAppNode = node;
     }
 
-    onCalculateNodes({ highestRankedNode, bestUptimeNode, mostHostedAppNode });
+    onCalculateBestUptimeAndMostHostedAppNodes({ bestUptimeNode, mostHostedAppNode });
   }
 
   handleRefreshClick = () => {
