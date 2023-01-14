@@ -90,6 +90,16 @@ class MainApp extends React.Component {
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
     this.setState({ searchHistory }, () => this.hydrateApp());
+
+    if(this.props.defaultAddress) {
+      this.onProcessAddress(this.props.defaultAddress);
+    }
+    this._setDefaultAddress(this.props.defaultAddress);
+  }
+
+  _setDefaultAddress(defaultAddress) {
+    this.onProcessAddress(defaultAddress);
+    this.setState({inputAddress: defaultAddress});
   }
 
   _createNewHistoryList(oldValues, newTop) {
