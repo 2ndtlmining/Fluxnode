@@ -98,8 +98,10 @@ class MainApp extends React.Component {
   }
 
   _setDefaultAddress(defaultAddress) {
-    this.onProcessAddress(defaultAddress);
-    this.setState({inputAddress: defaultAddress});
+    if(defaultAddress) {
+      this.onProcessAddress(defaultAddress);
+      this.setState({inputAddress: defaultAddress});
+    }
   }
 
   _createNewHistoryList(oldValues, newTop) {
