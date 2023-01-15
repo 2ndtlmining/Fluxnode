@@ -12,15 +12,19 @@ import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
 import { WalletNodes } from 'main/WalletNodes';
+import { BestUptime } from 'main/BestUptime';
+import { MostHosted } from './MostHosted';
 
-import {
-  Button, FormGroup, Icon, InputGroup, Menu,
-  MenuItem, mergeRefs, Spinner
-} from '@blueprintjs/core';
+import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
 
 import {
-  create_global_store, fetch_global_stats, isWalletDOSState, pa_summary_full, validateAddress, wallet_pas_summary
+  create_global_store,
+  fetch_global_stats,
+  isWalletDOSState,
+  pa_summary_full,
+  validateAddress,
+  wallet_pas_summary
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -60,6 +64,12 @@ class MainApp extends React.Component {
     this._payoutTimerRef = React.createRef();
     this.payoutTimer = null;
 
+    this._bestUptimeRef = React.createRef();
+    this.bestUptime = null;
+
+    this._mostHostedRef = React.createRef();
+    this.mostHosted = null;
+
     this.mounted = false;
     this.setSearch = null;
 
@@ -78,6 +88,8 @@ class MainApp extends React.Component {
 
     window.historyListRef = this._historyListRef;
     window.payoutTimer = this.payoutTimer = this._payoutTimerRef.current;
+    window.bestUptime = this.bestUptime = this._bestUptimeRef.current;
+    window.mostHosted = this.mostHosted = this._mostHostedRef.current;
 
     this.setSearch = this.props.router.search[1];
 
@@ -136,6 +148,8 @@ class MainApp extends React.Component {
     });
 
     this.payoutTimer.pauseAndHide();
+    this.bestUptime.loading();
+    this.mostHosted.loading();
 
     const oldAddress = this.state.activeAddress;
     const walletView = this.walletNodes.current;
@@ -157,7 +171,9 @@ class MainApp extends React.Component {
       const isWalletAvailable = oldAddress != null;
       this.setState({ isWalletAvailable });
 
-      if (isWalletAvailable) this.payoutTimer.resumeAndShow();
+      if (isWalletAvailable) {
+        this.payoutTimer.resumeAndShow();
+      }
 
       AppToaster.show({
         intent: 'danger',
@@ -194,9 +210,17 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, (highestRankedNode) => {
-      this.payoutTimer.receiveNode(highestRankedNode);
-    });
+    walletView.processAddress(
+      address,
+      gstore,
+      (highestRankedNode) => {
+        highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
+      },
+      ({ bestUptimeNode, mostHostedNode }) => {
+        bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
+        mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+      }
+    );
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
@@ -380,14 +404,11 @@ class MainApp extends React.Component {
         {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
         <Container fluid style={{ margin: '20px 20px' }}>
-          <Row>
-            <Col style={{ paddingBottom: '10px' }} md={12}>
-              <PayoutTimer ref={this._payoutTimerRef} />
-            </Col>
+          <Row justify='center'>
             <Col style={{ paddingBottom: '10px' }} md={9}>
               {this.renderAddressInput()}
             </Col>
-            <Col md={3}>
+            <Col md={6}>
               <FormGroup label='&nbsp;'>
                 <Button
                   fill
@@ -397,6 +418,17 @@ class MainApp extends React.Component {
                   icon='array-string'
                 />
               </FormGroup>
+            </Col>
+          </Row>
+          <Row style={{ paddingBottom: '10px' }}>
+            <Col md={24} lg={8}>
+              <PayoutTimer ref={this._payoutTimerRef} />
+            </Col>
+            <Col md={12} lg={8}>
+              <BestUptime ref={this._bestUptimeRef} />
+            </Col>
+            <Col md={12} lg={8}>
+              <MostHosted ref={this._mostHostedRef} />
             </Col>
           </Row>
         </Container>

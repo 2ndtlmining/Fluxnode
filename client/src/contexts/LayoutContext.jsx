@@ -17,17 +17,17 @@ class LayoutConfigurationProvider extends React.Component {
   }
 
   setEstimatedEarningsTab() {
-    this.setState((prevState) => ({ ...prevState, enableEstimatedEarningsTab: !prevState.enableEstimatedEarningsTab }));
+    this.setState((prevState) => ({ enableEstimatedEarningsTab: !prevState.enableEstimatedEarningsTab }));
     localStorage.setItem('estimatedEarnings', this.state.enableEstimatedEarningsTab);
   }
 
   setParallelAssetsTab() {
-    this.setState((prevState) => ({ ...prevState, enableParallelAssetsTab: !prevState.enableParallelAssetsTab }));
+    this.setState((prevState) => ({ enableParallelAssetsTab: !prevState.enableParallelAssetsTab }));
     localStorage.setItem('parallelAssets', this.state.enableParallelAssetsTab);
   }
 
   setFontSize() {
-    this.setState((prevState) => ({ ...prevState, normalFontSize: !prevState.normalFontSize }));
+    this.setState((prevState) => ({ normalFontSize: !prevState.normalFontSize }));
     localStorage.setItem('parallelAssets', this.state.normalFontSize);
   }
 

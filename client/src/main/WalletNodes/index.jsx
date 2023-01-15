@@ -19,7 +19,8 @@ import {
   fillPartialNode,
   transformRawNode,
   isWalletDOSState,
-  calc_mtn_window
+  calc_mtn_window,
+  fetchMostHostedLocalApps
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 
@@ -274,7 +275,8 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
+                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the
+                        timer.
                       </div>
                     </div>
                   }
@@ -499,7 +501,7 @@ export class WalletNodes extends React.Component {
     return partialNodes;
   }
 
-  async processAddress(address, gstore, onCalculateHighestNode) {
+  async processAddress(address, gstore, onCalculateHighestRankNodes, onCalculateBestUptimeAndMostHostedNodes) {
     this.setState({
       loadingHealth: true,
       loadingNodeList: true,
@@ -512,16 +514,16 @@ export class WalletNodes extends React.Component {
 
     let partialNodes = [];
 
-    const health = wallet_health_full();
-
     let highestRankedNode = null;
 
-    for (let i = 0; i < walletNodesRaw.length; ++i) {
-      const pNode = transformRawNode(walletNodesRaw[i]);
+    const health = wallet_health_full();
+
+    for (const walletNodeRaw of walletNodesRaw) {
+      const pNode = transformRawNode(walletNodeRaw);
 
       partialNodes.push(pNode);
 
-      /* Highest rank is the once which has the lowest value */
+       /* Highest rank is the once which has the lowest value */
       if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
 
       switch (pNode.tier) {
@@ -539,7 +541,8 @@ export class WalletNodes extends React.Component {
           break;
       }
     }
-    if (highestRankedNode != null) onCalculateHighestNode(highestRankedNode);
+
+    if (highestRankedNode != null) onCalculateHighestRankNodes(highestRankedNode);
 
     health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
@@ -547,6 +550,17 @@ export class WalletNodes extends React.Component {
 
     let nodes = await this._loadNodes(partialNodes);
     this.setState({ loadingNodeList: false, nodes });
+
+    let bestUptimeNode = null;
+
+    let mostHostedNode = null;
+
+    for (const node of nodes) {
+      if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
+      if (mostHostedNode === null || (node.appCount > mostHostedNode.appCount )) mostHostedNode = node;
+    }
+
+    onCalculateBestUptimeAndMostHostedNodes({ bestUptimeNode, mostHostedNode });
   }
 
   handleRefreshClick = () => {

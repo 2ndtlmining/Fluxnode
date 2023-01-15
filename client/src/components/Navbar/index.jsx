@@ -61,7 +61,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                     shouldDismissPopover={false}
                     text={
                       <Switch
-                        shouldDismissPopover={false}
                         alignIndicator='right'
                         checked={enableEstimatedEarningsTab}
                         label='Estimated Earnings'
@@ -73,7 +72,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                     shouldDismissPopover={false}
                     text={
                       <Switch
-                        shouldDismissPopover={false}
                         alignIndicator='right'
                         checked={enableParallelAssetsTab}
                         label='Parallel Assets'
@@ -85,7 +83,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                   shouldDismissPopover={false}
                   text={
                     <Switch
-                      shouldDismissPopover={false}
                       alignIndicator='right'
                       checked={normalFontSize}
                       label={`Font Size: ${normalFontSize ? 'Normal' : 'Small'}`}
