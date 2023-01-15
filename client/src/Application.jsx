@@ -14,6 +14,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import AppGuidesView from 'guides/GuidesView';
 import MainApp from 'main/MainApp';
+import Demo from 'demo/Demo';
 import NotFoundView from 'notfound/index';
 import { FocusStyleManager } from "@blueprintjs/core";
 
@@ -104,6 +105,14 @@ class Application extends React.Component {
                   element={
                     <React.Suspense fallback={<PageLoader />}>
                       <AppGuidesView />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path='/demo'
+                  element={
+                    <React.Suspense fallback={<PageLoader />}>
+                      <Demo />
                     </React.Suspense>
                   }
                 />

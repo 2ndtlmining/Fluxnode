@@ -459,6 +459,21 @@ export async function validateAddress(address) {
   }
 }
 
+export async function getDemoWallet() {
+  try {
+    const response = await fetch(`${FLUXNODE_INFO_API_URL}/api/v1/demo`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    const jsonData = await response.json();
+    return jsonData;
+  } catch {
+    return null;
+  }
+}
+
 /* ======================================================================= */
 /* ======================================================================= */
 /* =========================== PARALLEL ASSETS =========================== */
