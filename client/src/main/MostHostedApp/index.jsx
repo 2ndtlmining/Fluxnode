@@ -30,7 +30,7 @@ export class MostHostedApp extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      mostHostedApp: null,
+      installedApps: [],
       appCount: 0,
       hidden: true,
       dataLoading: false,
@@ -53,9 +53,8 @@ export class MostHostedApp extends React.Component {
   }
 
   receiveNode(node) {
-    console.log(node);
     this.setState({
-      mostHostedApp: node.mostHostedApp,
+      installedApps: node.installedApps,
       appCount: node.appCount,
       hidden: false,
       dataLoading: false,
@@ -66,16 +65,44 @@ export class MostHostedApp extends React.Component {
   }
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, mostHostedApp } = this.state;
+    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps } = this.state;
 
     const tMap = tierMapping[this.state.nodeTier] || {};
     const LogoComp = tMap.logo;
+
+    const mostHostedApp = installedApps.length
+      ? installedApps.reduce((prev, current) =>
+          !prev.instances || prev.instances < current.instances ? current : prev
+        )
+      : { instances: 0 };
 
     return (
       <>
         <div className='most-hosted-d-app'>
           <div className='most-hosted-d-app-header'>
-            <div className='title'>Most Hosted App</div>
+            <Tooltip2
+              intent='danger'
+              placement='top'
+              usePortal={true}
+              transitionDuration={100}
+              hoverOpenDelay={60}
+              content={
+                mostHostedApp && (
+                  <div style={{ maxWidth: 300 }}>
+                    <div>
+                      <strong>Description:</strong>
+                    </div>
+                    <hr />
+                    <div>
+                      <em>{mostHostedApp.description}</em>
+                    </div>
+                  </div>
+                )
+              }
+            >
+              <div className='title'>Most Hosted App: {mostHostedApp.name}</div>
+            </Tooltip2>
+
             <div className={'most-hosted-d-app-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
               <strong>Node IP:&nbsp;</strong>
               {nodeIp ? (
@@ -99,33 +126,11 @@ export class MostHostedApp extends React.Component {
                 </div>
                 <span className='pyt-node-tier'>{tMap.name}</span>
               </div>
-              <Tooltip2
-                intent='danger'
-                placement='top'
-                usePortal={true}
-                transitionDuration={100}
-                hoverOpenDelay={60}
-                content={
-                  mostHostedApp && (
-                    <div style={{ maxWidth: 300 }}>
-                      <div>
-                        <strong>App name:</strong> {mostHostedApp.name}
-                      </div>
-                      <hr/>
-                      <div>
-                        <strong>Description:</strong> <em>{mostHostedApp.description}</em>
-                      </div>
-                    </div>
-                  )
-                }
-              >
-                <div className='most-hosted-d-app-block'>
-                  <span className='adp-text-normal most-hosted-d-app-number'>
-                    {hidden ? 0 : mostHostedApp.instances}
-                  </span>
-                  <span className='adp-text-normal most-hosted-d-app-info'>Instance(s)</span>
-                </div>
-              </Tooltip2>
+
+              <div className='most-hosted-d-app-block'>
+                <span className='adp-text-normal most-hosted-d-app-number'>{hidden ? 0 : mostHostedApp.instances}</span>
+                <span className='adp-text-normal most-hosted-d-app-info'>Instances(s)</span>
+              </div>
             </div>
           )}
         </div>

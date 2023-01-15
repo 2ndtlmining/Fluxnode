@@ -557,7 +557,7 @@ export class WalletNodes extends React.Component {
 
     for (const node of nodes) {
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
-      if (mostHostedAppNode === null || (node.mostHostedApp.instances != null && node.mostHostedApp.instances > mostHostedAppNode.mostHostedApp.instances)) mostHostedAppNode = node;
+      if (mostHostedAppNode === null || (node.appCount > mostHostedAppNode.appCount )) mostHostedAppNode = node;
     }
 
     onCalculateBestUptimeAndMostHostedAppNodes({ bestUptimeNode, mostHostedAppNode });
