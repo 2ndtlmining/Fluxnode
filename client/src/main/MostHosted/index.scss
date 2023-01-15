@@ -1,6 +1,6 @@
 @import 'styles/functional';
 
-.most-hosted-d-app {
+.most-hosted-app {
     // background-color: #333333;
     width: 100%;
     border-radius: 7px;
@@ -9,7 +9,7 @@
     overflow: hidden;
 }
 
-.most-hosted-d-app-header {
+.most-hosted-app-header {
     padding: 20px 20px 15px;
 
     display: block;
@@ -33,7 +33,7 @@
     }
 }
 
-.most-hosted-d-app-node-logo {
+.most-hosted-app-node-logo {
     display: inline-flex;
     flex-direction: column;
     justify-content: center;
@@ -65,7 +65,7 @@
     margin-right: 30px;
 }
 
-.most-hosted-d-app-blocks {
+.most-hosted-app-blocks {
     width: 100%;
     height: 100%;
     display: inline-flex;
@@ -74,7 +74,7 @@
     padding: 0 24px 0 16px;
 }
 
-.most-hosted-d-app-block {
+.most-hosted-app-block {
     height: 100%;
     display: flex;
     align-items: center;
@@ -86,12 +86,12 @@
     }
 }
 
-.most-hosted-d-app-number {
+.most-hosted-app-number {
     font-size: 40px;
     margin-top: 28px;
     font-weight: 500;
 }
-.most-hosted-d-app-info {
+.most-hosted-app-info {
     font-size: 14px;
     margin-top: 12px;
     margin-bottom: 15px;

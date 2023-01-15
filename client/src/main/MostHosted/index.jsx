@@ -26,7 +26,7 @@ const tierMapping = {
   }
 };
 
-export class MostHostedApp extends React.Component {
+export class MostHosted extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -70,40 +70,12 @@ export class MostHostedApp extends React.Component {
     const tMap = tierMapping[this.state.nodeTier] || {};
     const LogoComp = tMap.logo;
 
-    const mostHostedApp = installedApps.length
-      ? installedApps.reduce((prev, current) =>
-          !prev.instances || prev.instances < current.instances ? current : prev
-        )
-      : { instances: 0 };
-
     return (
       <>
-        <div className='most-hosted-d-app'>
-          <div className='most-hosted-d-app-header'>
-            <Tooltip2
-              intent='danger'
-              placement='top'
-              usePortal={true}
-              transitionDuration={100}
-              hoverOpenDelay={60}
-              content={
-                mostHostedApp && (
-                  <div style={{ maxWidth: 300 }}>
-                    <div>
-                      <strong>Description:</strong>
-                    </div>
-                    <hr />
-                    <div>
-                      <em>{mostHostedApp.description}</em>
-                    </div>
-                  </div>
-                )
-              }
-            >
-              <div className='title'>Most Hosted App: {mostHostedApp.name}</div>
-            </Tooltip2>
-
-            <div className={'most-hosted-d-app-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+        <div className='most-hosted-app'>
+          <div className='most-hosted-app-header'>
+            <div className='title'>Most Hosted Node</div>
+            <div className={'most-hosted-app-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
               <strong>Node IP:&nbsp;</strong>
               {nodeIp ? (
                 <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
@@ -117,8 +89,8 @@ export class MostHostedApp extends React.Component {
           {dataLoading ? (
             <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />
           ) : (
-            <div className='most-hosted-d-app-blocks'>
-              <div className={'most-hosted-d-app-node-logo' + (hidden ? ' d-none' : '')}>
+            <div className='most-hosted-app-blocks'>
+              <div className={'most-hosted-app-node-logo' + (hidden ? ' d-none' : '')}>
                 <div className={'pyt-i-wrap dash-cell__nodes-' + tMap.styleSet}>
                   <IconContext.Provider value={{ size: '19px', color: 'currentColor' }}>
                     {LogoComp && <LogoComp />}
@@ -126,11 +98,33 @@ export class MostHostedApp extends React.Component {
                 </div>
                 <span className='pyt-node-tier'>{tMap.name}</span>
               </div>
-
-              <div className='most-hosted-d-app-block'>
-                <span className='adp-text-normal most-hosted-d-app-number'>{hidden ? 0 : mostHostedApp.instances}</span>
-                <span className='adp-text-normal most-hosted-d-app-info'>Instances(s)</span>
-              </div>
+              <Tooltip2
+                intent='danger'
+                placement='top'
+                usePortal={true}
+                transitionDuration={100}
+                hoverOpenDelay={60}
+                content={
+                  installedApps.length ? (
+                    <div style={{ maxWidth: 300 }}>
+                      <div>
+                        <strong>{appCount} apps:</strong>
+                      </div>
+                      {installedApps.map((app) => (
+                        <div key={app.hash}>
+                          <hr />
+                          <strong>{app.name}</strong> - <em>{app.description}</em>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null
+                }
+              >
+                <div className='most-hosted-app-block'>
+                  <span className='adp-text-normal most-hosted-app-number'>{hidden ? 0 : appCount}</span>
+                  <span className='adp-text-normal most-hosted-app-info'>App(s)</span>
+                </div>
+              </Tooltip2>
             </div>
           )}
         </div>

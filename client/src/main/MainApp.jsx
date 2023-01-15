@@ -13,7 +13,7 @@ import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
 import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
-import { MostHostedApp } from './MostHostedApp';
+import { MostHosted } from './MostHosted';
 
 import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
@@ -67,8 +67,8 @@ class MainApp extends React.Component {
     this._bestUptimeRef = React.createRef();
     this.bestUptime = null;
 
-    this._mostHostedAppRef = React.createRef();
-    this.mostHostedApp = null;
+    this._mostHostedRef = React.createRef();
+    this.mostHosted = null;
 
     this.mounted = false;
     this.setSearch = null;
@@ -89,7 +89,7 @@ class MainApp extends React.Component {
     window.historyListRef = this._historyListRef;
     window.payoutTimer = this.payoutTimer = this._payoutTimerRef.current;
     window.bestUptime = this.bestUptime = this._bestUptimeRef.current;
-    window.mostHostedApp = this.mostHostedApp = this._mostHostedAppRef.current;
+    window.mostHosted = this.mostHosted = this._mostHostedRef.current;
 
     this.setSearch = this.props.router.search[1];
 
@@ -149,7 +149,7 @@ class MainApp extends React.Component {
 
     this.payoutTimer.pauseAndHide();
     this.bestUptime.loading();
-    this.mostHostedApp.loading();
+    this.mostHosted.loading();
 
     const oldAddress = this.state.activeAddress;
     const walletView = this.walletNodes.current;
@@ -216,9 +216,9 @@ class MainApp extends React.Component {
       (highestRankedNode) => {
         highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
       },
-      ({ bestUptimeNode, mostHostedAppNode }) => {
+      ({ bestUptimeNode, mostHostedNode }) => {
         bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
-        mostHostedAppNode && this.mostHostedApp.receiveNode(mostHostedAppNode);
+        mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
       }
     );
 
@@ -428,7 +428,7 @@ class MainApp extends React.Component {
               <BestUptime ref={this._bestUptimeRef} />
             </Col>
             <Col md={12} lg={8}>
-              <MostHostedApp ref={this._mostHostedAppRef} />
+              <MostHosted ref={this._mostHostedRef} />
             </Col>
           </Row>
         </Container>

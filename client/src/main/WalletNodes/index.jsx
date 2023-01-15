@@ -501,7 +501,7 @@ export class WalletNodes extends React.Component {
     return partialNodes;
   }
 
-  async processAddress(address, gstore, onCalculateHighestRankNodes, onCalculateBestUptimeAndMostHostedAppNodes) {
+  async processAddress(address, gstore, onCalculateHighestRankNodes, onCalculateBestUptimeAndMostHostedNodes) {
     this.setState({
       loadingHealth: true,
       loadingNodeList: true,
@@ -553,14 +553,14 @@ export class WalletNodes extends React.Component {
 
     let bestUptimeNode = null;
 
-    let mostHostedAppNode = null;
+    let mostHostedNode = null;
 
     for (const node of nodes) {
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
-      if (mostHostedAppNode === null || (node.appCount > mostHostedAppNode.appCount )) mostHostedAppNode = node;
+      if (mostHostedNode === null || (node.appCount > mostHostedNode.appCount )) mostHostedNode = node;
     }
 
-    onCalculateBestUptimeAndMostHostedAppNodes({ bestUptimeNode, mostHostedAppNode });
+    onCalculateBestUptimeAndMostHostedNodes({ bestUptimeNode, mostHostedNode });
   }
 
   handleRefreshClick = () => {
