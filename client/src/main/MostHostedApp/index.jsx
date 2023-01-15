@@ -30,10 +30,10 @@ export class MostHostedApp extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      installedApps: [],
+      mostHostedApp: null,
       appCount: 0,
       hidden: true,
-      dataLoading: true,
+      dataLoading: false,
       nodeIpDef: {},
       nodeIp: '',
       nodeTier: ''
@@ -53,8 +53,9 @@ export class MostHostedApp extends React.Component {
   }
 
   receiveNode(node) {
+    console.log(node);
     this.setState({
-      installedApps: node.installedApps,
+      mostHostedApp: node.mostHostedApp,
       appCount: node.appCount,
       hidden: false,
       dataLoading: false,
@@ -65,7 +66,7 @@ export class MostHostedApp extends React.Component {
   }
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps } = this.state;
+    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, mostHostedApp } = this.state;
 
     const tMap = tierMapping[this.state.nodeTier] || {};
     const LogoComp = tMap.logo;
@@ -105,22 +106,24 @@ export class MostHostedApp extends React.Component {
                 transitionDuration={100}
                 hoverOpenDelay={60}
                 content={
-                  installedApps.length ? (
+                  mostHostedApp && (
                     <div style={{ maxWidth: 300 }}>
-                      <div><strong>{appCount} apps:</strong></div>
-                      {installedApps.map((app) => (
-                        <div key={app.hash}>
-                          <hr />
-                          <strong>{app.name}</strong> - <em>{app.description}</em>
-                        </div>
-                      ))}
+                      <div>
+                        <strong>App name:</strong> {mostHostedApp.name}
+                      </div>
+                      <hr/>
+                      <div>
+                        <strong>Description:</strong> <em>{mostHostedApp.description}</em>
+                      </div>
                     </div>
-                  ) : null
+                  )
                 }
               >
                 <div className='most-hosted-d-app-block'>
-                  <span className='adp-text-normal most-hosted-d-app-number'>{hidden ? 0 : appCount}</span>
-                  <span className='adp-text-normal most-hosted-d-app-info'>App(s)</span>
+                  <span className='adp-text-normal most-hosted-d-app-number'>
+                    {hidden ? 0 : mostHostedApp.instances}
+                  </span>
+                  <span className='adp-text-normal most-hosted-d-app-info'>Instance(s)</span>
                 </div>
               </Tooltip2>
             </div>

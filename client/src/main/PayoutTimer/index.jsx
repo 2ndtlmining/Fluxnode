@@ -36,7 +36,7 @@ export class PayoutTimer extends React.Component {
       restTime: { days: 0, hours: 0, minutes: 0 },
       seconds: 0,
       hidden: true,
-      dataLoading: true,
+      dataLoading: false,
       nodeIpDef: {},
       nodeIp: '',
       nodeTier: ''

@@ -34,7 +34,7 @@ export class BestUptime extends React.Component {
     this.state = {
       bestUptime: 0,
       hidden: true,
-      dataLoading: true,
+      dataLoading: false,
       nodeIpDef: {},
       nodeIp: '',
       nodeTier: ''

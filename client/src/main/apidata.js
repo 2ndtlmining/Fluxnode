@@ -346,7 +346,7 @@ function _fillPartial_version(fluxNode, version) {
 function _fillPartial_apps(fluxNode, installedApps) {
   if (installedApps !== null) {
     fluxNode.appCount = installedApps.length;
-    fluxNode.installedApps = structuredClone(installedApps);
+    fluxNode.mostHostedApp = installedApps.length ? installedApps.reduce((prev, current) => !prev.instances || prev.instances < current.instances ? current : prev) : { instances: 0 };
   }
 }
 
