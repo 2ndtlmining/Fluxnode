@@ -78,7 +78,7 @@ export function Footer() {
 
         <div className='row pt-3 pb-5'>
           <div className='col-12'>
-            <p>Copyright ©&nbsp;2022 All rights reserved</p>
+            <p>Copyright ©&nbsp;2023 All rights reserved</p>
           </div>
         </div>
       </div>

@@ -8,6 +8,8 @@ publish = false
 
 [dependencies]
 lazy_static = "1.4.0"
+tokio-retry = "0.3"
+tokio-timer = "0.2.13"
 reqwest = { version = "0.11.11", features = ["blocking", "json"] }
 tokio = { version = "1.20.1", features = ["full"] }
 tokio-stream = "0.1.9"

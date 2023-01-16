@@ -26,6 +26,7 @@ export function AppNavbar({ onThemeSwitch, theme }) {
 
   let homeBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
   let guidesBtnProps = useMatch('/guide') == null ? inActiveProps : activeProps;
+  let demoBtnProps = useMatch('/demo') == null ? inActiveProps : activeProps;
 
   if (onThemeSwitch == undefined) onThemeSwitch = no_op;
 
@@ -37,6 +38,7 @@ export function AppNavbar({ onThemeSwitch, theme }) {
       <Navbar.Group align={Alignment.RIGHT} className='me-3'>
         <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/nodes')} />
         <Button icon='manual' text='Guides' {...guidesBtnProps} onClick={() => navigate('/guide')} />
+        <Button icon='build' text='Demo' {...demoBtnProps} onClick={() => navigate('/demo')} />
         <Navbar.Divider />
         <Button
           large
@@ -61,7 +63,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                     shouldDismissPopover={false}
                     text={
                       <Switch
-                        shouldDismissPopover={false}
                         alignIndicator='right'
                         checked={enableEstimatedEarningsTab}
                         label='Estimated Earnings'
@@ -73,7 +74,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                     shouldDismissPopover={false}
                     text={
                       <Switch
-                        shouldDismissPopover={false}
                         alignIndicator='right'
                         checked={enableParallelAssetsTab}
                         label='Parallel Assets'
@@ -85,7 +85,6 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                   shouldDismissPopover={false}
                   text={
                     <Switch
-                      shouldDismissPopover={false}
                       alignIndicator='right'
                       checked={normalFontSize}
                       label={`Font Size: ${normalFontSize ? 'Normal' : 'Small'}`}

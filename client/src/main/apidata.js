@@ -23,6 +23,7 @@ const API_NODE_BENCHMARK_INFO_ENDPOINT = '/benchmark/getinfo';
 const API_NODE_LAST_BENCHMARK_ENDPOINT = '/benchmark/getbenchmarks';
 const API_FLUX_VERSION_ENDPOINT = '/flux/version';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
+const API_FLUX_UPTIME_ENDPOINT = '/flux/uptime';
 
 const FLUX_PER_DAY = (24 * 60) / 2; /* 1 flux every 2 minutes */
 
@@ -343,7 +344,10 @@ function _fillPartial_version(fluxNode, version) {
   if (version !== null) fluxNode.flux_os = fluxos_version_desc_parse(version);
 }
 function _fillPartial_apps(fluxNode, installedApps) {
-  if (installedApps !== null) fluxNode.appCount = installedApps.length;
+  if (installedApps !== null) {
+    fluxNode.appCount = installedApps.length;
+    fluxNode.installedApps = installedApps;
+  }
 }
 
 function _fillPartial_uptime(fluxNode, uptime) {
@@ -390,6 +394,7 @@ else {
     const promiseBenchInfo = fetch(server + API_NODE_BENCHMARK_INFO_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseBenchmarkData = fetch(server + API_NODE_LAST_BENCHMARK_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseAppList = fetch(server + API_FLUX_APPLIST_ENDPOINT, { ...REQUEST_OPTIONS_API });
+    const promiseUptimeData = fetch(server + API_FLUX_UPTIME_ENDPOINT, { ...REQUEST_OPTIONS_API });
 
     let reqSuccess;
 
@@ -397,13 +402,15 @@ else {
     let resultBenchInfo;
     let resultBench;
     let resultAppList;
+    let resultUptime;
 
     try {
-      [resultVersion, resultBenchInfo, resultBench, resultAppList] = await Promise.all([
+      [resultVersion, resultBenchInfo, resultBench, resultAppList, resultUptime] = await Promise.all([
         promiseFluxVersion,
         promiseBenchInfo,
         promiseBenchmarkData,
-        promiseAppList
+        promiseAppList,
+        promiseUptimeData
       ]);
       reqSuccess = true;
     } catch {
@@ -415,6 +422,7 @@ else {
       _fillPartial_benchmarks(fluxNode, (await resultBenchInfo.json()).data);
       _fillPartial_version(fluxNode, (await resultVersion.json()).data);
       _fillPartial_apps(fluxNode, (await resultAppList.json()).data);
+      _fillPartial_uptime(fluxNode, (await resultUptime.json()).data);
     }
   };
 }
@@ -448,6 +456,21 @@ export async function validateAddress(address) {
     return json['data'] !== undefined;
   } catch {
     return false;
+  }
+}
+
+export async function getDemoWallet() {
+  try {
+    const response = await fetch(`${FLUXNODE_INFO_API_URL}/api/v1/demo`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    const jsonData = await response.json();
+    return jsonData;
+  } catch {
+    return null;
   }
 }
 
