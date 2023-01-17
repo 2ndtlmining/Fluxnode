@@ -14,6 +14,7 @@ export function initStore() {
 let StoreKeys = {};
 
 StoreKeys.ADDR_SEARCH_HISTORY = 'history_addrs';
+StoreKeys.PRIVACY_MODE = 'privacy_mode';
 
 window.SK = window.StoreKeys = StoreKeys;
 Object.freeze(StoreKeys);

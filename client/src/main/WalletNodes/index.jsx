@@ -4,7 +4,7 @@ import './index.scss';
 import { Icon, Button, Tag, Spinner, ProgressBar, NonIdealState, NonIdealStateIconSize } from '@blueprintjs/core';
 import { Classes as PClasses, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 
-import { sleep, output_json_source, format_seconds } from 'utils';
+import { sleep, format_seconds, hide_sensitive_number } from 'utils';
 
 import { Projection } from './Projection';
 import { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
@@ -275,8 +275,7 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the
-                        timer.
+                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
                       </div>
                     </div>
                   }
@@ -321,16 +320,16 @@ function _failed_specs(node) {
   const failed = {};
   // prettier-ignore
   {
-    failed.cores         = _fs_compare(node, reqObj, 'cores');
-    failed.threads       = _fs_compare(node, reqObj, 'threads');
+    failed.cores = _fs_compare(node, reqObj, 'cores');
+    failed.threads = _fs_compare(node, reqObj, 'threads');
     // Allow a difference of 2.5 GB since RAM sizes are mosty a few gigs short when reported
-    failed.ram           = !node.ram || !reqObj.ram || reqObj.ram - node.ram > 2.5;
-    failed.dws           = _fs_compare(node, reqObj, 'dws');
-    failed.eps           = _fs_compare(node, reqObj, 'eps');
+    failed.ram = !node.ram || !reqObj.ram || reqObj.ram - node.ram > 2.5;
+    failed.dws = _fs_compare(node, reqObj, 'dws');
+    failed.eps = _fs_compare(node, reqObj, 'eps');
 
     failed.total_storage = _fs_compare(node, reqObj, 'total_storage', 'size');
-    failed.down_speed    = _fs_compare(node, reqObj, 'down_speed', 'net_down_speed');
-    failed.up_speed      = _fs_compare(node, reqObj, 'up_speed', 'net_up_speed');
+    failed.down_speed = _fs_compare(node, reqObj, 'down_speed', 'net_down_speed');
+    failed.up_speed = _fs_compare(node, reqObj, 'up_speed', 'net_up_speed');
   }
 
   return failed;
@@ -354,15 +353,19 @@ function _CreateNodeBuilder(gstore) {
 
     return (
       <tr key={node.id}>
-        <td className='al'>
-          {node.ip_display ? (
-            <a target='_blank' href={dashboardUrl}>
-              {node.ip_display}
-            </a>
-          ) : (
-            '-'
+        <LayoutContext.Consumer>
+          {({ enablePrivacyMode }) => (
+            <td className='al'>
+              {node.ip_display ? (
+                <a target='_blank' href={dashboardUrl}>
+                  {!enablePrivacyMode ? node.ip_display : hide_sensitive_number(node.ip_display)}
+                </a>
+              ) : (
+                '-'
+              )}
+            </td>
           )}
-        </td>
+        </LayoutContext.Consumer>
         <td>{NodeTierView(node.tier)}</td>
         <td>{node.rank}</td>
         <td>{node.last_reward}</td>
@@ -469,7 +472,7 @@ export class WalletNodes extends React.Component {
     await sleep(1);
 
     const batchSize = 20;
-    for (let i = 0; i < partialNodes.length; ) {
+    for (let i = 0; i < partialNodes.length;) {
       const batch = [];
 
       let batchActualSize = 0;
@@ -523,7 +526,7 @@ export class WalletNodes extends React.Component {
 
       partialNodes.push(pNode);
 
-       /* Highest rank is the once which has the lowest value */
+      /* Highest rank is the once which has the lowest value */
       if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
 
       switch (pNode.tier) {
@@ -557,7 +560,7 @@ export class WalletNodes extends React.Component {
 
     for (const node of nodes) {
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
-      if (mostHostedNode === null || (node.appCount > mostHostedNode.appCount )) mostHostedNode = node;
+      if (mostHostedNode === null || (node.appCount > mostHostedNode.appCount)) mostHostedNode = node;
     }
 
     onCalculateBestUptimeAndMostHostedNodes({ bestUptimeNode, mostHostedNode });

@@ -7,8 +7,9 @@ import { Spinner } from '@blueprintjs/core';
 import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
-import { format_seconds } from 'utils';
+import { format_seconds, hide_sensitive_number } from 'utils';
 import { Tooltip2 } from '@blueprintjs/popover2';
+import { LayoutContext } from 'contexts/LayoutContext';
 
 const tierMapping = {
   CUMULUS: {
@@ -77,16 +78,20 @@ export class BestUptime extends React.Component {
         <div className='best-uptime'>
           <div className='best-uptime-header'>
             <div className='title'>Best Uptime</div>
-            <div className={'best-uptime-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
-              <strong>Node IP:&nbsp;</strong>
-              {nodeIp ? (
-                <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
-                  {nodeIp}
-                </a>
-              ) : (
-                <i> -Unknown- </i>
+            <LayoutContext.Consumer>
+              {({ enablePrivacyMode }) => (
+                <div className={'best-uptime-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+                  <strong>Node IP:&nbsp;</strong>
+                  {nodeIp ? (
+                    <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
+                      {enablePrivacyMode ? hide_sensitive_number(nodeIp) : nodeIp}
+                    </a>
+                  ) : (
+                    <i> -Unknown- </i>
+                  )}
+                </div>
               )}
-            </div>
+            </LayoutContext.Consumer>
           </div>
           {dataLoading ? (
             <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />

@@ -6,8 +6,9 @@ import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
 import * as utils from 'utils';
-import { pad_start } from 'utils';
+import { pad_start, hide_sensitive_number } from 'utils';
 import { Spinner } from '@blueprintjs/core';
+import { LayoutContext } from 'contexts/LayoutContext';
 
 const split_minutes = (asMinutes) => utils.split_duration(utils.ds.duration({ minutes: asMinutes }));
 
@@ -141,16 +142,20 @@ export class PayoutTimer extends React.Component {
       <div className='timer'>
         <div className='timer-header'>
           <div className='title'>Next Payout</div>
-          <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
-            <strong>Node IP:&nbsp;</strong>
-            {nodeIp ? (
-              <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
-                {nodeIp}
-              </a>
-            ) : (
-              <i> -Unknown- </i>
+          <LayoutContext.Consumer>
+            {({ enablePrivacyMode }) => (
+              <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+                <strong>Node IP:&nbsp;</strong>
+                {nodeIp ? (
+                  <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
+                    {!enablePrivacyMode ? nodeIp : hide_sensitive_number(nodeIp)}
+                  </a>
+                ) : (
+                  <i> -Unknown- </i>
+                )}
+              </div>
             )}
-          </div>
+          </LayoutContext.Consumer>
         </div>
         {dataLoading ? (
           <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />

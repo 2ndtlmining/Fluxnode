@@ -7,6 +7,8 @@ import { IconContext } from 'react-icons';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
+import { hide_sensitive_number } from 'utils';
+import { LayoutContext } from 'contexts/LayoutContext';
 
 const tierMapping = {
   CUMULUS: {
@@ -75,16 +77,20 @@ export class MostHosted extends React.Component {
         <div className='most-hosted-app'>
           <div className='most-hosted-app-header'>
             <div className='title'>Most Hosted Node</div>
-            <div className={'most-hosted-app-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
-              <strong>Node IP:&nbsp;</strong>
-              {nodeIp ? (
-                <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
-                  {nodeIp}
-                </a>
-              ) : (
-                <i> -Unknown- </i>
+            <LayoutContext.Consumer>
+              {({ enablePrivacyMode }) => (
+                <div className={'most-hosted-app-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+                  <strong>Node IP:&nbsp;</strong>
+                  {nodeIp ? (
+                    <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
+                      {enablePrivacyMode ? hide_sensitive_number(nodeIp) : nodeIp}
+                    </a>
+                  ) : (
+                    <i> -Unknown- </i>
+                  )}
+                </div>
               )}
-            </div>
+            </LayoutContext.Consumer>
           </div>
           {dataLoading ? (
             <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />

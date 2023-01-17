@@ -1,14 +1,9 @@
-import * as dayjs from 'dayjs';
-
-import { format_minutes } from 'utils';
+import { format_minutes, hide_sensitive_number } from 'utils';
 
 import React from 'react';
-import { Button } from '@blueprintjs/core';
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 
 import './index.scss';
-
-import { Container, Row, Col } from 'react-grid-system';
 
 import { InfoCell } from 'main/InfoCell';
 import { FluxIcon } from 'components/FluxIcon.jsx';
@@ -16,17 +11,11 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 
 import {
   FiFolder,
-  FiBox,
   FiDollarSign,
-  FiDatabase,
-  FiCodesandbox,
   FiHash,
-  FiHexagon,
-  FiOctagon,
   FiPackage,
   FiZap,
-  FiCpu,
-  FiLayers
+  FiCpu
 } from 'react-icons/fi';
 
 import { fluxos_version_string } from 'main/flux_version';
@@ -100,7 +89,7 @@ function CellTooltip({ children, tooltipContent }) {
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
 export function DashboardCells({ gstore: gs }) {
-  const { normalFontSize } = useContext(LayoutContext);
+  const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
   const smallIconWrapper = normalFontSize ? '' : '-small';
@@ -172,14 +161,14 @@ export function DashboardCells({ gstore: gs }) {
       </CellTooltip>
       <Cell
         name='Flux Amount'
-        value={gs.wallet_amount_flux}
+        value={!enablePrivacyMode ? gs.wallet_amount_flux : hide_sensitive_number(gs.wallet_amount_flux)}
         icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
         iconWrapClassName={'dash-cell__amount-flux' + smallIconWrapper}
         small={!normalFontSize}
       />
       <Cell
         name='Wallet USD'
-        value={format_flux_usd(gs.wallet_amount_flux, gs.flux_price_usd)}
+        value={format_flux_usd(gs.wallet_amount_flux, gs.flux_price_usd, enablePrivacyMode)}
         icon={<FiFolder size={iconSize} />}
         iconWrapClassName={'dash-cell__amount-usd' + smallIconWrapper}
         small={!normalFontSize}
@@ -188,6 +177,10 @@ export function DashboardCells({ gstore: gs }) {
   );
 }
 
-function format_flux_usd(wallet_amount_flux, usd_price) {
-  return `\$${(wallet_amount_flux * usd_price).toFixed(3)}`;
+function format_flux_usd(wallet_amount_flux, usd_price, enablePrivacyMode) {
+  const result = `\$${(wallet_amount_flux * usd_price).toFixed(3)}`;
+  if (enablePrivacyMode) {
+    return hide_sensitive_number(result);
+  }
+  return result;
 }
