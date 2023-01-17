@@ -138,7 +138,9 @@ To revert the change and use the official APIs in dev mode, set the value of `RE
  - Update to Docker repo after testing
   
   `docker login`
+   
   `docker tag <REPOSITORY> <USERNAME>/<REPOSITORY>:<TAG>`
+   
   `docker push <USERNAME>/<REPOSITORY>`
   
 ------
