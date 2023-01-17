@@ -135,11 +135,12 @@ To revert the change and use the official APIs in dev mode, set the value of `RE
   ```
   Replace `<USERNAME>`, `<REPOSITORY>` and `<TAG>` with your own values.
   
-  # Update to Docker repo after testing
+ - Update to Docker repo after testing
   
-  docker login
-  docker tag <REPOSITORY> <USERNAME>/<REPOSITORY>:<TAG>
-  docker push <USERNAME>/<REPOSITORY>
+  `docker login`
+  `docker tag <REPOSITORY> <USERNAME>/<REPOSITORY>:<TAG>`
+  `docker push <USERNAME>/<REPOSITORY>`
+  
 ------
 
 While running the container, map exposed port 80 of the container to your desired port on host machine. For example.
