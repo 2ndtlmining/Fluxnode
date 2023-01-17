@@ -17,6 +17,9 @@ import { MostHosted } from './MostHosted';
 
 import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
+//DO NOT REMOVE: package for store subscriber 
+import localforagebservable from "localforage-observable";
+import * as Rx from 'rxjs';
 
 import {
   create_global_store,
@@ -30,7 +33,7 @@ import {
 import { appStore, StoreKeys } from 'persistance/store';
 
 import { LayoutContext } from 'contexts/LayoutContext';
-import { blurAllInputs } from 'utils';
+import { blurAllInputs, hide_sensitive_string } from 'utils';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
@@ -53,7 +56,8 @@ class MainApp extends React.Component {
       isDOS: false,
 
       isPALoading: false,
-      walletPASummary: pa_summary_full()
+      walletPASummary: pa_summary_full(),
+      privacyMode: false
     };
 
     this.walletNodes = React.createRef();
@@ -97,22 +101,49 @@ class MainApp extends React.Component {
     let loadedHistory = [];
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
-    } catch {}
+      this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
+    } catch { }
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
     this.setState({ searchHistory }, () => this.hydrateApp());
 
-    if(this.props.defaultAddress) {
-      this.onProcessAddress(this.props.defaultAddress);
+    const hideSensitiveData = (isPrivateModeEnabled) => {
+      this.setState({ privacyMode: isPrivateModeEnabled });
+      if (!isPrivateModeEnabled) {
+        this.setSearch({ wallet: this.state.activeAddress }, { replace: false });
+        this.addressInputRef.current.value = this.state.activeAddress;
+      } else {
+        this.setSearch({ wallet: hide_sensitive_string(this.state.activeAddress) }, { replace: false });
+        this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
+      }
     }
+
+    await appStore.ready(function () {
+      appStore.newObservable.factory = function (subscribeFn) {
+        return Rx.Observable.create(subscribeFn);
+      };
+
+      var methodCallObservable = appStore.newObservable({
+        key: StoreKeys.PRIVACY_MODE,
+        changeDetection: false
+      });
+
+      var methodCallSubscription = methodCallObservable.subscribe({
+        next: function (args) {
+          hideSensitiveData(args.newValue);
+        }
+      });
+
+    })
+
     this._setDefaultAddress(this.props.defaultAddress);
   }
 
   _setDefaultAddress(defaultAddress) {
-    if(defaultAddress) {
+    if (defaultAddress) {
       this.onProcessAddress(defaultAddress);
-      this.setState({inputAddress: defaultAddress});
+      this.setState({ inputAddress: defaultAddress });
     }
   }
 
@@ -139,8 +170,11 @@ class MainApp extends React.Component {
     const { location } = this.props.router;
     let params = new URLSearchParams(location.search);
 
-    const wallet = params.get('wallet');
+    let wallet = params.get('wallet');
     if (!!wallet && wallet != '') {
+      if (this.state.privacyMode) {
+        wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1]
+      }
       const address = wallet.toString();
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
@@ -267,7 +301,11 @@ class MainApp extends React.Component {
     return (
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
         <span>Current Wallet Address</span>
-        <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>{this.state.activeAddress}</a>
+        <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>{
+          this.state.privacyMode ?
+            hide_sensitive_string(this.state.activeAddress) :
+            this.state.activeAddress
+        }</a>
       </div>
     );
   }

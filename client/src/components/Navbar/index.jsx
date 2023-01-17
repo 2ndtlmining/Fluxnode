@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 window.matchPath = matchPath;
 window.useMatch = useMatch;
 
-function no_op() {}
+function no_op() { }
 
 const APP_LOGO_THEME_LIGHT = '/app-logo.svg';
 const APP_LOGO_THEME_DARK = '/app-logo-dark.svg';
@@ -52,9 +52,11 @@ export function AppNavbar({ onThemeSwitch, theme }) {
             enableEstimatedEarningsTab,
             enableParallelAssetsTab,
             normalFontSize,
+            enablePrivacyMode,
             onToggleEstimatedEarningsTab,
             onToggleParallelAssetsTab,
-            onToggleChangeFontSize
+            onToggleChangeFontSize,
+            onTogglePrivacyMode
           }) => (
             <Popover2
               content={
@@ -82,16 +84,28 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                     }
                   />
                   <MenuItem2
-                  shouldDismissPopover={false}
-                  text={
-                    <Switch
-                      alignIndicator='right'
-                      checked={normalFontSize}
-                      label={`Font Size: ${normalFontSize ? 'Normal' : 'Small'}`}
-                      onChange={onToggleChangeFontSize}
-                    />
-                  }
-                />
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        alignIndicator='right'
+                        checked={normalFontSize}
+                        label={`Font Size: ${normalFontSize ? 'Normal' : 'Small'}`}
+                        onChange={onToggleChangeFontSize}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enablePrivacyMode}
+                        label='Privacy Mode'
+                        onChange={onTogglePrivacyMode}
+                      />
+                    }
+                  />
                 </Menu>
               }
               interactionKind='click'

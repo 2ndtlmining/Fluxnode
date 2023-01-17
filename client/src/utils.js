@@ -63,6 +63,20 @@ export function pad_start(num, size = 2) {
   return s.substr(s.length - size);
 }
 
+export function hide_sensitive_number(number) {
+  if(number) {
+    return number.toString().replace(/\d/g, 'X');
+  }
+  return number;
+}
+
+export function hide_sensitive_string(string) {
+  if(string) {
+    return string.toString().replace(/[a-zA-Z0-9]/g, 'X');
+  }
+  return string;
+}
+
 // Hehe :)
 export function blurAllInputs() {
   var tmp = document.createElement('input');
