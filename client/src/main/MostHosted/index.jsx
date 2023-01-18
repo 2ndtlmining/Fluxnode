@@ -111,7 +111,7 @@ export class MostHosted extends React.Component {
                 transitionDuration={100}
                 hoverOpenDelay={60}
                 content={
-                  installedApps.length ? (
+                  installedApps?.length ? (
                     <div style={{ maxWidth: 300 }}>
                       <div>
                         <strong>{appCount} apps:</strong>
