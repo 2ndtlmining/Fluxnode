@@ -236,8 +236,7 @@ function calc_next_reward(rank) {
   return format_minutes(rank * 2);
 }
 
-export function calc_mtn_window(last_confirmed_height, current_height)
-{
+export function calc_mtn_window(last_confirmed_height, current_height) {
   const BLOCK_RATE = 120;
 
   const win = BLOCK_RATE - (current_height - last_confirmed_height);
@@ -345,7 +344,7 @@ function _fillPartial_version(fluxNode, version) {
 }
 function _fillPartial_apps(fluxNode, installedApps) {
   if (installedApps !== null) {
-    fluxNode.appCount = installedApps.length;
+    fluxNode.appCount = installedApps?.length;
     fluxNode.installedApps = installedApps;
   }
 }
@@ -372,7 +371,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch {}
+    } catch { }
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
