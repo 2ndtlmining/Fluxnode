@@ -15,7 +15,7 @@ import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
 import { MostHosted } from './MostHosted';
 
-import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner } from '@blueprintjs/core';
+import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
 import { Popover2 } from '@blueprintjs/popover2';
 //DO NOT REMOVE: package for store subscriber 
 import localforagebservable from "localforage-observable";
@@ -57,7 +57,8 @@ class MainApp extends React.Component {
 
       isPALoading: false,
       walletPASummary: pa_summary_full(),
-      privacyMode: false
+      privacyMode: false,
+      isZellId: false
     };
 
     this.walletNodes = React.createRef();
@@ -110,12 +111,13 @@ class MainApp extends React.Component {
 
     const hideSensitiveData = (isPrivateModeEnabled) => {
       this.setState({ privacyMode: isPrivateModeEnabled });
+      if (!this.state.activeAddress) return;
       if (!isPrivateModeEnabled) {
         this.setSearch({ wallet: this.state.activeAddress }, { replace: false });
-        this.addressInputRef.current.value = this.state.activeAddress;
+        if (this.addressInputRef && this.addressInputRef.current) this.addressInputRef.current.value = this.state.activeAddress;
       } else {
         this.setSearch({ wallet: hide_sensitive_string(this.state.activeAddress) }, { replace: false });
-        this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
+        if (this.addressInputRef && this.addressInputRef.current) this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
       }
     }
 
@@ -286,6 +288,10 @@ class MainApp extends React.Component {
     }
   };
 
+  handleZellIdSwitch = () => {
+    this.setState((prevState) => ({ isZellId: !prevState.isZellId }))
+  }
+
   onRefreshRequest = () => {
     this.onProcessAddress(this.state.activeAddress);
   };
@@ -394,7 +400,7 @@ class MainApp extends React.Component {
 
     return (
       <div className={'bp4-form-group ' + `bp4-intent-${intent}`}>
-        <label className='bp4-label'>Wallet Address</label>
+        <label className='bp4-label'>{!this.state.isZellId ? 'Wallet Address' : 'Zell ID'}</label>
         <div className='bp4-form-content'>
           <Popover2
             {...this.HISTORY_BOX_POPOVER_OPTIONS}
@@ -413,7 +419,7 @@ class MainApp extends React.Component {
                 fill
                 intent={intent}
                 leftIcon='antenna'
-                placeholder='Enter Wallet Address'
+                placeholder={!this.state.isZellId ? 'Enter Wallet Address' : 'Enter Zell ID'}
                 id={WALLET_INPUT_ID}
                 value={this.state.inputAddress}
                 onChange={this.handleAddrChange}
@@ -459,11 +465,16 @@ class MainApp extends React.Component {
               {this.renderAddressInput()}
             </Col>
             <Col md={6}>
-              <FormGroup label='&nbsp;'>
+              {process.env.REACT_APP_SEARCH_BY_ZELLID ? <Switch
+                checked={this.state.isZellId}
+                label="Zell ID"
+                onChange={this.handleZellIdSwitch}
+                className='zell-id-switch' /> : <div className='bp4-label mb-1'>&nbsp;</div>}
+              <FormGroup>
                 <Button
                   fill
                   onClick={this.handleButtonClick}
-                  text='Search Wallet'
+                  text={!this.state.isZellId ? 'Search Wallet' : 'Search Zell ID'}
                   intent='primary'
                   icon='array-string'
                 />
