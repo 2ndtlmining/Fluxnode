@@ -295,7 +295,7 @@ export async function getWalletNodes(walletAddress) {
   return wNodes;
 }
 
-export function x(node) {
+export function transformRawNode(node) {
   let fluxNode = empty_flux_node();
   const ipRaw = node['ip'];
   if (ipRaw) {
