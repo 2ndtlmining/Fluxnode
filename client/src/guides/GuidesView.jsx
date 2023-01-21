@@ -483,6 +483,7 @@ sudo systemctl restart zelcash
         <Accordion.Item eventKey='12'>
           <Accordion.Header>{this.renderBullet(25)} Troubleshoot with Fluxnode viewer created by Car </Accordion.Header>
           <Accordion.Body>
+            <p>Run the following command:</p>
             {CodeBlock.Full(`
 bash -i <(curl -s 
 https://raw.githubusercontent.com/JKTUNING/Flux-Node-Tools/main/flux_node_viewer.sh)
