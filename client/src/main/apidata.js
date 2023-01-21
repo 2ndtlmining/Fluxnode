@@ -530,7 +530,8 @@ export function pa_summary_full() {
       trn: single_pa_info(),
       sol: single_pa_info(),
       avx: single_pa_info(),
-      erg: single_pa_info()
+      erg: single_pa_info(),
+      alg: single_pa_info()
     }
   };
 }
@@ -587,6 +588,9 @@ export async function wallet_pas_summary(walletAddress) {
           break;
         case 'erg':
           targetPAInfo = summary.assets.erg;
+          break;
+        case 'alg':
+          targetPAInfo = summary.assets.alg;
           break;
 
         default:

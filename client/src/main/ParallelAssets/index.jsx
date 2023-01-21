@@ -23,7 +23,6 @@ function PASummary(summary) {
           iconColorAlt='#eeeeee'
           className='ps-cell-new adp-border-color'
           id='cell-1'
-          // small
         />
         <InfoCell
           name={<>Total Claimed to date</>}
@@ -33,7 +32,6 @@ function PASummary(summary) {
           iconColorAlt='#eeeeee'
           className='ps-cell-new adp-border-color'
           id='cell-2'
-          // small
         />
       </div>
       <div className='ps-row adp-border-color'>
@@ -148,11 +146,10 @@ export function ParallelAssets({ summary }) {
               assetName={'Ergo'}
             />
             <PAssetCard
-              paInfo=''
-              blockStyle=''
-              logoUrl=''
-              assetName=''
-              placeholder
+              paInfo={summary.assets.alg}
+              blockStyle='alg'
+              logoUrl='https://cryptologos.cc/logos/algorand-algo-logo.png'
+              assetName={'Algorand'}
             />
             <PAssetCard
               paInfo=''
