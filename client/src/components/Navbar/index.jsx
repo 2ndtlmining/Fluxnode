@@ -53,10 +53,14 @@ export function AppNavbar({ onThemeSwitch, theme }) {
             enableParallelAssetsTab,
             normalFontSize,
             enablePrivacyMode,
+            enableDashboardCells,
+            enableNotableNodesTab,
             onToggleEstimatedEarningsTab,
             onToggleParallelAssetsTab,
             onToggleChangeFontSize,
-            onTogglePrivacyMode
+            onTogglePrivacyMode,
+            onToggleDashboardCells,
+            onToggleNotableNodesTab
           }) => (
             <Popover2
               content={
@@ -103,6 +107,30 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                         checked={enablePrivacyMode}
                         label='Privacy Mode'
                         onChange={onTogglePrivacyMode}
+                      />
+                    }
+                  />
+                   <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enableDashboardCells}
+                        label='Dashboard Cells'
+                        onChange={onToggleDashboardCells}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enableNotableNodesTab}
+                        label='Notable Nodes'
+                        onChange={onToggleNotableNodesTab}
                       />
                     }
                   />

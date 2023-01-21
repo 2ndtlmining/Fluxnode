@@ -16,9 +16,9 @@ import { BestUptime } from 'main/BestUptime';
 import { MostHosted } from './MostHosted';
 
 import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
-import { Popover2 } from '@blueprintjs/popover2';
-//DO NOT REMOVE: package for store subscriber 
-import localforagebservable from "localforage-observable";
+import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
+//DO NOT REMOVE: package for store subscriber
+import localforagebservable from 'localforage-observable';
 import * as Rx from 'rxjs';
 
 import {
@@ -34,6 +34,7 @@ import { appStore, StoreKeys } from 'persistance/store';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs, hide_sensitive_string } from 'utils';
+import { FaMedal } from 'react-icons/fa';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
@@ -58,7 +59,7 @@ class MainApp extends React.Component {
       isPALoading: false,
       walletPASummary: pa_summary_full(),
       privacyMode: false,
-      isZellId: false
+      isZelId: false
     };
 
     this.walletNodes = React.createRef();
@@ -103,7 +104,7 @@ class MainApp extends React.Component {
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
       this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
-    } catch { }
+    } catch {}
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
@@ -114,12 +115,14 @@ class MainApp extends React.Component {
       if (!this.state.activeAddress) return;
       if (!isPrivateModeEnabled) {
         this.setSearch({ wallet: this.state.activeAddress }, { replace: false });
-        if (this.addressInputRef && this.addressInputRef.current) this.addressInputRef.current.value = this.state.activeAddress;
+        if (this.addressInputRef && this.addressInputRef.current)
+          this.addressInputRef.current.value = this.state.activeAddress;
       } else {
         this.setSearch({ wallet: hide_sensitive_string(this.state.activeAddress) }, { replace: false });
-        if (this.addressInputRef && this.addressInputRef.current) this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
+        if (this.addressInputRef && this.addressInputRef.current)
+          this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
       }
-    }
+    };
 
     await appStore.ready(function () {
       appStore.newObservable.factory = function (subscribeFn) {
@@ -136,8 +139,7 @@ class MainApp extends React.Component {
           hideSensitiveData(args.newValue);
         }
       });
-
-    })
+    });
 
     this._setDefaultAddress(this.props.defaultAddress);
   }
@@ -175,7 +177,7 @@ class MainApp extends React.Component {
     let wallet = params.get('wallet');
     if (!!wallet && wallet != '') {
       if (this.state.privacyMode) {
-        wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1]
+        wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
       }
       const address = wallet.toString();
       this.onProcessAddress(address);
@@ -288,9 +290,9 @@ class MainApp extends React.Component {
     }
   };
 
-  handleZellIdSwitch = () => {
-    this.setState((prevState) => ({ isZellId: !prevState.isZellId }))
-  }
+  handleZelIdSwitch = () => {
+    this.setState((prevState) => ({ isZelId: !prevState.isZelId }));
+  };
 
   onRefreshRequest = () => {
     this.onProcessAddress(this.state.activeAddress);
@@ -304,14 +306,36 @@ class MainApp extends React.Component {
   );
 
   renderActiveAddressView() {
+    const totalDonations = this.state.gstore && this.state.gstore.total_donations;
+
     return (
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
-        <span>Current Wallet Address</span>
-        <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>{
-          this.state.privacyMode ?
-            hide_sensitive_string(this.state.activeAddress) :
-            this.state.activeAddress
-        }</a>
+        <div className='d-flex gap-2'>
+          <span>Current Wallet Address</span>
+          {totalDonations > 0 ? (
+            <Tooltip2
+              usePortal={true}
+              intent='danger'
+              placement='bottom'
+              transitionDuration={100}
+              content={
+                <div>
+                  Total donations: <strong>{totalDonations}</strong>
+                </div>
+              }
+              hoverOpenDelay={60}
+            >
+              <span className='d-inline-flex align-items-center gap-1'>
+                <FaMedal color='gold' size={16} />
+                {totalDonations}
+              </span>
+            </Tooltip2>
+          ) : null}
+        </div>
+
+        <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>
+          {this.state.privacyMode ? hide_sensitive_string(this.state.activeAddress) : this.state.activeAddress}
+        </a>
       </div>
     );
   }
@@ -400,7 +424,8 @@ class MainApp extends React.Component {
 
     return (
       <div className={'bp4-form-group ' + `bp4-intent-${intent}`}>
-        <label className='bp4-label'>{!this.state.isZellId ? 'Wallet Address' : 'Zell ID'}</label>
+        <label className='bp4-label'>{!this.state.isZelId ? 'Wallet Address' : 'Zel ID'}</label>
+
         <div className='bp4-form-content'>
           <Popover2
             {...this.HISTORY_BOX_POPOVER_OPTIONS}
@@ -419,7 +444,7 @@ class MainApp extends React.Component {
                 fill
                 intent={intent}
                 leftIcon='antenna'
-                placeholder={!this.state.isZellId ? 'Enter Wallet Address' : 'Enter Zell ID'}
+                placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
                 id={WALLET_INPUT_ID}
                 value={this.state.inputAddress}
                 onChange={this.handleAddrChange}
@@ -451,77 +476,88 @@ class MainApp extends React.Component {
 
   render() {
     return (
-      <>
-        <Helmet>
-          <title>Wallet</title>
-        </Helmet>
+      <LayoutContext.Consumer>
+        {({ enableParallelAssetsTab, enableDashboardCells, normalFontSize, enableNotableNodesTab }) => {
+          const suffixClassName = normalFontSize ? '' : '-small';
+          return (
+            <>
+              <Helmet>
+                <title>Wallet</title>
+              </Helmet>
 
-        <DashboardCells gstore={this.state.gstore} />
-        {this.state.isWalletAvailable && this.renderActiveAddressView()}
+              {enableDashboardCells ? <DashboardCells gstore={this.state.gstore} /> : null}
+              {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
-        <Container fluid style={{ margin: '20px 20px' }}>
-          <Row justify='center'>
-            <Col style={{ paddingBottom: '10px' }} md={9}>
-              {this.renderAddressInput()}
-            </Col>
-            <Col md={6}>
-              {process.env.REACT_APP_SEARCH_BY_ZELLID ? <Switch
-                checked={this.state.isZellId}
-                label="Zell ID"
-                onChange={this.handleZellIdSwitch}
-                className='zell-id-switch' /> : <div className='bp4-label mb-1'>&nbsp;</div>}
-              <FormGroup>
-                <Button
-                  fill
-                  onClick={this.handleButtonClick}
-                  text={!this.state.isZellId ? 'Search Wallet' : 'Search Zell ID'}
-                  intent='primary'
-                  icon='array-string'
-                />
-              </FormGroup>
-            </Col>
-          </Row>
-          <Row style={{ paddingBottom: '10px' }}>
-            <Col md={24} lg={8}>
-              <PayoutTimer ref={this._payoutTimerRef} />
-            </Col>
-            <Col md={12} lg={8}>
-              <BestUptime ref={this._bestUptimeRef} />
-            </Col>
-            <Col md={12} lg={8}>
-              <MostHosted ref={this._mostHostedRef} />
-            </Col>
-          </Row>
-        </Container>
+              <Container fluid style={{ margin: '20px 20px' }}>
+                <Row justify='center'>
+                  <Col style={{ paddingBottom: '10px' }} md={9}>
+                    {this.renderAddressInput()}
+                  </Col>
+                  <Col md={6}>
+                    {process.env.REACT_APP_SEARCH_BY_ZELID === 'true' ? (
+                      <Switch
+                        checked={this.state.isZelId}
+                        label='Zel ID'
+                        onChange={this.handleZelIdSwitch}
+                        className='zel-id-switch'
+                      />
+                    ) : (
+                      <div className='bp4-label mb-1'>&nbsp;</div>
+                    )}
+                    <FormGroup>
+                      <Button
+                        fill
+                        onClick={this.handleButtonClick}
+                        text={!this.state.isZelId ? 'Search Wallet' : 'Search Zel ID'}
+                        intent='primary'
+                        icon='array-string'
+                      />
+                    </FormGroup>
+                  </Col>
+                </Row>
+                <Row style={{ paddingBottom: '10px', display: enableNotableNodesTab ? 'flex' : 'none' }}>
+                  <Col md={24} lg={8}>
+                    <PayoutTimer ref={this._payoutTimerRef} />
+                  </Col>
+                  <Col md={12} lg={8}>
+                    <BestUptime ref={this._bestUptimeRef} />
+                  </Col>
+                  <Col md={12} lg={8}>
+                    <MostHosted ref={this._mostHostedRef} />
+                  </Col>
+                </Row>
+              </Container>
 
-        <WalletNodes
-          ref={this.walletNodes}
-          parentLoading={this.state.isNodesLoading}
-          onRefreshRequest={this.onRefreshRequest}
-          activeAddress={this.state.activeAddress}
-          initGStore={this.state.gstore}
-        />
-        <LayoutContext.Consumer>
-          {({ enableParallelAssetsTab }) =>
-            enableParallelAssetsTab && this.state.isWalletAvailable ? (
-              <div className='pa-area border-top adp-border-color'>
-                <h1 className='fs-3 text-center text-success p-3 border-bottom adp-border-color center-text-flow-mid pa-heading'>
-                  <Icon icon='comparison' size={30} className='me-3' />
-                  Parallel Assets
-                </h1>
-                <br />
-                {this.state.isPALoading ? (
-                  <Spinner intent='primary' size={150} />
-                ) : (
-                  <ParallelAssets summary={this.state.walletPASummary} />
-                )}
-              </div>
-            ) : (
-              <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
-            )
-          }
-        </LayoutContext.Consumer>
-      </>
+              <WalletNodes
+                ref={this.walletNodes}
+                parentLoading={this.state.isNodesLoading}
+                onRefreshRequest={this.onRefreshRequest}
+                activeAddress={this.state.activeAddress}
+                initGStore={this.state.gstore}
+              />
+
+              {enableParallelAssetsTab && this.state.isWalletAvailable ? (
+                <div className='pa-area border-top adp-border-color'>
+                  <h1
+                    className={`fs-3 text-center text-success p-3 border-bottom adp-border-color center-text-flow-mid pa-heading${suffixClassName}`}
+                  >
+                    <Icon icon='comparison' size={normalFontSize ? 30 : 20} className='me-3' />
+                    Parallel Assets
+                  </h1>
+                  <br />
+                  {this.state.isPALoading ? (
+                    <Spinner intent='primary' size={150} />
+                  ) : (
+                    <ParallelAssets summary={this.state.walletPASummary} />
+                  )}
+                </div>
+              ) : (
+                <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
+              )}
+            </>
+          );
+        }}
+      </LayoutContext.Consumer>
     );
   }
 }

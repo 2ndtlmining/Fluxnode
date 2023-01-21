@@ -16,7 +16,7 @@ import AppGuidesView from 'guides/GuidesView';
 import MainApp from 'main/MainApp';
 import Demo from 'demo/Demo';
 import NotFoundView from 'notfound/index';
-import { FocusStyleManager } from "@blueprintjs/core";
+import { FocusStyleManager } from '@blueprintjs/core';
 
 // Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
 FocusStyleManager.onlyShowFocusOnTabs();

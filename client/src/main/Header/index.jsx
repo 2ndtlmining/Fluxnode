@@ -1,26 +1,44 @@
-import { format_minutes, hide_sensitive_number } from 'utils';
+import { format_minutes } from 'utils';
 
-import React from 'react';
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 
 import './index.scss';
 
-import { InfoCell } from 'main/InfoCell';
 import { FluxIcon } from 'components/FluxIcon.jsx';
+import { InfoCell } from 'main/InfoCell';
 // import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
-import {
-  FiFolder,
-  FiDollarSign,
-  FiHash,
-  FiPackage,
-  FiZap,
-  FiCpu
-} from 'react-icons/fi';
+import { FiCpu, FiDollarSign, FiFolder, FiHash, FiPackage, FiZap } from 'react-icons/fi';
+import { FaCrown, FaWallet } from 'react-icons/fa';
 
-import { fluxos_version_string } from 'main/flux_version';
 import { LayoutContext } from 'contexts/LayoutContext';
+import { fluxos_version_string } from 'main/flux_version';
 import { useContext } from 'react';
+
+const WALLET_CELL_ATTRIBUTES = {
+  'richlist': {
+    icon: (iconProps) => <FaCrown {...iconProps} />,
+    iconWrapperClassName: (suffix) => `dash-cell__amount-usd-in-rich-list${suffix}`
+  },
+  'donate': {
+    icon: (iconProps) => <FaWallet {...iconProps} />,
+    iconWrapperClassName: (suffix) => `dash-cell__amount-usd-donate${suffix}`
+  },
+  'default': {
+    icon: (iconProps) => <FaWallet {...iconProps} />,
+    iconWrapperClassName: (suffix) => `dash-cell__amount-usd${suffix}`
+  }
+}
+
+function WalletTopPercentage({ topPercentage = 0 }) {
+  return (
+    <div className='d-block mb-0' style={{ fontSize: '0.96rem' }}>
+      <p>
+        <span style={{ color: '#fff', fontWeight: 600 }}>Top {topPercentage}%</span>
+      </p>
+    </div>
+  )
+}
 
 function TierRewardsProjectionView({ rewards }) {
   return (
@@ -92,16 +110,21 @@ export function DashboardCells({ gstore: gs }) {
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
-  const smallIconWrapper = normalFontSize ? '' : '-small';
+  const suffixClassName = normalFontSize ? '' : '-small';
+
+  const walletType = gs.in_rich_list ? 'richlist' : gs.total_donations > 0 ? 'donate' : 'default';
+
+  const walletCellStyles = WALLET_CELL_ATTRIBUTES[walletType];
 
   return (
     <div className='dashboard bp4-dark'>
       <Cell
         name='Flux USD Value'
-        value={'$' + gs.flux_price_usd.toFixed(3)}
+        value={gs.flux_price_usd}
         icon={<FiDollarSign size={iconSize} />}
-        iconWrapClassName={'dash-cell__flux-usd' + smallIconWrapper}
+        iconWrapClassName={`dash-cell__flux-usd${suffixClassName}`}
         small={!normalFontSize}
+        prefix='$'
       />
       <CellTooltip tooltipContent={<FluxOSVersionView versionDesc={gs.fluxos_latest_version} />}>
         {(ref, tooltipProps) => (
@@ -111,7 +134,7 @@ export function DashboardCells({ gstore: gs }) {
             name='Total Nodes'
             value={gs.node_count.total}
             icon={<FiHash size={iconSize} />}
-            iconWrapClassName={'dash-cell__nodes-total' + smallIconWrapper}
+            iconWrapClassName={`dash-cell__nodes-total${suffixClassName}`}
             small={!normalFontSize}
             cellHover
           />
@@ -125,7 +148,7 @@ export function DashboardCells({ gstore: gs }) {
             name='Cumulus Nodes'
             value={gs.node_count.cumulus}
             icon={<FiZap size={iconSize} />}
-            iconWrapClassName={'dash-cell__nodes-cumulus' + smallIconWrapper}
+            iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}
             small={!normalFontSize}
             cellHover
           />
@@ -139,7 +162,7 @@ export function DashboardCells({ gstore: gs }) {
             name='Nimbus Nodes'
             value={gs.node_count.nimbus}
             icon={<FiCpu size={iconSize} />}
-            iconWrapClassName={'dash-cell__nodes-nimbus' + smallIconWrapper}
+            iconWrapClassName={`dash-cell__nodes-nimbus${suffixClassName}`}
             small={!normalFontSize}
             cellHover
           />
@@ -153,7 +176,7 @@ export function DashboardCells({ gstore: gs }) {
             name='Stratus Nodes'
             value={gs.node_count.stratus}
             icon={<FiPackage size={iconSize} />}
-            iconWrapClassName={'dash-cell__nodes-stratus' + smallIconWrapper}
+            iconWrapClassName={`dash-cell__nodes-stratus${suffixClassName}`}
             small={!normalFontSize}
             cellHover
           />
@@ -161,26 +184,27 @@ export function DashboardCells({ gstore: gs }) {
       </CellTooltip>
       <Cell
         name='Flux Amount'
-        value={!enablePrivacyMode ? gs.wallet_amount_flux : hide_sensitive_number(gs.wallet_amount_flux)}
+        value={gs.wallet_amount_flux}
         icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
-        iconWrapClassName={'dash-cell__amount-flux' + smallIconWrapper}
+        iconWrapClassName={`dash-cell__amount-flux${suffixClassName}`}
         small={!normalFontSize}
+        isPrivacy={enablePrivacyMode}
       />
-      <Cell
-        name='Wallet USD'
-        value={format_flux_usd(gs.wallet_amount_flux, gs.flux_price_usd, enablePrivacyMode)}
-        icon={<FiFolder size={iconSize} />}
-        iconWrapClassName={'dash-cell__amount-usd' + smallIconWrapper}
-        small={!normalFontSize}
-      />
+      <CellTooltip tooltipContent={<WalletTopPercentage topPercentage={0} />}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='Wallet USD'
+            value={gs.wallet_amount_flux * gs.flux_price_usd}
+            icon={walletCellStyles.icon({ iconSize })}
+            iconWrapClassName={walletCellStyles.iconWrapperClassName(suffixClassName)}
+            small={!normalFontSize}
+            prefix='$'
+            isPrivacy={enablePrivacyMode}
+          />
+        )}
+      </CellTooltip>
     </div>
   );
-}
-
-function format_flux_usd(wallet_amount_flux, usd_price, enablePrivacyMode) {
-  const result = `\$${(wallet_amount_flux * usd_price).toFixed(3)}`;
-  if (enablePrivacyMode) {
-    return hide_sensitive_number(result);
-  }
-  return result;
 }

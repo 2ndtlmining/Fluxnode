@@ -57,32 +57,30 @@
             min-height: $size !important;
         }
     }
+    @at-root .dash-cell__#{$slug}-small {
+        @extend .dash-cell__#{$slug};
+        max-width: $size - 6 !important;
+        max-height: $size - 6 !important;
+        min-width: $size - 6 !important;
+        min-height: $size - 6 !important;
+    }
 }
 
 @include def-dash-cell(flux-usd, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66), 28px);
 
-@include def-dash-cell(flux-usd-small, #edf5c9, #b1d026, rgb(50, 57, 10), rgb(192, 221, 66), 22px);
-
 @include def-dash-cell(nodes-total, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221), 28px);
-
-@include def-dash-cell(nodes-total-small, #f2c9f5, #ca26d0, rgb(71, 14, 75), rgb(215, 66, 221), 22px);
 
 @include def-dash-cell(nodes-nimbus, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66), 28px);
 
-@include def-dash-cell(nodes-nimbus-small, #f5dec9, #d07e26, rgb(75, 43, 14), rgb(221, 146, 66), 22px);
-
 @include def-dash-cell(nodes-stratus, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96), 28px);
-
-@include def-dash-cell(nodes-stratus-small, #f5c9d0, #c92641, rgb(75, 14, 24), rgb(220, 71, 96), 22px);
 
 @include def-dash-cell(nodes-cumulus, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217), 28px);
 
-@include def-dash-cell(nodes-cumulus-small, #dceaf5, #2686d0, #1c2c40, rgb(66, 221, 217), 22px);
-
 @include def-dash-cell(amount-flux, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223), 28px);
-
-@include def-dash-cell(amount-flux-small, #c7cff0, #2748cc, rgb(44, 48, 50), rgb(90, 149, 223), 22px);
 
 @include def-dash-cell(amount-usd, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69), 28px);
 
-@include def-dash-cell(amount-usd-small, #d5f0c7, #5fcc27, rgb(47, 74, 20), rgb(120, 220, 69), 22px);
+@include def-dash-cell(amount-usd-in-rich-list, rgb(200, 195, 125), rgb(255, 230, 1), rgb(120, 112, 52), gold, 28px);
+
+@include def-dash-cell(amount-usd-donate, #e7b876, #fbbd04, rgb(84, 52, 19), rgb(233, 123, 7), 28px);
+

@@ -109,3 +109,17 @@ function output_json_source(obj, title = 'Title') {
 
   win.document.body.innerHTML = targetHTML;
 }
+
+export function format_amount(amount, enablePrivacyMode) {
+  if (enablePrivacyMode) {
+    return hide_sensitive_number(amount);
+  }
+  return format_thousands_separator(amount);
+}
+
+function format_thousands_separator(amount) {
+  if (typeof amount !== 'number') {
+    throw new Error('Invalid amount type');
+  }
+  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
