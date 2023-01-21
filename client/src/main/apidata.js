@@ -60,6 +60,8 @@ export function create_global_store() {
     fluxos_latest_version: fluxos_version_desc(0, 0, 0),
     bench_latest_version: fluxos_version_desc(0, 0, 0),
     current_block_height: 0,
+    in_rich_list: false,
+    total_donations: 0
   };
 }
 
@@ -101,19 +103,38 @@ function fill_rewards(gstore) {
   );
 }
 
+async function query_transactions_all_pages(walletAddress) {
+  const url = 'https://explorer.runonflux.io/api/txs?address=' + walletAddress;
+  const firstPage = await fetch(url).then((res) => res.json());
+  const { pagesTotal } = firstPage;
+  const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+  const results = await Promise.all(
+    array.map(async (page) => {
+      const result = await fetch(url + `&pageNum=${page}`);
+      return result.json();
+    })
+  );
+  const transactions = [firstPage, ...results].reduce((prev, current) => prev.concat(current.txs), []);
+
+  return transactions.filter(tx => tx.vout.some(v => v.scriptPubKey.addresses[0] === 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG')).length;
+}
+
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo] = await Promise.allSettled([
-    fetch('https://explorer.runonflux.io/api/currency'),
-    walletAddress == null
-      ? Promise.reject(new Error('Empty address'))
-      : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
-    fetch('https://api.runonflux.io/daemon/getzelnodecount'),
-    fetch('https://api.runonflux.io/flux/version'),
-    fetch('https://api.runonflux.io/benchmark/getinfo'),
-    fetch('https://api.runonflux.io/daemon/getinfo'),
-  ]);
+  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo, resRichList, resTotalDonations] =
+    await Promise.allSettled([
+      fetch('https://explorer.runonflux.io/api/currency'),
+      walletAddress == null
+        ? Promise.reject(new Error('Empty address'))
+        : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
+      fetch('https://api.runonflux.io/daemon/getzelnodecount'),
+      fetch('https://api.runonflux.io/flux/version'),
+      fetch('https://api.runonflux.io/benchmark/getinfo'),
+      fetch('https://api.runonflux.io/daemon/getinfo'),
+      fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
+      query_transactions_all_pages(walletAddress)
+    ]);
 
   if (resCurrency.status == 'fulfilled') {
     const res = resCurrency.value;
@@ -151,13 +172,23 @@ export async function fetch_global_stats(walletAddress = null) {
     store.bench_latest_version = fluxos_version_desc_parse(json['data']['version']);
   }
 
-
   if (resFluxInfo.status == 'fulfilled') {
     const res = resFluxInfo.value;
     const json = await res.json();
     store.current_block_height = json['data']['blocks'];
   }
 
+  if (resRichList.status == 'fulfilled') {
+    const res = resRichList.value;
+    const json = await res.json();
+    store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+  }
+
+  if (resTotalDonations.status == 'fulfilled') {
+    const res = resTotalDonations.value;
+    store.total_donations = res;
+  }
+  
 
   fill_rewards(store);
   window.gstore = store;
@@ -227,7 +258,7 @@ function empty_flux_node() {
     appCount: 0,
     uptime: 0,
 
-    last_confirmed_height: 0,
+    last_confirmed_height: 0
     // maintenance_win: '-'
   };
 }
@@ -241,8 +272,7 @@ export function calc_mtn_window(last_confirmed_height, current_height) {
 
   const win = BLOCK_RATE - (current_height - last_confirmed_height);
 
-  if (win <= 0)
-    return 'Closed';
+  if (win <= 0) return 'Closed';
 
   return format_minutes(win * 2);
 }
@@ -309,8 +339,7 @@ function make_offline(fluxNode) {
 }
 
 function _fillPartial_bench_info(fluxNode, bench_info) {
-  if (bench_info !== null)
-    fluxNode.bench_version = fluxos_version_desc_parse(bench_info['version']);
+  if (bench_info !== null) fluxNode.bench_version = fluxos_version_desc_parse(bench_info['version']);
 }
 
 function _fillPartial_benchmarks(fluxNode, benchmarks) {
@@ -371,7 +400,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch { }
+    } catch {}
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -501,7 +530,7 @@ export function pa_summary_full() {
       trn: single_pa_info(),
       sol: single_pa_info(),
       avx: single_pa_info(),
-      erg: single_pa_info(),
+      erg: single_pa_info()
     }
   };
 }

@@ -1,4 +1,5 @@
 @import 'styles/functional';
+$font-sizes: 'small', n, 16;
 
 .timer {
     // background-color: #333333;
@@ -25,9 +26,13 @@
             color: #f5498b;
         }
     }
+    .title-small {
+        @extend .title;
+        font-size: 16px;
+    }
     @media all and (min-width: 768px) {
         display: flex;
-        .title {
+        .title, .title-small {
             margin-bottom: initial;
         }
     }
@@ -98,6 +103,13 @@
     font-size: 14px;
     margin-top: 12px;
     margin-bottom: 15px;
+}
+
+.timer-block-small {
+    @extend .timer-block;
+    .timer-number {
+        font-size: 30px;
+    }
 }
 
 .v-rule {

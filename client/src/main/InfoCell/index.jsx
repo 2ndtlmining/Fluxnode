@@ -1,6 +1,8 @@
 import React from 'react';
 import './index.scss';
 import { IconContext } from 'react-icons';
+import CountUp from 'react-countup';
+import { format_amount } from 'utils';
 
 export function InfoCell({
   name,
@@ -13,6 +15,8 @@ export function InfoCell({
   className,
   elementRef,
   iconWrapClassName,
+  isPrivacy,
+  prefix,
   ...otherProps
 }) {
   const style = {};
@@ -20,6 +24,10 @@ export function InfoCell({
   if (iconColor) style.color = iconColor;
 
   const styleProps = { style };
+
+  const isDecimal = !Number.isInteger(value);
+
+  const countupValue = (<CountUp end={value} separator=',' duration={2} decimals={isDecimal ? 2 : 0} prefix={prefix ?? ''} />);
 
   return (
     <div {...otherProps} className={'information-cell-layout' + (!!className ? ' ' + className : '')} ref={elementRef}>
@@ -30,7 +38,9 @@ export function InfoCell({
       </div>
 
       <div className='icl-content'>
-        <p className={'icl-c-val' + (small ? ' icl-val-small' : large ? ' icl-val-large' : '')}>{value}</p>
+        <p className={'icl-c-val' + (small ? ' icl-val-small' : large ? ' icl-val-large' : '')}>
+          {!isPrivacy ? countupValue : format_amount(value, isPrivacy)}
+        </p>
         <p className='icl-c-name'>{name}</p>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
 
 import { IconContext } from 'react-icons';
+import CountUp from 'react-countup';
 
 const RenderedFluxIcon = (
   <FluxIcon width={21} height={21} viewBox='5 5 21.71 21.71' style={{ margin: '0 4px 0 6px' }} />
@@ -104,7 +105,11 @@ export class Projection extends React.Component {
   }
 
   formatEarningValue(value) {
-    return value.toFixed(4);
+    return <CountUp duration={5} end={value} separator=',' decimals={4} />;
+  }
+
+  formatTotalNodes(value) {
+    return <CountUp duration={5} end={value} separator=',' />;
   }
 
   renderBody() {
@@ -187,7 +192,7 @@ export class Projection extends React.Component {
           <div className='tier-proj pt-3'>
             <span className='tp-name adp-text-normal'>Total Nodes</span>
             <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <span className='tp-value adp-text-normal'>{this.props.health.total_nodes}</span>
+              <span className='tp-value adp-text-normal'>{this.formatTotalNodes(this.props.health.total_nodes)}</span>
             </div>
           </div>
         </div>

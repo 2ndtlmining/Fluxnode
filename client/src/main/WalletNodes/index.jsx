@@ -173,7 +173,6 @@ const ColumnHelp = (name, valueSuffix) => (
 );
 
 function NodeGridTable(nodes, gstore) {
-
   const nodeRowBuilder = _CreateNodeBuilder(gstore);
 
   return (
@@ -275,7 +274,8 @@ function NodeGridTable(nodes, gstore) {
                   tooltipContent={
                     <div style={{ maxWidth: 300 }}>
                       <div>
-                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
+                        Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the
+                        timer.
                       </div>
                     </div>
                   }
@@ -472,7 +472,7 @@ export class WalletNodes extends React.Component {
     await sleep(1);
 
     const batchSize = 20;
-    for (let i = 0; i < partialNodes.length;) {
+    for (let i = 0; i < partialNodes.length; ) {
       const batch = [];
 
       let batchActualSize = 0;
@@ -560,7 +560,7 @@ export class WalletNodes extends React.Component {
 
     for (const node of nodes) {
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
-      if (mostHostedNode === null || (node.appCount > mostHostedNode.appCount)) mostHostedNode = node;
+      if (mostHostedNode === null || node.appCount > mostHostedNode.appCount) mostHostedNode = node;
     }
 
     onCalculateBestUptimeAndMostHostedNodes({ bestUptimeNode, mostHostedNode });

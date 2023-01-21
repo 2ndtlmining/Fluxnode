@@ -25,9 +25,13 @@
             color: rgb(66, 221, 217);
         }
     }
-    @media all and (min-width: 1024px) {
+    .title-small {
+        @extend .title;
+        font-size: 16px;
+    }
+    @media all and (min-width: 768px) {
         display: flex;
-        .title {
+        .title, .title-small {
             margin-bottom: initial;
         }
     }
@@ -91,8 +95,16 @@
     margin-top: 28px;
     font-weight: 500;
 }
+
 .most-hosted-app-info {
     font-size: 14px;
     margin-top: 12px;
     margin-bottom: 15px;
+}
+
+.most-hosted-app-block-small {
+    @extend .most-hosted-app-block;
+    .most-hosted-app-number {
+        font-size: 30px;
+    }
 }

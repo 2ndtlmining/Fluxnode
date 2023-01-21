@@ -27,12 +27,17 @@
     }
 }
 
+.pa-heading-small {
+    @extend .pa-heading;
+    font-size: 25px !important;
+}
+
 #history-add-list {
     max-height: 400px;
     overflow-y: auto;
 }
 
-.zell-id-switch {
+.zel-id-switch {
     margin-bottom: 5px;
     text-align: end;
 }

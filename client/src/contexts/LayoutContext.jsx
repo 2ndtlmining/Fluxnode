@@ -1,71 +1,94 @@
-import React, { createContext } from 'react';
+import React, { createContext, useCallback, useMemo } from 'react';
 import { StoreKeys, appStore } from 'persistance/store';
+import { useState } from 'react';
 
 export const LayoutContext = createContext(null);
 
-class LayoutConfigurationProvider extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      enableEstimatedEarningsTab: true,
-      enableParallelAssetsTab: true,
-      normalFontSize: true,
-      enablePrivacyMode: false
-    }
+export function LayoutConfigurationProvider(props) {
+  const [enableEstimatedEarningsTab, setEstimatedEarningsTab] = useState(true);
+  const [enableParallelAssetsTab, setParallelAssetsTab] = useState(true);
+  const [normalFontSize, setFontSize] = useState(true);
+  const [enablePrivacyMode, setPrivacyMode] = useState(false);
+  const [enableDashboardCells, setDashboardCells] = useState(true);
+  const [enableNotableNodesTab, setNotableNodesTab] = useState(false);
 
-    this.setEstimatedEarningsTab = this.setEstimatedEarningsTab.bind(this);
-    this.setParallelAssetsTab = this.setParallelAssetsTab.bind(this);
-    this.setFontSize = this.setFontSize.bind(this);
-    this.setPrivacyMode = this.setPrivacyMode.bind(this);
+  appStore.setItem(StoreKeys.PRIVACY_MODE, enablePrivacyMode);
 
-    appStore.setItem(StoreKeys.PRIVACY_MODE, this.state.enablePrivacyMode)
-
-    this.appStore = appStore;
-  }
-
-  setEstimatedEarningsTab() {
+  const toggleEstimatedEarningsTab = useCallback(() => {
     //TODO: replace with persistence/store
-    this.setState((prevState) => ({ enableEstimatedEarningsTab: !prevState.enableEstimatedEarningsTab }));
-    localStorage.setItem('estimatedEarnings', this.state.enableEstimatedEarningsTab);
-  }
+    setEstimatedEarningsTab((prevState) => !prevState);
+    localStorage.setItem('estimatedEarnings', enableEstimatedEarningsTab);
+  }, [setEstimatedEarningsTab]);
 
-  setParallelAssetsTab() {
+  const toggleParallelAssetsTab = useCallback(() => {
     //TODO: replace with persistence/store
-    this.setState((prevState) => ({ enableParallelAssetsTab: !prevState.enableParallelAssetsTab }));
-    localStorage.setItem('parallelAssets', this.state.enableParallelAssetsTab);
-  }
+    setParallelAssetsTab((prevState) => !prevState);
+    localStorage.setItem('parallelAssets', enableParallelAssetsTab);
+  }, [setParallelAssetsTab]);
 
-  setFontSize() {
-    this.setState((prevState) => ({ normalFontSize: !prevState.normalFontSize }));
+  const toggleFontSize = useCallback(() => {
     //TODO: replace with persistence/store
-    localStorage.setItem('parallelAssets', this.state.normalFontSize);
-  }
+    setFontSize((prevState) => !prevState);
+    localStorage.setItem('fontSize', normalFontSize);
+  }, [setFontSize]);
 
-  setPrivacyMode() {
-    this.setState((prevState) => {
+  const togglePrivacyMode = useCallback(() => {
+    setPrivacyMode((prevState) => {
       try {
-        this.appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
-      } catch { }
-      return { ...prevState, enablePrivacyMode: !prevState.enablePrivacyMode }
+        appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
+      } catch {}
+      return !prevState;
     });
+  }, [setPrivacyMode]);
 
-  }
+  const toggleDashboardCells = useCallback(() => {
+    setDashboardCells((prevState) => !prevState);
+    //TODO: replace with persistence/store
+    localStorage.setItem('header', enableDashboardCells);
+  }, [setDashboardCells]);
 
-  render() {
-    return (
-      <LayoutContext.Provider
-        value={{
-          ...this.state,
-          onToggleEstimatedEarningsTab: this.setEstimatedEarningsTab,
-          onToggleParallelAssetsTab: this.setParallelAssetsTab,
-          onToggleChangeFontSize: this.setFontSize,
-          onTogglePrivacyMode: this.setPrivacyMode
-        }}
-      >
-        {this.props.children}
-      </LayoutContext.Provider>
-    );
-  }
+  const toggleNotableNodesTab = useCallback(() => {
+    setNotableNodesTab((prevState) => !prevState);
+    //TODO: replace with persistence/store
+    localStorage.setItem('notableNodes', enableNotableNodesTab);
+  }, [setNotableNodesTab]);
+
+  return (
+    <LayoutContext.Provider
+      value={useMemo(
+        () => ({
+          enableEstimatedEarningsTab,
+          enableParallelAssetsTab,
+          normalFontSize,
+          enablePrivacyMode,
+          enableDashboardCells,
+          enableNotableNodesTab,
+          onToggleEstimatedEarningsTab: toggleEstimatedEarningsTab,
+          onToggleParallelAssetsTab: toggleParallelAssetsTab,
+          onToggleChangeFontSize: toggleFontSize,
+          onTogglePrivacyMode: togglePrivacyMode,
+          onToggleDashboardCells: toggleDashboardCells,
+          onToggleNotableNodesTab: toggleNotableNodesTab
+        }),
+        [
+          enableEstimatedEarningsTab,
+          enableParallelAssetsTab,
+          normalFontSize,
+          enablePrivacyMode,
+          enableDashboardCells,
+          enableNotableNodesTab,
+          toggleEstimatedEarningsTab,
+          toggleParallelAssetsTab,
+          toggleFontSize,
+          togglePrivacyMode,
+          toggleDashboardCells,
+          toggleNotableNodesTab
+        ]
+      )}
+    >
+      {props.children}
+    </LayoutContext.Provider>
+  );
 }
 
 export default LayoutConfigurationProvider;

@@ -139,60 +139,72 @@ export class PayoutTimer extends React.Component {
     const LogoComp = tMap.logo;
 
     return (
-      <div className='timer'>
-        <div className='timer-header'>
-          <div className='title'>Next Payout</div>
-          <LayoutContext.Consumer>
-            {({ enablePrivacyMode }) => (
-              <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
-                <strong>Node IP:&nbsp;</strong>
-                {nodeIp ? (
-                  <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
-                    {!enablePrivacyMode ? nodeIp : hide_sensitive_number(nodeIp)}
-                  </a>
+      <LayoutContext.Consumer>
+        {({ enablePrivacyMode, normalFontSize }) => {
+          const suffixClassName = normalFontSize ? '' : '-small';
+          const iconSize = normalFontSize ? '28px' : '19px';
+
+          return (
+            <>
+              <div className='timer'>
+                <div className='timer-header'>
+                  <div className={`title${suffixClassName}`}>Next Payout</div>
+
+                  <div className={'timer-node-ip adp-text-muted' + (hidden ? ' d-none' : '')}>
+                    <strong>Node IP:&nbsp;</strong>
+                    {nodeIp ? (
+                      <a target='_blank' href={`http://${nodeIpDef.host}:${nodeIpDef.active_port_os}`}>
+                        {!enablePrivacyMode ? nodeIp : hide_sensitive_number(nodeIp)}
+                      </a>
+                    ) : (
+                      <i> -Unknown- </i>
+                    )}
+                  </div>
+                </div>
+                {dataLoading ? (
+                  <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />
                 ) : (
-                  <i> -Unknown- </i>
+                  <div className='timer-blocks'>
+                    <div className={'timer-node-logo' + (hidden ? ' d-none' : '')}>
+                      <div className={'pyt-i-wrap dash-cell__nodes-' + tMap.styleSet}>
+                        <IconContext.Provider value={{ size: iconSize, color: 'currentColor' }}>
+                          {LogoComp && <LogoComp />}
+                        </IconContext.Provider>
+                      </div>
+                      <span className='pyt-node-tier'>{tMap.name}</span>
+                    </div>
+                    <div className={`timer-block${suffixClassName}`}>
+                      <span className='adp-text-normal timer-number'>
+                        {pad_start(hidden ? 0 : this.state.restTime.days)}
+                      </span>
+                      <span className='adp-text-normal timer-info'>Days</span>
+                    </div>
+                    <div className='v-rule'> </div>
+                    <div className={`timer-block${suffixClassName}`}>
+                      <span className='adp-text-normal timer-number'>
+                        {pad_start(hidden ? 0 : this.state.restTime.hours)}
+                      </span>
+                      <span className='adp-text-normal timer-info'>Hours</span>
+                    </div>
+                    <div className='v-rule'> </div>
+                    <div className={`timer-block${suffixClassName}`}>
+                      <span className='adp-text-normal timer-number'>
+                        {pad_start(hidden ? 0 : this.state.restTime.minutes)}
+                      </span>
+                      <span className='adp-text-normal timer-info'>Minutes</span>
+                    </div>
+                    <div className='v-rule'> </div>
+                    <div className={`timer-block${suffixClassName}`}>
+                      <span className='adp-text-normal timer-number'>{pad_start(hidden ? 0 : this.state.seconds)}</span>
+                      <span className='adp-text-normal timer-info'>Seconds</span>
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
-          </LayoutContext.Consumer>
-        </div>
-        {dataLoading ? (
-          <Spinner intent='primary' size={90} style={{ margin: 'auto auto 10px auto' }} />
-        ) : (
-          <div className='timer-blocks'>
-            <div className={'timer-node-logo' + (hidden ? ' d-none' : '')}>
-              <div className={'pyt-i-wrap dash-cell__nodes-' + tMap.styleSet}>
-                <IconContext.Provider value={{ size: '19px', color: 'currentColor' }}>
-                  {LogoComp && <LogoComp />}
-                </IconContext.Provider>
-              </div>
-              <span className='pyt-node-tier'>{tMap.name}</span>
-            </div>
-            <div className='timer-block'>
-              <span className='adp-text-normal timer-number'>{pad_start(hidden ? 0 : this.state.restTime.days)}</span>
-              <span className='adp-text-normal timer-info'>Days</span>
-            </div>
-            <div className='v-rule'> </div>
-            <div className='timer-block'>
-              <span className='adp-text-normal timer-number'>{pad_start(hidden ? 0 : this.state.restTime.hours)}</span>
-              <span className='adp-text-normal timer-info'>Hours</span>
-            </div>
-            <div className='v-rule'> </div>
-            <div className='timer-block'>
-              <span className='adp-text-normal timer-number'>
-                {pad_start(hidden ? 0 : this.state.restTime.minutes)}
-              </span>
-              <span className='adp-text-normal timer-info'>Minutes</span>
-            </div>
-            <div className='v-rule'> </div>
-            <div className='timer-block'>
-              <span className='adp-text-normal timer-number'>{pad_start(hidden ? 0 : this.state.seconds)}</span>
-              <span className='adp-text-normal timer-info'>Seconds</span>
-            </div>
-          </div>
-        )}
-      </div>
+            </>
+          );
+        }}
+      </LayoutContext.Consumer>
     );
   }
 }
