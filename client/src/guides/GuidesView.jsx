@@ -103,8 +103,8 @@ class AppGuidesView extends React.Component {
             <h4 className='mt-4 mb-2 section-title'>Video Guides</h4>
             <p className='fs-6 mt-3 mb-3 app-text-muted'>
               Setting up a FluxNode is easy, you just need to be comfortable with working on the command line. There are
-              multiple ways to setup a FluxNode and here we share the most used ones for beginners. Below are a series of
-              video guides which walk you through the setup process bit by bit.
+              multiple ways to setup a FluxNode and here we share the most used ones for beginners. Below are a series
+              of video guides which walk you through the setup process bit by bit.
             </p>
             <div className='container-fluid mt-4'>
               <div className='row'>{this.renderSetupVideos()}</div>
@@ -265,23 +265,23 @@ class AppGuidesView extends React.Component {
             </p>
           </Accordion.Body>
         </Accordion.Item>
+        <Accordion.Item eventKey='12'>
+          <Accordion.Header>{this.renderBullet(13)} What is FLUX-TOKEN?</Accordion.Header>
+          <Accordion.Body>
+            <p>
+              They are claimable in the Fusion app inside Zelcore. Select <strong>Parallel Mining Claim</strong> from
+              the three dots top right. You will only see a claimable amount if your Flux-Token amount is higher than
+              the fees required to claim. To see your Parallel Asset balance return to the home screen and specify your
+              wallet address and hit the search button.
+            </p>
+          </Accordion.Body>
+        </Accordion.Item>
       </Accordion>
     );
 
     const rightPane = (
       <Accordion className={PANE_CLASSNAME}>
         <Accordion.Item eventKey='1'>
-          <Accordion.Header>{this.renderBullet(13)} What is FLUX-TOKEN?</Accordion.Header>
-          <Accordion.Body>
-            <p>
-              They are claimable in the Fusion app inside Zelcore. Select <strong>Parallel Mining Claim</strong> from
-              the three dots top right. You will only see a claimable amount if your Flux-Token amount is higher than
-              the fees required to claim. To see your Parallel Asset balance return to the home screen and specify
-              your wallet address and hit the search button.
-            </p>
-          </Accordion.Body>
-        </Accordion.Item>
-        <Accordion.Item eventKey='2'>
           <Accordion.Header>{this.renderBullet(14)} How to add your KDA address to your node?</Accordion.Header>
           <Accordion.Body>
             <p>
@@ -292,7 +292,7 @@ class AppGuidesView extends React.Component {
             </p>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='3'>
+        <Accordion.Item eventKey='2'>
           <Accordion.Header>
             {this.renderBullet(15)} Getting an error that states "Not possible to get computer hardware specifications"
           </Accordion.Header>
@@ -320,7 +320,7 @@ class AppGuidesView extends React.Component {
             <p>You will see the flux username you created somewhere in the list when you run the command.</p>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='4'>
+        <Accordion.Item eventKey='3'>
           <Accordion.Header>
             {this.renderBullet(16)} Getting error that states "Failed: Not possible to get speed test"
           </Accordion.Header>
@@ -340,7 +340,7 @@ fluxbench-cli restartnodebenchmarks
             {CodeBlock.Full(`fluxbench-cli getbenchmarks`)}
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='5'>
+        <Accordion.Item eventKey='4'>
           <Accordion.Header>{this.renderBullet(17)} How to stop your node?</Accordion.Header>
           <Accordion.Body>
             <p>
@@ -350,7 +350,7 @@ fluxbench-cli restartnodebenchmarks
             </p>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='6'>
+        <Accordion.Item eventKey='5'>
           <Accordion.Header>{this.renderBullet(18)} Commands to Manage Flux Daemon</Accordion.Header>
           <Accordion.Body>
             <ul className='mn-list'>
@@ -369,7 +369,7 @@ fluxbench-cli restartnodebenchmarks
             </ul>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='7'>
+        <Accordion.Item eventKey='6'>
           <Accordion.Header>{this.renderBullet(19)} Commands to Manage Benchmarks</Accordion.Header>
           <Accordion.Body>
             <ul className='mn-list'>
@@ -396,7 +396,7 @@ fluxbench-cli restartnodebenchmarks
             </ul>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='8'>
+        <Accordion.Item eventKey='7'>
           <Accordion.Header>{this.renderBullet(20)} Commands to Manage Flux</Accordion.Header>
           <Accordion.Body>
             <ul className='mn-list'>
@@ -419,7 +419,7 @@ fluxbench-cli restartnodebenchmarks
             </ul>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='9'>
+        <Accordion.Item eventKey='8'>
           <Accordion.Header>{this.renderBullet(21)} Commands to Manage the Watchdog</Accordion.Header>
           <Accordion.Body>
             <ul className='mn-list'>
@@ -446,7 +446,7 @@ fluxbench-cli restartnodebenchmarks
             </ul>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='10'>
+        <Accordion.Item eventKey='9'>
           <Accordion.Header>{this.renderBullet(22)} How to restart MangoDB</Accordion.Header>
           <Accordion.Body>
             <p>Run the following sequence of commands</p>
@@ -461,7 +461,7 @@ sudo systemctl restart zelcash
             </p>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='11'>
+        <Accordion.Item eventKey='10'>
           <Accordion.Header>{this.renderBullet(23)} Slow Disk Write Speed (DWS) on a Raspberry pi</Accordion.Header>
           <Accordion.Body>
             <p>
@@ -470,17 +470,25 @@ sudo systemctl restart zelcash
             </p>
           </Accordion.Body>
         </Accordion.Item>
-        <Accordion.Item eventKey='12'>
+        <Accordion.Item eventKey='11'>
           <Accordion.Header>{this.renderBullet(24)} What is a Maintenance Window?</Accordion.Header>
           <Accordion.Body>
             <p>
-              A Flux node is confirmed on the Flux network every 120 to 160 blocks, thus 240 to 320 minutes.
-              Maintenance is allowed between confirmation to perform patching, updates or any needed
-              maintenance on your node without losing your place in the queue.
+              A Flux node is confirmed on the Flux network every 120 to 160 blocks, thus 240 to 320 minutes. Maintenance
+              is allowed between confirmation to perform patching, updates or any needed maintenance on your node
+              without losing your place in the queue.
             </p>
           </Accordion.Body>
         </Accordion.Item>
-        
+        <Accordion.Item eventKey='12'>
+          <Accordion.Header>{this.renderBullet(25)} Troubleshoot with Fluxnode viewer created by Car </Accordion.Header>
+          <Accordion.Body>
+            {CodeBlock.Inline(`
+bash -i <(curl -s 
+https://raw.githubusercontent.com/JKTUNING/Flux-Node-Tools/main/flux_node_viewer.sh)
+`)}
+          </Accordion.Body>
+        </Accordion.Item>
       </Accordion>
     );
 
