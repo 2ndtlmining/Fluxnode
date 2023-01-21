@@ -4,6 +4,7 @@ import { AppToaster } from 'main/AppToaster';
 import { Intent, Spinner } from '@blueprintjs/core';
 import { getDemoWallet } from '../main/apidata';
 import FailedToLoadDemo from './FailedToLoadDemo';
+import { setGAEvent, setGAPageView } from 'g-analytic';
 
 class Demo extends React.Component {
   constructor(props) {
@@ -22,6 +23,10 @@ class Demo extends React.Component {
         demoWallet: demoWalletRes,
         isAddressLoading: false
       });
+    }
+    if (window) {
+      setGAEvent({ category: 'Demo page', action: 'visit' });
+      setGAPageView(window.location.pathname);
     }
   }
 
@@ -46,7 +51,7 @@ class Demo extends React.Component {
     );
   }
 
-  render() {
+  render() {    
     return (
       <>
         {this.state.isAddressLoading ? (
