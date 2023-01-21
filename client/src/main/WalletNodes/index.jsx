@@ -23,6 +23,7 @@ import {
   fetchMostHostedLocalApps
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
+import { setGAEvent } from 'g-analytic';
 
 function NodeTierView(tier) {
   if (tier == 'CUMULUS')
@@ -323,7 +324,7 @@ function _failed_specs(node) {
     failed.cores = _fs_compare(node, reqObj, 'cores');
     failed.threads = _fs_compare(node, reqObj, 'threads');
     // Allow a difference of 2.5 GB since RAM sizes are mosty a few gigs short when reported
-    failed.ram = !node.ram || !reqObj.ram || reqObj.ram - node.ram > 2.5;
+    failed.ram = !node.ram || !reqObj.ram || reqObj.ram - node.ram > 3.0;
     failed.dws = _fs_compare(node, reqObj, 'dws');
     failed.eps = _fs_compare(node, reqObj, 'eps');
 
@@ -568,6 +569,7 @@ export class WalletNodes extends React.Component {
 
   handleRefreshClick = () => {
     this.props.onRefreshRequest();
+    setGAEvent({ category: 'Refresh Button', action: 'Click refresh button'});
   };
 
   renderNodeOverview(loadingHealth, loadingNodeList) {

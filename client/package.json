@@ -1,6 +1,6 @@
 {
   "name": "flux-app",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "homepage": ".",
   "scripts": {
@@ -26,6 +26,7 @@
     "react-bootstrap": "^2.4.0",
     "react-countup": "^6.4.0",
     "react-dom": "^18.2.0",
+    "react-ga4": "^2.0.0",
     "react-grid-system": "^8.1.5",
     "react-helmet": "^6.1.0",
     "react-icons": "^4.4.0",

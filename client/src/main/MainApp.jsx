@@ -35,6 +35,7 @@ import { appStore, StoreKeys } from 'persistance/store';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs, hide_sensitive_string } from 'utils';
 import { FaMedal } from 'react-icons/fa';
+import { setGAEvent } from 'g-analytic';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
@@ -276,7 +277,10 @@ class MainApp extends React.Component {
     this.setState({ isPALoading: false, walletPASummary: summary });
   }
 
-  handleButtonClick = () => this.onProcessAddress();
+  handleButtonClick = () => { 
+    this.onProcessAddress();
+    setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button'});
+  }
 
   handleAddrKeyPress = (e) => {
     if (e.key == 'Enter') {

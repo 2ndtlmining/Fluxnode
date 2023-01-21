@@ -108,7 +108,7 @@ async function query_transactions_all_pages(walletAddress) {
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
   const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     array.map(async (page) => {
       const result = await fetch(url + `&pageNum=${page}`);
       return result.json();
@@ -116,7 +116,7 @@ async function query_transactions_all_pages(walletAddress) {
   );
   const transactions = [firstPage, ...results].reduce((prev, current) => prev.concat(current.txs), []);
 
-  return transactions.filter(tx => tx.vout.some(v => v.scriptPubKey.addresses[0] === 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG')).length;
+  return transactions.filter(tx => tx.vout.some(v => v.scriptPubKey.addresses[0] === window.gContent.ADDRESS_FLUX)).length;
 }
 
 export async function fetch_global_stats(walletAddress = null) {
@@ -295,7 +295,7 @@ export async function getWalletNodes(walletAddress) {
   return wNodes;
 }
 
-export function transformRawNode(node) {
+export function x(node) {
   let fluxNode = empty_flux_node();
   const ipRaw = node['ip'];
   if (ipRaw) {

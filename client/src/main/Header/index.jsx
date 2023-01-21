@@ -197,7 +197,7 @@ export function DashboardCells({ gstore: gs }) {
             {...tooltipProps}
             name='Wallet USD'
             value={gs.wallet_amount_flux * gs.flux_price_usd}
-            icon={walletCellStyles.icon({ iconSize })}
+            icon={walletCellStyles.icon({ size: iconSize })}
             iconWrapClassName={walletCellStyles.iconWrapperClassName(suffixClassName)}
             small={!normalFontSize}
             prefix='$'
