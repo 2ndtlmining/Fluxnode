@@ -19,7 +19,6 @@ import {
 } from 'content/index';
 
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
-// const API_FLUX_NODES_ALL_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 
 const API_NODE_BENCHMARK_INFO_ENDPOINT = '/benchmark/getinfo';
@@ -304,11 +303,8 @@ export async function getWalletNodes(walletAddress) {
   const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
   const data = await listResponse.json();
   const wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
-  // const listResponse = walletAddress && (await fetch(API_FLUX_NODES_ALL_URL + walletAddress));
-  // const wNodes = listResponse ? await listResponse.json() : [];
 
   return wNodes;
-  // return wNodes.data;
 }
 
 export function transformRawNode(node) {
