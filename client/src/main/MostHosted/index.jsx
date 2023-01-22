@@ -2,7 +2,7 @@ import React from 'react';
 
 import './index.scss';
 
-import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
+import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
 import { Spinner } from '@blueprintjs/core';
@@ -26,6 +26,11 @@ const tierMapping = {
     styleSet: 'stratus',
     name: 'Stratus',
     logo: FiPackage
+  },
+  FRACTUS: {
+    styleSet: 'fractus',
+    name: 'Fractus',
+    logo: FiHardDrive
   }
 };
 

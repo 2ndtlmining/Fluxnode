@@ -4,7 +4,7 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 
-import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
+import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
 import { format_seconds, hide_sensitive_number } from 'utils';
@@ -27,6 +27,11 @@ const tierMapping = {
     styleSet: 'stratus',
     name: 'Stratus',
     logo: FiPackage
+  },
+  FRACTUS: {
+    styleSet: 'fractus',
+    name: 'Fractus',
+    logo: FiHardDrive
   }
 };
 

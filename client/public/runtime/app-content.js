@@ -19,24 +19,25 @@ window.gContent.ADDRESS_BTC = '1MjMuVLEaAd8HJd3mh94L8qQe4cE6tH87V';
 /**
  * Hardware requirements
  *
- * Here C is requirement value for CUMULUS tier, N for NIMBUS and S for STRATUS.
+ * Here C is requirement value for CUMULUS tier, N for NIMBUS, S for STRATUS and F for FRACTUS.
  * */
 
 window.gContent.REQUIERMENTS = {
-  'cores':          { C:   2,  N:   4,  S:    8 },
-  'threads':        { C:   4,  N:   8,  S:   16 },
-  'ram':            { C:   8,  N:  32,  S:   64 },
-  'size':           { C: 220,  N: 440,  S:  880 },
-  'dws':            { C: 180,  N: 180,  S:  400 },
-  'eps':            { C: 240,  N: 640,  S: 1520 },
-  'net_down_speed': { C:  25,  N:  50,  S:  100 },
-  'net_up_speed':   { C:  25,  N:  50,  S:  100 },
+  'cores':          { C:   2,  N:   4,  S:    8, F:     2 },
+  'threads':        { C:   4,  N:   8,  S:   16, F:     4 },
+  'ram':            { C:   8,  N:  32,  S:   64, F:     8 },
+  'size':           { C: 220,  N: 440,  S:  880, F:  9250 },
+  'dws':            { C: 180,  N: 180,  S:  400, F:    80 },
+  'eps':            { C: 240,  N: 640,  S: 1520, F:   240 },
+  'net_down_speed': { C:  25,  N:  50,  S:  100, F:   100 },
+  'net_up_speed':   { C:  25,  N:  50,  S:  100, F:   100 },
 };
 
 
 window.gContent.CC_COLLATERAL_CUMULUS = 1000;
 window.gContent.CC_COLLATERAL_NIMBUS = 12500;
 window.gContent.CC_COLLATERAL_STRATUS = 40000;
+window.gContent.CC_COLLATERAL_FRACTUS = 0;
 
 }
 
@@ -55,6 +56,7 @@ window.gContent.CC_BLOCK_REWARD = 75;
 window.gContent.CC_FLUX_REWARD_CUMULUS = 7.5;
 window.gContent.CC_FLUX_REWARD_NIMBUS = 12.5;
 window.gContent.CC_FLUX_REWARD_STRATUS = 30.0;
+window.gContent.CC_FLUX_REWARD_FRACTUS = 7.5;
 
 /* ========================================== */
 /**

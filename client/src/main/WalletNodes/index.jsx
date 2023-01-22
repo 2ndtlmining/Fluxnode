@@ -7,7 +7,7 @@ import { Classes as PClasses, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 import { sleep, format_seconds, hide_sensitive_number } from 'utils';
 
 import { Projection } from './Projection';
-import { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
+import { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from 'content/index';
 
 import { fluxos_version_desc, fluxos_version_string, fv_compare } from 'main/flux_version';
 import {
@@ -25,13 +25,18 @@ import {
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
 
-function NodeTierView(tier) {
-  if (tier == 'CUMULUS')
-    return (
+function NodeTierView({ tier, thunder }) {
+  if (tier == 'CUMULUS') {
+    return thunder ? (
+      <Tag large minimal intent='success'>
+        FRACTUS
+      </Tag>
+    ) : (
       <Tag large minimal intent='primary'>
         CUMULUS
       </Tag>
     );
+  }
 
   if (tier == 'NIMBUS')
     return (
@@ -44,6 +49,13 @@ function NodeTierView(tier) {
     return (
       <Tag large minimal intent='danger'>
         STRATUS
+      </Tag>
+    );
+
+  if (tier == 'FRACTUS')
+    return (
+      <Tag large minimal intent='success'>
+        FRACTUS
       </Tag>
     );
 
@@ -159,6 +171,13 @@ const InlineRequirementsView = (name, suffix) => (
       <th className='rq-name'>Stratus</th>
       <td>
         {getreq__stratus(name)}
+        {suffix}
+      </td>
+    </tr>
+    <tr>
+      <th className='rq-name'>Fractus</th>
+      <td>
+        {getreq__fractus(name)}
         {suffix}
       </td>
     </tr>
@@ -367,7 +386,7 @@ function _CreateNodeBuilder(gstore) {
             </td>
           )}
         </LayoutContext.Consumer>
-        <td>{NodeTierView(node.tier)}</td>
+        <td>{NodeTierView(node)}</td>
         <td>{node.rank}</td>
         <td>{node.last_reward}</td>
         <td>{node.next_reward}</td>
@@ -529,10 +548,23 @@ export class WalletNodes extends React.Component {
 
       /* Highest rank is the once which has the lowest value */
       if (!highestRankedNode || pNode.rank < highestRankedNode.rank) highestRankedNode = pNode;
+    }
 
-      switch (pNode.tier) {
+    if (highestRankedNode != null) onCalculateHighestRankNodes(highestRankedNode);
+
+    let nodes = await this._loadNodes(partialNodes);
+    this.setState({ loadingNodeList: false, nodes });
+
+    let bestUptimeNode = null;
+
+    let mostHostedNode = null;
+
+    for (const node of nodes) {
+      const { tier, thunder } = node;
+      switch (tier) {
         case 'CUMULUS':
-          health.cumulus.node_count++;
+          // Fractus - Thunder: True | Cumulus - Thunder: False
+          thunder ? health.fractus.node_count++ : health.cumulus.node_count++;
           break;
         case 'NIMBUS':
           health.nimbus.node_count++;
@@ -544,32 +576,21 @@ export class WalletNodes extends React.Component {
         default:
           break;
       }
-    }
-
-    if (highestRankedNode != null) onCalculateHighestRankNodes(highestRankedNode);
-
-    health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
-    fill_health(health, gstore);
-    this.setState({ loadingHealth: false, health });
-
-    let nodes = await this._loadNodes(partialNodes);
-    this.setState({ loadingNodeList: false, nodes });
-
-    let bestUptimeNode = null;
-
-    let mostHostedNode = null;
-
-    for (const node of nodes) {
       if (bestUptimeNode === null || node.uptime > bestUptimeNode.uptime) bestUptimeNode = node;
       if (mostHostedNode === null || node.appCount > mostHostedNode.appCount) mostHostedNode = node;
     }
+
+    health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
+
+    fill_health(health, gstore);
+    this.setState({ loadingHealth: false, health });
 
     onCalculateBestUptimeAndMostHostedNodes({ bestUptimeNode, mostHostedNode });
   }
 
   handleRefreshClick = () => {
     this.props.onRefreshRequest();
-    setGAEvent({ category: 'Refresh Button', action: 'Click refresh button'});
+    setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
   renderNodeOverview(loadingHealth, loadingNodeList) {

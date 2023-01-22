@@ -3,6 +3,7 @@
 $information-cell-circle-size: 27px;
 
 .information-cell-layout {
+    position: relative;
     background-color: #ffffff;
     @include rule-mode-dark() {
         background-color: #181a1b;
@@ -94,6 +95,18 @@ $information-cell-circle-size: 27px;
             @include rule-mode-dark() {
                 color: rgb(167, 159, 147);
             }
+        }
+    }
+
+    .icl-toggle-btn {
+        border: none;
+        outline: 0;
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background-color: transparent;
+        &:hover {
+            opacity: 0.5;
         }
     }
 }
