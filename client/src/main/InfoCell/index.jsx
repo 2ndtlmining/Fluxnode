@@ -3,6 +3,7 @@ import './index.scss';
 import { IconContext } from 'react-icons';
 import CountUp from 'react-countup';
 import { format_amount } from 'utils';
+import { FaExchangeAlt } from 'react-icons/fa';
 
 export function InfoCell({
   name,
@@ -17,6 +18,7 @@ export function InfoCell({
   iconWrapClassName,
   isPrivacy,
   prefix,
+  toggleBtn,
   ...otherProps
 }) {
   const style = {};
@@ -43,6 +45,7 @@ export function InfoCell({
         </p>
         <p className='icl-c-name'>{name}</p>
       </div>
+      {toggleBtn && <button className='icl-toggle-btn' onClick={toggleBtn}><FaExchangeAlt /></button>}
     </div>
   );
 }

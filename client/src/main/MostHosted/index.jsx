@@ -2,7 +2,7 @@ import React from 'react';
 
 import './index.scss';
 
-import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
+import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
 import { Spinner } from '@blueprintjs/core';
@@ -26,6 +26,11 @@ const tierMapping = {
     styleSet: 'stratus',
     name: 'Stratus',
     logo: FiPackage
+  },
+  FRACTUS: {
+    styleSet: 'fractus',
+    name: 'Fractus',
+    logo: FiHardDrive
   }
 };
 
@@ -63,14 +68,14 @@ export class MostHosted extends React.Component {
       dataLoading: false,
       nodeIpDef: node.ip_full,
       nodeIp: node.ip_display,
-      nodeTier: node.tier
+      nodeTier: node.thunder ? 'FRACTUS' : node.tier
     });
   }
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps } = this.state;
+    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps, nodeTier } = this.state;
 
-    const tMap = tierMapping[this.state.nodeTier] || {};
+    const tMap = tierMapping[nodeTier] || {};
     const LogoComp = tMap.logo;
 
     return (

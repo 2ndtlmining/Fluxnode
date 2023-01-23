@@ -264,10 +264,8 @@ class MainApp extends React.Component {
     walletView.processAddress(
       address,
       gstore,
-      (highestRankedNode) => {
+      ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
         highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
-      },
-      ({ bestUptimeNode, mostHostedNode }) => {
         bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
         mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
       }

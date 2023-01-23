@@ -2,7 +2,7 @@ import React from 'react';
 
 import './index.scss';
 
-import { FiZap, FiCpu, FiPackage } from 'react-icons/fi';
+import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
 
 import * as utils from 'utils';
@@ -27,6 +27,11 @@ const tierMapping = {
     styleSet: 'stratus',
     name: 'Stratus',
     logo: FiPackage
+  },
+  FRACTUS: {
+    styleSet: 'fractus',
+    name: 'Fractus',
+    logo: FiHardDrive
   }
 };
 
@@ -86,6 +91,7 @@ export class PayoutTimer extends React.Component {
 
     let _this = this;
     const { days, hours, minutes } = split_minutes(node.rank * 2);
+    console.log("node", node, node.thunder);
     this.setState(
       {
         restTime: { days, hours, minutes },
@@ -94,7 +100,7 @@ export class PayoutTimer extends React.Component {
         dataLoading: false,
         nodeIpDef: node.ip_full,
         nodeIp: node.ip_display,
-        nodeTier: node.tier
+        nodeTier: node.thunder ? 'FRACTUS' : node.tier
       },
       () => {
         _this.resumeAndShow();
@@ -133,10 +139,11 @@ export class PayoutTimer extends React.Component {
   };
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, dataLoading } = this.state;
+    const { hidden, nodeIp, nodeIpDef, dataLoading, nodeTier } = this.state;
 
-    const tMap = tierMapping[this.state.nodeTier] || {};
+    const tMap = tierMapping[nodeTier] || {};
     const LogoComp = tMap.logo;
+    console.log(nodeTier, LogoComp);
 
     return (
       <LayoutContext.Consumer>
