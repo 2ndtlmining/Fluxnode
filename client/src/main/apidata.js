@@ -113,12 +113,13 @@ async function query_transactions_all_pages(walletAddress) {
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
   const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-  const results = await Promise.allSettled(array.map((page) => fetch(url + `&pageNum=${page}`)));
-  const json = await Promise.allSettled(results.map((result) => result.json()));
+  const results = await Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)));
+
+  const json = await Promise.all(results.map((result) => result.json()));
   return [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
 }
 
-export async function fetch_total_donations(walletAddress) {
+async function fetch_total_donations(walletAddress) {
   const txs = await query_transactions_all_pages(walletAddress);
 
   return txs.filter((tx) => tx.vout.some((v) => v.scriptPubKey.addresses[0] === window.gContent.ADDRESS_FLUX)).length;
@@ -199,7 +200,7 @@ export async function fetch_global_stats(walletAddress = null) {
 
   if (resTotalDonations.status == 'fulfilled') {
     const res = resTotalDonations.value;
-    store.total_donations = res;
+    store.total_donations = `res`;
   }
 
   fill_rewards(store);

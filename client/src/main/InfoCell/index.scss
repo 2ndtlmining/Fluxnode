@@ -105,8 +105,12 @@ $information-cell-circle-size: 27px;
         top: 5px;
         right: 5px;
         background-color: transparent;
+        color: black;
         &:hover {
             opacity: 0.5;
+        }
+        @include rule-mode-dark() {
+            color: white;
         }
     }
 }

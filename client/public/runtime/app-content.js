@@ -22,7 +22,7 @@ window.gContent.ADDRESS_BTC = '1MjMuVLEaAd8HJd3mh94L8qQe4cE6tH87V';
  * Here C is requirement value for CUMULUS tier, N for NIMBUS, S for STRATUS and F for FRACTUS.
  * */
 
-window.gContent.REQUIERMENTS = {
+window.gContent.REQUIREMENTS = {
   'cores':          { C:   2,  N:   4,  S:    8, F:     2 },
   'threads':        { C:   4,  N:   8,  S:   16, F:     4 },
   'ram':            { C:   8,  N:  32,  S:   64, F:     8 },
@@ -37,7 +37,7 @@ window.gContent.REQUIERMENTS = {
 window.gContent.CC_COLLATERAL_CUMULUS = 1000;
 window.gContent.CC_COLLATERAL_NIMBUS = 12500;
 window.gContent.CC_COLLATERAL_STRATUS = 40000;
-window.gContent.CC_COLLATERAL_FRACTUS = 0;
+window.gContent.CC_COLLATERAL_FRACTUS = 1000;
 
 }
 

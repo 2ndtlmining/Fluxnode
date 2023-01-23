@@ -68,14 +68,14 @@ export class MostHosted extends React.Component {
       dataLoading: false,
       nodeIpDef: node.ip_full,
       nodeIp: node.ip_display,
-      nodeTier: node.tier
+      nodeTier: node.thunder ? 'FRACTUS' : node.tier
     });
   }
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps } = this.state;
+    const { hidden, nodeIp, nodeIpDef, appCount, dataLoading, installedApps, nodeTier } = this.state;
 
-    const tMap = tierMapping[this.state.nodeTier] || {};
+    const tMap = tierMapping[nodeTier] || {};
     const LogoComp = tMap.logo;
 
     return (

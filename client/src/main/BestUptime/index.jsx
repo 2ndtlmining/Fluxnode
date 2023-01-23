@@ -67,14 +67,14 @@ export class BestUptime extends React.Component {
       hidden: false,
       nodeIpDef: node.ip_full,
       nodeIp: node.ip_display,
-      nodeTier: node.tier
+      nodeTier: node.tier ? 'FRACTUS' : node.tier
     });
   }
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, bestUptime, dataLoading } = this.state;
+    const { hidden, nodeIp, nodeIpDef, bestUptime, dataLoading, nodeTier } = this.state;
 
-    const tMap = tierMapping[this.state.nodeTier] || {};
+    const tMap = tierMapping[nodeTier] || {};
     const LogoComp = tMap.logo;
 
     const [uptime, uptimeUnit] = format_seconds(bestUptime).split(' ');

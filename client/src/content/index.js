@@ -12,7 +12,7 @@ export const ADDRESS_BTC = window.gContent.ADDRESS_BTC;
 // prettier-ignore
 
 {
-const _reqsObj = window.gContent.REQUIERMENTS;
+const _reqsObj = window.gContent.REQUIREMENTS;
 r.defreq_wrap('cores',          _reqsObj['cores']);
 r.defreq_wrap('threads',        _reqsObj['threads']);
 r.defreq_wrap('ram',            _reqsObj['ram']);

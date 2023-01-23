@@ -91,6 +91,7 @@ export class PayoutTimer extends React.Component {
 
     let _this = this;
     const { days, hours, minutes } = split_minutes(node.rank * 2);
+    console.log("node", node, node.thunder);
     this.setState(
       {
         restTime: { days, hours, minutes },
@@ -138,10 +139,11 @@ export class PayoutTimer extends React.Component {
   };
 
   render() {
-    const { hidden, nodeIp, nodeIpDef, dataLoading } = this.state;
+    const { hidden, nodeIp, nodeIpDef, dataLoading, nodeTier } = this.state;
 
-    const tMap = tierMapping[this.state.nodeTier] || {};
+    const tMap = tierMapping[nodeTier] || {};
     const LogoComp = tMap.logo;
+    console.log(nodeTier, LogoComp);
 
     return (
       <LayoutContext.Consumer>
