@@ -74,6 +74,7 @@ pub mod api_v1 {
                 get(self::node_single::handler),
             )
             .route("/demo", get(self::node_demo::handler))
+            .route("/bench_version", get(self::bench_version::handler))
     }
 
     async fn root() -> String {
@@ -115,6 +116,45 @@ pub mod api_v1 {
             let result = match services::demo::get_winner_address().await {
                 Ok(response) => DemoResultBody::make_demo(response),
                 Err(err) => DemoResultBody::make_err(err.to_string()),
+            };
+            (StatusCode::OK, Json(result))
+        }
+    }
+
+    pub mod bench_version {
+        use super::*;
+
+        // Endpoint's response returned back
+        #[derive(Debug, Serialize)]
+        pub struct BenchVersionResultBody {
+            success: bool,
+            version: Option<String>,
+            error: Option<String>,
+        }
+
+        impl BenchVersionResultBody {
+            // Body when the request failed
+            fn make_err(error: String) -> Self {
+                Self {
+                    success: false,
+                    version: None,
+                    error: Some(error),
+                }
+            }
+            // Body when the request succeeded
+            fn make_bench_version(version: String) -> Self {
+                Self {
+                    success: true,
+                    version: Some(version),
+                    error: None,
+                }
+            }
+        }
+
+        pub async fn handler() -> impl IntoResponse {
+            let result = match services::bench_version::get_bench_version().await {
+                Ok(response) => BenchVersionResultBody::make_bench_version(response),
+                Err(err) => BenchVersionResultBody::make_err(err.to_string()),
             };
             (StatusCode::OK, Json(result))
         }

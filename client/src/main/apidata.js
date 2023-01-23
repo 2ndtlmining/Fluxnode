@@ -130,7 +130,7 @@ export async function fetch_global_stats(walletAddress = null) {
         : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
       fetch('https://api.runonflux.io/flux/version'),
-      fetch('https://api.runonflux.io/benchmark/getinfo'),
+      fetch(`${process.env.REACT_APP_FLUXNODE_INFO_API_URL}/api/v1/bench_version`),
       fetch('https://api.runonflux.io/daemon/getinfo'),
       fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
       query_transactions_all_pages(walletAddress)
@@ -168,8 +168,10 @@ export async function fetch_global_stats(walletAddress = null) {
 
   if (resBenchInfo.status == 'fulfilled') {
     const res = resBenchInfo.value;
-    const json = await res.json();
-    store.bench_latest_version = fluxos_version_desc_parse(json['data']['version']);
+    if (res.status === 200) {
+      const json = await res.json();
+      store.bench_latest_version = fluxos_version_desc_parse(json['version']);
+    }
   }
 
   if (resFluxInfo.status == 'fulfilled') {
@@ -188,7 +190,7 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = resTotalDonations.value;
     store.total_donations = res;
   }
-  
+
 
   fill_rewards(store);
   window.gstore = store;
@@ -400,7 +402,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch {}
+    } catch { }
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
