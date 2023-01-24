@@ -10,7 +10,7 @@ import { IconContext } from 'react-icons';
 import { format_seconds, hide_sensitive_number } from 'utils';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { LayoutContext } from 'contexts/LayoutContext';
-import CountUp from 'react-countup';
+import CountUp from 'components/CountUp';
 
 const tierMapping = {
   CUMULUS: {
@@ -67,7 +67,7 @@ export class BestUptime extends React.Component {
       hidden: false,
       nodeIpDef: node.ip_full,
       nodeIp: node.ip_display,
-      nodeTier: node.tier ? 'FRACTUS' : node.tier
+      nodeTier: node.thunder ? 'FRACTUS' : node.tier
     });
   }
 
