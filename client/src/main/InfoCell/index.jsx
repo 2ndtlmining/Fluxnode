@@ -1,9 +1,9 @@
 import React from 'react';
 import './index.scss';
 import { IconContext } from 'react-icons';
-import CountUp from 'react-countup';
 import { format_amount } from 'utils';
 import { FaExchangeAlt } from 'react-icons/fa';
+import CountUp from 'components/CountUp';
 
 export function InfoCell({
   name,
@@ -29,7 +29,7 @@ export function InfoCell({
 
   const isDecimal = !Number.isInteger(value);
 
-  const countupValue = (<CountUp end={value} separator=',' duration={2} decimals={isDecimal ? 2 : 0} prefix={prefix ?? ''} />);
+  const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal prefix={prefix ?? ''} />);
 
   return (
     <div {...otherProps} className={'information-cell-layout' + (!!className ? ' ' + className : '')} ref={elementRef}>

@@ -9,7 +9,7 @@ import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { hide_sensitive_number } from 'utils';
 import { LayoutContext } from 'contexts/LayoutContext';
-import CountUp from 'react-countup';
+import CountUp from 'components/CountUp';
 
 const tierMapping = {
   CUMULUS: {

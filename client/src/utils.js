@@ -118,7 +118,7 @@ export function format_amount(amount, enablePrivacyMode) {
 }
 
 function format_thousands_separator(amount) {
-  if (typeof amount !== 'number') {
+  if (Number.isNaN(amount)) {
     throw new Error('Invalid amount type');
   }
   return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });

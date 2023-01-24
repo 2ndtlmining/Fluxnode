@@ -11,7 +11,7 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 
 import { IconContext } from 'react-icons';
-import CountUp from 'react-countup';
+import CountUp from 'components/CountUp';
 
 const RenderedFluxIcon = (
   <FluxIcon width={21} height={21} viewBox='5 5 21.71 21.71' style={{ margin: '0 4px 0 6px' }} />
