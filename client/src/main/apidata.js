@@ -109,6 +109,9 @@ function fill_rewards(gstore) {
 }
 
 async function query_transactions_all_pages(walletAddress) {
+  if (!walletAddress) {
+    return Promise.reject(new Error('Empty address'));
+  }
   const url = 'https://explorer.runonflux.io/api/txs?address=' + walletAddress;
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
@@ -144,7 +147,7 @@ export async function fetch_global_stats(walletAddress = null) {
       : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
     fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     fetch('https://api.runonflux.io/flux/version'),
-    fetch('https://api.runonflux.io/benchmark/getinfo'),
+    fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
     fetch_total_donations(walletAddress)
@@ -182,8 +185,10 @@ export async function fetch_global_stats(walletAddress = null) {
 
   if (resBenchInfo.status == 'fulfilled') {
     const res = resBenchInfo.value;
-    const json = await res.json();
-    store.bench_latest_version = fluxos_version_desc_parse(json['data']['version']);
+    if (res.status === 200) {
+      const json = await res.json();
+      store.bench_latest_version = fluxos_version_desc_parse(json['version']);
+    }
   }
 
   if (resFluxInfo.status == 'fulfilled') {
@@ -414,7 +419,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch {}
+    } catch { }
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
