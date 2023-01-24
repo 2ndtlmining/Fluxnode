@@ -1,4 +1,5 @@
 # Flux-node Website
+
 [Frontend website](https://fluxnode.app.runonflux.io)
 
 ## Application Overview
@@ -7,7 +8,7 @@ The website allows users to display their node information to get a more collect
 The website consist out of two pages
 
 - Index : Node health overview linked to a wallet.
-- Guides : Provide links to useful guides and Youtube videos. Command troubleshooting commands are also available. 
+- Guides : Provide links to useful guides and Youtube videos. Command troubleshooting commands are also available.
 
 ### Main Features
 
@@ -20,7 +21,6 @@ Below are some of the key features to the website:
 - Estimated earnings
 - Node Overview
 - Parallel Assets
-
 
 ## Development and Building
 
@@ -46,6 +46,7 @@ Verify the installation with these commands:
   ```sh
   docker version
   ```
+
   _If the output says "Cannot connect to the Docker daemon" (or similar) start the docker service using `sudo systemctl enable --now docker` and then try again._
 
 - Cargo/Rust
@@ -54,6 +55,7 @@ Verify the installation with these commands:
   cargo --version
   rustc --version
   ```
+
   Make sure the version is 1.62 or higher.
 
 ### Starting the app
@@ -89,6 +91,7 @@ The `api/` folder contains a server (written in [Rust](https://www.rust-lang.org
   cd api
   cargo build
   ```
+
   _Subsequent commands assume that you are still in the `api/` directory._
 
 - Start the server
@@ -96,19 +99,22 @@ The `api/` folder contains a server (written in [Rust](https://www.rust-lang.org
   ```sh
   cargo run
   ```
-  This starts server on port 5049. The port can be changed using the `APP_API_PORT` environment variable. For example: `APP_API_PORT=7000 cargo run`
 
+  This starts server on port 5049. The port can be changed using the `APP_API_PORT` environment variable. For example: `APP_API_PORT=7000 cargo run`
 
 #### Using the server
 
-In dev mode, the frontend client is configured to not use the API wrapper and instead directly use the official APIs. 
+In dev mode, the frontend client is configured to not use the API wrapper and instead directly use the official APIs.
 
 To make it use the server in dev mode too, first start the server in another terminal using above steps. Then add the following lines in `<REPO_ROOT>/client/.env.development.local` (create the file if it doesn't exist).
 
 ```sh
 REACT_APP_FLUXNODE_INFO_API_MODE="proxy"
 REACT_APP_FLUXNODE_INFO_API_URL="http://localhost:5049"
+REACT_APP_ENABLE_FLUX_NODE_API=false
+REACT_APP_SEARCH_BY_ZELID=false
 ```
+
 Replace value of `REACT_APP_FLUXNODE_INFO_API_URL` with the actual url of the API server.
 
 Now you can start the frontend app as usual in a separate terminal. Also make sure the server keeps running.
@@ -133,21 +139,23 @@ To revert the change and use the official APIs in dev mode, set the value of `RE
   # This assumes your working directory is the repository's root
   docker build -t <USERNAME>/<REPOSITORY>:<TAG> .
   ```
+
   Replace `<USERNAME>`, `<REPOSITORY>` and `<TAG>` with your own values.
-  
- - Update to Docker repo after testing
-  
-  `docker login`
-   
-  `docker tag <REPOSITORY> <USERNAME>/<REPOSITORY>:<TAG>`
-   
-  `docker push <USERNAME>/<REPOSITORY>`
-  
-------
+
+- Update to Docker repo after testing
+
+`docker login`
+
+`docker tag <REPOSITORY> <USERNAME>/<REPOSITORY>:<TAG>`
+
+`docker push <USERNAME>/<REPOSITORY>`
+
+---
 
 While running the container, map exposed port 80 of the container to your desired port on host machine. For example.
 
 ```sh
 docker run --rm --name="flux-node-web" -it -p 9000:80 <USERNAME>/<REPOSITORY>:<TAG>
 ```
+
 The app would then be available on [http://localhost:9000](http://localhost:9000)
