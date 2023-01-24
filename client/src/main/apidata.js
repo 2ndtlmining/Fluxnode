@@ -19,6 +19,7 @@ import {
 } from 'content/index';
 
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
+const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
@@ -304,6 +305,16 @@ export function normalize_raw_node_tier(node) {
 }
 
 export async function getWalletNodes(walletAddress) {
+  // implement and live in the background so we can turn it on when ranking feature is fixed
+  if (process.env.REACT_APP_ENABLE_FLUX_NODE_API) {
+    let wNodes = [];
+    try {
+      const res = await fetch(API_FLUX_NODE_URL + walletAddress);
+      wNodes = (await res.json())?.data;
+    } catch { }
+
+    return wNodes;
+  }
   const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
   const data = await listResponse.json();
   const wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
