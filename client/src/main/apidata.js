@@ -305,20 +305,18 @@ export function normalize_raw_node_tier(node) {
 }
 
 export async function getWalletNodes(walletAddress) {
-  // implement and live in the background so we can turn it on when ranking feature is fixed
-  if (process.env.REACT_APP_ENABLE_FLUX_NODE_API) {
-    let wNodes = [];
+  // implement and live in the dark(background) so we can turn it on when ranking feature is fixed
+  let wNodes = [];
+  if (process.env.REACT_APP_ENABLE_FLUX_NODE_API === 'true') {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
     } catch { }
-
-    return wNodes;
+  } else {
+    const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
+    const data = await listResponse.json();
+    wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
   }
-  const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
-  const data = await listResponse.json();
-  const wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
-
   return wNodes;
 }
 
