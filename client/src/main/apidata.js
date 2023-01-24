@@ -203,7 +203,7 @@ export async function fetch_global_stats(walletAddress = null) {
 
   if (resTotalDonations.status == 'fulfilled') {
     const res = resTotalDonations.value;
-    store.total_donations = `res`;
+    store.total_donations = res;
   }
 
   fill_rewards(store);
