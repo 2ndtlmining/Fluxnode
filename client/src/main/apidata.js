@@ -458,7 +458,6 @@ else {
 
     if (reqSuccess) {
       const nodeInfo = (await resultNodeInfo.json())?.data;
-      console.log(nodeInfo)
       _fillPartial_bench_info(fluxNode, nodeInfo?.benchmark?.info);
       _fillPartial_benchmarks(fluxNode, nodeInfo?.benchmark?.bench);
       _fillPartial_version(fluxNode, nodeInfo?.flux?.version);
