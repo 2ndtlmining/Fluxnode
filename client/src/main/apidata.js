@@ -21,9 +21,7 @@ import {
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 
-const API_NODE_BENCHMARK_INFO_ENDPOINT = '/benchmark/getinfo';
-const API_NODE_LAST_BENCHMARK_ENDPOINT = '/benchmark/getbenchmarks';
-const API_FLUX_VERSION_ENDPOINT = '/flux/version';
+const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
 const API_FLUX_UPTIME_ENDPOINT = '/flux/uptime';
 
@@ -425,9 +423,9 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
     let targetNode = jsonData['node']['results'];
 
-    _fillPartial_bench_info(fluxNode, targetNode['bench_info'].data);
-    _fillPartial_benchmarks(fluxNode, targetNode['benchmarks'].data);
-    _fillPartial_version(fluxNode, targetNode['version'].data);
+    _fillPartial_bench_info(fluxNode, targetNode['node_info'].data?.benchmark?.info);
+    _fillPartial_benchmarks(fluxNode, targetNode['node_info'].data?.benchmark?.bench);
+    _fillPartial_version(fluxNode, targetNode['node_info'].data?.flux?.version);
     _fillPartial_apps(fluxNode, targetNode['apps'].data);
     _fillPartial_uptime(fluxNode, targetNode['uptime'].data);
   };
@@ -437,25 +435,19 @@ else {
   _fetchAndFillNodeInfo = async (fluxNode) => {
     let server = 'http://' + make_node_ip(fluxNode);
 
-    const promiseFluxVersion = fetch(server + API_FLUX_VERSION_ENDPOINT, { ...REQUEST_OPTIONS_API });
-    const promiseBenchInfo = fetch(server + API_NODE_BENCHMARK_INFO_ENDPOINT, { ...REQUEST_OPTIONS_API });
-    const promiseBenchmarkData = fetch(server + API_NODE_LAST_BENCHMARK_ENDPOINT, { ...REQUEST_OPTIONS_API });
+    const promiseNodeInfo = fetch(server + API_NODE_INFO_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseAppList = fetch(server + API_FLUX_APPLIST_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseUptimeData = fetch(server + API_FLUX_UPTIME_ENDPOINT, { ...REQUEST_OPTIONS_API });
 
     let reqSuccess;
 
-    let resultVersion;
-    let resultBenchInfo;
-    let resultBench;
+    let resultNodeInfo;
     let resultAppList;
     let resultUptime;
 
     try {
-      [resultVersion, resultBenchInfo, resultBench, resultAppList, resultUptime] = await Promise.all([
-        promiseFluxVersion,
-        promiseBenchInfo,
-        promiseBenchmarkData,
+      [resultNodeInfo, resultAppList, resultUptime] = await Promise.all([
+        promiseNodeInfo,
         promiseAppList,
         promiseUptimeData
       ]);
@@ -465,9 +457,10 @@ else {
     }
 
     if (reqSuccess) {
-      _fillPartial_bench_info(fluxNode, (await resultBench.json()).data);
-      _fillPartial_benchmarks(fluxNode, (await resultBenchInfo.json()).data);
-      _fillPartial_version(fluxNode, (await resultVersion.json()).data);
+      const nodeInfo = (await resultNodeInfo.json())?.data;
+      _fillPartial_bench_info(fluxNode, nodeInfo?.benchmark?.info);
+      _fillPartial_benchmarks(fluxNode, nodeInfo?.benchmark?.bench);
+      _fillPartial_version(fluxNode, nodeInfo?.flux?.version);
       _fillPartial_apps(fluxNode, (await resultAppList.json()).data);
       _fillPartial_uptime(fluxNode, (await resultUptime.json()).data);
     }
