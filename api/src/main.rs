@@ -74,7 +74,7 @@ pub mod api_v1 {
                 get(self::node_single::handler),
             )
             .route("/demo", get(self::node_demo::handler))
-            .route("/bench_version", get(self::bench_version::handler))
+            .route("/bench-version", get(self::bench_version::handler))
     }
 
     async fn root() -> String {

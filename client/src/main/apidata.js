@@ -104,6 +104,9 @@ function fill_rewards(gstore) {
 }
 
 async function query_transactions_all_pages(walletAddress) {
+  if (!walletAddress) {
+    return Promise.reject(new Error('Empty address'));
+  }
   const url = 'https://explorer.runonflux.io/api/txs?address=' + walletAddress;
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
@@ -130,7 +133,7 @@ export async function fetch_global_stats(walletAddress = null) {
         : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
       fetch('https://api.runonflux.io/flux/version'),
-      fetch(`${process.env.REACT_APP_FLUXNODE_INFO_API_URL}/api/v1/bench_version`),
+      fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
       fetch('https://api.runonflux.io/daemon/getinfo'),
       fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
       query_transactions_all_pages(walletAddress)

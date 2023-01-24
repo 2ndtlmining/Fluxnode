@@ -17,6 +17,14 @@ macro_rules! debug {
     };
 }
 
+// For release mode
+#[cfg(not(debug_assertions))]
+macro_rules! debug {
+    ($x:expr) => {
+        std::convert::identity($x)
+    };
+}
+
 macro_rules! array_constant {
     (
         $( #[$attr:meta] )*
