@@ -3,8 +3,8 @@ import './index.scss';
 
 import { Card, Divider, Icon } from '@blueprintjs/core';
 
-import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
-import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content/index';
+import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from 'content/index';
+import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS, CC_COLLATERAL_FRACTUS } from 'content/index';
 
 /* https://stackoverflow.com/a/2901298 */
 function numberWithCommas(x) {
@@ -107,5 +107,31 @@ export const RequirementsStratus = (
     }
     compat='VPS compatible'
     blockReward='30%'
+  />
+);
+
+export const RequirementsFractus = (
+  <NodeRequirementsBlock
+    tierName='FRACTUS'
+    fluxAmount={CC_COLLATERAL_FRACTUS}
+    requirementsContent={
+      <>
+        {getreq__fractus('cores')} Cores
+        <br />
+        {getreq__fractus('threads')} Threads
+        <br />
+        {getreq__fractus('ram')} GB RAM
+        <br />
+        {getreq__fractus('size')} GB SSD/NVME
+        <br />
+        {getreq__fractus('dws')} MB/s DWS
+        <br />
+        {getreq__fractus('eps')} EPS Min. Requirements
+        <br />
+        {getreq__fractus('net_down_speed')} Mb down/up speed
+      </>
+    }
+    compat='VPS compatible'
+    blockReward='0'
   />
 );

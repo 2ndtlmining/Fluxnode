@@ -11,7 +11,7 @@ import Accordion from 'react-bootstrap/Accordion';
 
 import { FooterRendered } from 'components/Footer';
 
-import { RequirementsCumulus, RequirementsNimbus, RequirementsStratus } from './NodeRequirements';
+import { RequirementsCumulus, RequirementsNimbus, RequirementsStratus, RequirementsFractus } from './NodeRequirements';
 
 import { Container, Row, Col } from 'react-grid-system';
 import { setGAEvent, setGAPageView } from 'g-analytic';
@@ -26,7 +26,7 @@ class AppGuidesView extends React.Component {
 
   renderVideo(url, title) {
     return (
-      <div className='mb-5 col col-12 col-md-6 col-lg-4'>
+      <div key={title} className='mb-5 col col-12 col-md-6 col-lg-4'>
         <h5 className='mb-2 fs-6 text-truncate video-name'>{title}</h5>
         <iframe
           src={url + '?rel=0&controls=1&autoplay=0&mute=0&start=0'}
@@ -533,9 +533,9 @@ CodeBlock._Impl_Full = (children, otherProps = {}) => (
   </pre>
 );
 CodeBlock._Impl_Inline = (children, otherProps = {}) => (
-  <pre {...otherProps} className='tb-code code-inline'>
+  <span {...otherProps} className='tb-code code-inline'>
     {children}
-  </pre>
+  </span>
 );
 
 CodeBlock.Full = (codeStr, otherProps = {}) => CodeBlock._Impl_Full(codeStr.trim(), otherProps);

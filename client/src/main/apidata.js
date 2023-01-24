@@ -10,10 +10,12 @@ import {
   CC_FLUX_REWARD_CUMULUS,
   CC_FLUX_REWARD_NIMBUS,
   CC_FLUX_REWARD_STRATUS,
+  CC_FLUX_REWARD_FRACTUS,
   CC_PA_REWARD,
   CC_COLLATERAL_CUMULUS,
   CC_COLLATERAL_NIMBUS,
-  CC_COLLATERAL_STRATUS
+  CC_COLLATERAL_STRATUS,
+  CC_COLLATERAL_FRACTUS
 } from 'content/index';
 
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
@@ -30,6 +32,7 @@ const FLUX_PER_DAY = (24 * 60) / 2; /* 1 flux every 2 minutes */
 const CLC_NETWORK_CUMULUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_CUMULUS) / 100.0);
 const CLC_NETWORK_NIMBUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_NIMBUS) / 100.0);
 const CLC_NETWORK_STRATUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_STRATUS) / 100.0);
+const CLC_NETWORK_FRACTUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_FRACTUS) / 100.0);
 
 /* ======= global stats ======= */
 
@@ -49,12 +52,14 @@ export function create_global_store() {
       cumulus: 0,
       nimbus: 0,
       stratus: 0,
+      fractus: 0,
       total: 0
     },
     reward_projections: {
       cumulus: tier_global_projections(),
       nimbus: tier_global_projections(),
-      stratus: tier_global_projections()
+      stratus: tier_global_projections(),
+      fractus: tier_global_projections()
     },
     wallet_amount_flux: 0,
     fluxos_latest_version: fluxos_version_desc(0, 0, 0),
@@ -111,33 +116,42 @@ async function query_transactions_all_pages(walletAddress) {
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
   const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-  const results = await Promise.allSettled(
-    array.map(async (page) => {
-      const result = await fetch(url + `&pageNum=${page}`);
-      return result.json();
-    })
-  );
-  const transactions = [firstPage, ...results].reduce((prev, current) => prev.concat(current.txs), []);
+  const results = await Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)));
 
-  return transactions.filter(tx => tx.vout.some(v => v.scriptPubKey.addresses[0] === window.gContent.ADDRESS_FLUX)).length;
+  const json = await Promise.all(results.map((result) => result.json()));
+  return [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
+}
+
+async function fetch_total_donations(walletAddress) {
+  const txs = await query_transactions_all_pages(walletAddress);
+
+  return txs.filter((tx) => tx.vout.some((v) => v.scriptPubKey.addresses[0] === window.gContent.ADDRESS_FLUX)).length;
 }
 
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo, resRichList, resTotalDonations] =
-    await Promise.allSettled([
-      fetch('https://explorer.runonflux.io/api/currency'),
-      walletAddress == null
-        ? Promise.reject(new Error('Empty address'))
-        : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
-      fetch('https://api.runonflux.io/daemon/getzelnodecount'),
-      fetch('https://api.runonflux.io/flux/version'),
-      fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
-      fetch('https://api.runonflux.io/daemon/getinfo'),
-      fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-      query_transactions_all_pages(walletAddress)
-    ]);
+  const [
+    resCurrency,
+    resWallet,
+    resFluxNodes,
+    resFluxVersion,
+    resBenchInfo,
+    resFluxInfo,
+    resRichList,
+    resTotalDonations
+  ] = await Promise.allSettled([
+    fetch('https://explorer.runonflux.io/api/currency'),
+    walletAddress == null
+      ? Promise.reject(new Error('Empty address'))
+      : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
+    fetch('https://api.runonflux.io/daemon/getzelnodecount'),
+    fetch('https://api.runonflux.io/flux/version'),
+    fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
+    fetch('https://api.runonflux.io/daemon/getinfo'),
+    fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
+    fetch_total_donations(walletAddress)
+  ]);
 
   if (resCurrency.status == 'fulfilled') {
     const res = resCurrency.value;
@@ -191,9 +205,8 @@ export async function fetch_global_stats(walletAddress = null) {
 
   if (resTotalDonations.status == 'fulfilled') {
     const res = resTotalDonations.value;
-    store.total_donations = res;
+    store.total_donations = `res`;
   }
-
 
   fill_rewards(store);
   window.gstore = store;
@@ -216,6 +229,7 @@ export function wallet_health_full() {
     cumulus: wallet_health_entry(),
     nimbus: wallet_health_entry(),
     stratus: wallet_health_entry(),
+    fractus: wallet_health_entry(),
     total_nodes: 0
   };
 }
@@ -244,7 +258,7 @@ function empty_flux_node() {
       active_port_os: null
     },
     ip_display: false,
-    tier: 'UNKNOWN', // "CUMULUS" | "NIMBUS" | "STRATUS" | "UNKNOWN"
+    tier: 'UNKNOWN', // "CUMULUS" | "NIMBUS" | "STRATUS" | "FRACTUS" | "UNKNOWN"
     rank: -1,
     last_reward: '-',
     next_reward: '-',
@@ -296,7 +310,6 @@ export async function getWalletNodes(walletAddress) {
   const data = await listResponse.json();
   const wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
 
-  console.log('Wallet = "' + walletAddress + `\" ; NodeCount = ${wNodes.length}`);
   return wNodes;
 }
 
@@ -370,6 +383,7 @@ function _fillPartial_benchmarks(fluxNode, benchmarks) {
   fluxNode.total_storage = benchmarks['totalstorage'] || 0;
   fluxNode.down_speed = benchmarks['download_speed'] || 0;
   fluxNode.up_speed = benchmarks['upload_speed'] || 0;
+  fluxNode.thunder = benchmarks['thunder'] || false;
 
   fluxNode.last_benchmark = dayjs.unix(benchmarks['time']).format(DISPLAY_DATE_FORMAT);
 }
@@ -480,6 +494,8 @@ export function fill_health(health, gstore) {
   fill_tier_health(health.cumulus, gstore.reward_projections.cumulus, gstore.flux_price_usd);
   fill_tier_health(health.nimbus, gstore.reward_projections.nimbus, gstore.flux_price_usd);
   fill_tier_health(health.stratus, gstore.reward_projections.stratus, gstore.flux_price_usd);
+  // Fractus is parts of Cumulus tier
+  fill_tier_health(health.fractus, gstore.reward_projections.cumulus, gstore.flux_price_usd);
 }
 
 export async function validateAddress(address) {

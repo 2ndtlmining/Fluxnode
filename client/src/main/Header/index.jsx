@@ -8,27 +8,27 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 import { InfoCell } from 'main/InfoCell';
 // import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
-import { FiCpu, FiDollarSign, FiFolder, FiHash, FiPackage, FiZap } from 'react-icons/fi';
+import { FiCpu, FiDollarSign, FiFolder, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
 import { FaCrown, FaWallet } from 'react-icons/fa';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 
 const WALLET_CELL_ATTRIBUTES = {
-  'richlist': {
+  richlist: {
     icon: (iconProps) => <FaCrown {...iconProps} />,
     iconWrapperClassName: (suffix) => `dash-cell__amount-usd-in-rich-list${suffix}`
   },
-  'donate': {
+  donate: {
     icon: (iconProps) => <FaWallet {...iconProps} />,
     iconWrapperClassName: (suffix) => `dash-cell__amount-usd-donate${suffix}`
   },
-  'default': {
+  default: {
     icon: (iconProps) => <FaWallet {...iconProps} />,
     iconWrapperClassName: (suffix) => `dash-cell__amount-usd${suffix}`
   }
-}
+};
 
 function WalletTopPercentage({ topPercentage = 0 }) {
   return (
@@ -37,7 +37,7 @@ function WalletTopPercentage({ topPercentage = 0 }) {
         <span style={{ color: '#fff', fontWeight: 600 }}>Top {topPercentage}%</span>
       </p>
     </div>
-  )
+  );
 }
 
 function TierRewardsProjectionView({ rewards }) {
@@ -107,6 +107,7 @@ function CellTooltip({ children, tooltipContent }) {
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
 export function DashboardCells({ gstore: gs }) {
+  const [enableFractusNodesCell, setToggleFractusNodesCell] = useState(false);
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
@@ -140,19 +141,39 @@ export function DashboardCells({ gstore: gs }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.cumulus} />}>
-        {(ref, tooltipProps) => (
-          <Cell
-            elementRef={ref}
-            {...tooltipProps}
-            name='Cumulus Nodes'
-            value={gs.node_count.cumulus}
-            icon={<FiZap size={iconSize} />}
-            iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}
-            small={!normalFontSize}
-            cellHover
+      <CellTooltip
+        tooltipContent={
+          <TierRewardsProjectionView
+            rewards={enableFractusNodesCell ? gs.reward_projections.fractus : gs.reward_projections.cumulus}
           />
-        )}
+        }
+      >
+        {(ref, tooltipProps) => {
+          const cellProps = enableFractusNodesCell
+            ? {
+                name: 'Fractus Nodes',
+                value: gs.node_count.fractus,
+                icon: <FiHardDrive size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
+              }
+            : {
+                name: 'Cumulus Nodes',
+                value: gs.node_count.cumulus,
+                icon: <FiZap size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
+              };
+
+          return (
+            <Cell
+              elementRef={ref}
+              {...tooltipProps}
+              {...cellProps}
+              small={!normalFontSize}
+              cellHover
+              toggleBtn={() => setToggleFractusNodesCell((prev) => !prev)}
+            />
+          );
+        }}
       </CellTooltip>
       <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.nimbus} />}>
         {(ref, tooltipProps) => (
