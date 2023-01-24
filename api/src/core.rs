@@ -50,10 +50,8 @@ array_constant!(
      * NamedEndpointDesc("another_key", "/path/to/fluxapi/enndpoint")
      * */
     const TARGET_API_ENDPOINTS: [NamedEndpointDesc; _] = [
-        NamedEndpointDesc("bench_info", "/benchmark/getinfo"),
-        NamedEndpointDesc("benchmarks", "/benchmark/getbenchmarks"),
+        NamedEndpointDesc("node_info", "/flux/info"),
         NamedEndpointDesc("apps", "/apps/installedapps"),
-        NamedEndpointDesc("version", "/flux/version"),
         NamedEndpointDesc("uptime", "/flux/uptime"),
     ]
 );
