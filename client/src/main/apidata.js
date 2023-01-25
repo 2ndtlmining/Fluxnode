@@ -105,6 +105,12 @@ function fill_rewards(gstore) {
     CLC_NETWORK_STRATUS_PER_DAY,
     CC_COLLATERAL_STRATUS
   );
+  fill_tier_g_projection(
+    gstore.reward_projections.fractus,
+    gstore.node_count.cumulus,
+    CLC_NETWORK_CUMULUS_PER_DAY,
+    CC_COLLATERAL_CUMULUS
+  );
 }
 
 async function query_transactions_all_pages(walletAddress) {
@@ -173,6 +179,7 @@ export async function fetch_global_stats(walletAddress = null) {
     store.node_count.cumulus = stats['cumulus-enabled'];
     store.node_count.nimbus = stats['nimbus-enabled'];
     store.node_count.stratus = stats['stratus-enabled'];
+    store.node_count.fractus = stats['cumulus-enabled'];
     store.node_count.total = stats['total'];
   }
 
@@ -497,7 +504,7 @@ export function fill_health(health, gstore) {
   fill_tier_health(health.nimbus, gstore.reward_projections.nimbus, gstore.flux_price_usd);
   fill_tier_health(health.stratus, gstore.reward_projections.stratus, gstore.flux_price_usd);
   // Fractus is parts of Cumulus tier
-  fill_tier_health(health.fractus, gstore.reward_projections.cumulus, gstore.flux_price_usd);
+  fill_tier_health(health.fractus, gstore.reward_projections.fractus, gstore.flux_price_usd);
 }
 
 export async function validateAddress(address) {
