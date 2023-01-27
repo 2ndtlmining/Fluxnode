@@ -21,6 +21,7 @@ import {
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
+const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.thunder,benchmark.bench.totalstorage'
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -530,6 +531,15 @@ export async function getDemoWallet() {
   } catch {
     return null;
   }
+}
+/* ======================================================================= */
+/* ======================================================================= */
+/* =========================== Fractus Count =========================== */
+
+async function getFractuscount() { 
+  const res = await fetch(API_FRACTUS_LIST);
+  const json = await res.json();
+ var thundercount = json.data.filter(data=> data.benchmark.bench.thunder == true).length;
 }
 
 /* ======================================================================= */
