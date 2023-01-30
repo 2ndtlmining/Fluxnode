@@ -47,7 +47,6 @@
         font-weight: 400;
     }
 
-    min-width: 60%;
     overflow-x: auto;
 
     display: flex;
@@ -101,4 +100,19 @@
         color: white !important;
         font-weight: bold !important;
     }
+}
+
+
+/* ============= TABLE AND MOBILE =============== */
+// max-width: 1200px for medium-sized laptops and desktops
+@media (max-width: 1200px) {
+    .health-wrapper {
+        min-width: 100%;
+        max-width: inherit;
+    }
+
+    .overview-wrapper {
+        min-width: 100%;
+    }
+
 }
