@@ -41,7 +41,7 @@ function WalletTopPercentage({ topPercentage = 0 }) {
 }
 
 function TierRewardsProjectionView({ rewards, enableFractusNodesCell }) {
-  const paAmount = enableFractusNodesCell ? '' : <small>{rewards.pa_amount.toFixed(3)} PA</small>;
+  const paAmount = enableFractusNodesCell ? '' : <small> + {rewards.pa_amount.toFixed(3)} PA</small>;
 
   return (
     <div className='d-block mb-0 cell-tooltip-box'>
@@ -51,7 +51,7 @@ function TierRewardsProjectionView({ rewards, enableFractusNodesCell }) {
       </p>
       <p>
         <span className='ct-name'>Flux a day: </span>
-        <span className='ct-val'>{rewards.payment_amount.toFixed(3) + paAmount}</span>
+        <span className='ct-val'>{rewards.payment_amount.toFixed(3)}{paAmount}</span>
       </p>
       <p>
         <span className='ct-name'>APR: </span>
@@ -145,7 +145,7 @@ export function DashboardCells({ gstore: gs }) {
         tooltipContent={
           <TierRewardsProjectionView
             rewards={enableFractusNodesCell ? gs.reward_projections.fractus : gs.reward_projections.cumulus}
-            enableFractusNodesCell
+            enableFractusNodesCell={enableFractusNodesCell}
           />
         }
       >

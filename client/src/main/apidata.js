@@ -87,19 +87,19 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
   projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
-function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral) {
+function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral, percentage = 15) {
   // pay freq = node_count * 2 minutes
   projectionTargetObj.pay_frequency = nodeCount * 2;
 
   /* ---- */
-
   const rewardPerPerson = networkFluxPerDay / nodeCount;
-  projectionTargetObj.payment_amount = rewardPerPerson * (1 + 15 / 100); // 15% Native flux
+  projectionTargetObj.payment_amount = rewardPerPerson * (1 + percentage / 100); // 15% Native flux
 
   /* ---- */
-  projectionTargetObj.pa_amount = 0;
+  const pa_amount = (rewardPerPerson * CC_PA_REWARD) / 100.0;
+  projectionTargetObj.pa_amount = pa_amount;
 
-  projectionTargetObj.apy = 100 * (((rewardPerPerson) * 365) / collateral);
+  projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
 function fill_rewards(gstore) {
@@ -123,7 +123,7 @@ function fill_rewards(gstore) {
   );
   fill_tier_g_projection_fractus(
     gstore.reward_projections.fractus,
-    gstore.node_count.fractus,
+    gstore.node_count.cumulus,
     CLC_NETWORK_FRACTUS_PER_DAY,
     CC_COLLATERAL_FRACTUS,
   );
