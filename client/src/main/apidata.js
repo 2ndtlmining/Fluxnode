@@ -93,13 +93,13 @@ function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkF
 
   /* ---- */
   const rewardPerPerson = networkFluxPerDay / nodeCount;
-  projectionTargetObj.payment_amount = rewardPerPerson * (1 + percentage / 100); // 15% Native flux
+  projectionTargetObj.payment_amount = rewardPerPerson * 1.15; // 15% Native flux
 
   /* ---- */
   const pa_amount = (rewardPerPerson * CC_PA_REWARD) / 100.0;
   projectionTargetObj.pa_amount = pa_amount;
 
-  projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
+  projectionTargetObj.apy = 100 * (((rewardPerPerson * 1.15 + pa_amount) * 365) / collateral);
 }
 
 function fill_rewards(gstore) {

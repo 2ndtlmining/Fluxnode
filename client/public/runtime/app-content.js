@@ -56,7 +56,7 @@ window.gContent.CC_BLOCK_REWARD = 75;
 window.gContent.CC_FLUX_REWARD_CUMULUS = 7.5;
 window.gContent.CC_FLUX_REWARD_NIMBUS = 12.5;
 window.gContent.CC_FLUX_REWARD_STRATUS = 30.0;
-window.gContent.CC_FLUX_REWARD_FRACTUS = 15;
+window.gContent.CC_FLUX_REWARD_FRACTUS = 7.5;
 
 /* ========================================== */
 /**
