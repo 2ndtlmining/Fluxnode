@@ -86,3 +86,11 @@
 
 @include def-dash-cell(amount-usd-donate, #e7b876, #fbbd04, rgb(84, 52, 19), rgb(233, 123, 7), 28px);
 
+/* ============= TABLE AND MOBILE =============== */
+// max-width: 1200px for medium-sized laptops and desktops
+@media (max-width: 768px) {
+    .dashboard {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
