@@ -21,7 +21,7 @@ import {
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
-const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.thunder,benchmark.bench.totalstorage'
+const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.thunder,benchmark.bench.totalstorage';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -87,6 +87,21 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
   projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
+function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral, percentage = 15) {
+  // pay freq = node_count * 2 minutes
+  projectionTargetObj.pay_frequency = nodeCount * 2;
+
+  /* ---- */
+  const rewardPerPerson = networkFluxPerDay / nodeCount;
+  projectionTargetObj.payment_amount = rewardPerPerson * 1.15; // 15% Native flux
+
+  /* ---- */
+  const pa_amount = (rewardPerPerson * CC_PA_REWARD) / 100.0;
+  projectionTargetObj.pa_amount = pa_amount;
+
+  projectionTargetObj.apy = 100 * (((rewardPerPerson * 1.15 + pa_amount) * 365) / collateral);
+}
+
 function fill_rewards(gstore) {
   fill_tier_g_projection(
     gstore.reward_projections.cumulus,
@@ -106,11 +121,11 @@ function fill_rewards(gstore) {
     CLC_NETWORK_STRATUS_PER_DAY,
     CC_COLLATERAL_STRATUS
   );
-  fill_tier_g_projection(
+  fill_tier_g_projection_fractus(
     gstore.reward_projections.fractus,
     gstore.node_count.cumulus,
-    CLC_NETWORK_CUMULUS_PER_DAY,
-    CC_COLLATERAL_CUMULUS
+    CLC_NETWORK_FRACTUS_PER_DAY,
+    CC_COLLATERAL_FRACTUS,
   );
 }
 
@@ -145,7 +160,8 @@ export async function fetch_global_stats(walletAddress = null) {
     resBenchInfo,
     resFluxInfo,
     resRichList,
-    resTotalDonations
+    resTotalDonations,
+    resFractusCount
   ] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
     walletAddress == null
@@ -156,7 +172,8 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    fetch_total_donations(walletAddress)
+    fetch_total_donations(walletAddress),
+    get_fractus_count()
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -180,7 +197,7 @@ export async function fetch_global_stats(walletAddress = null) {
     store.node_count.cumulus = stats['cumulus-enabled'];
     store.node_count.nimbus = stats['nimbus-enabled'];
     store.node_count.stratus = stats['stratus-enabled'];
-    store.node_count.fractus = stats['cumulus-enabled'];
+
     store.node_count.total = stats['total'];
   }
 
@@ -213,6 +230,11 @@ export async function fetch_global_stats(walletAddress = null) {
   if (resTotalDonations.status == 'fulfilled') {
     const res = resTotalDonations.value;
     store.total_donations = res;
+  }
+
+  if (resFractusCount.status == 'fulfilled') {
+    const res = resFractusCount.value;
+    store.node_count.fractus = res;
   }
 
   fill_rewards(store);
@@ -319,7 +341,7 @@ export async function getWalletNodes(walletAddress) {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
-    } catch { }
+    } catch {}
   } else {
     const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
     const data = await listResponse.json();
@@ -434,7 +456,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch { }
+    } catch {}
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -536,10 +558,12 @@ export async function getDemoWallet() {
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
 
-async function getFractuscount() { 
+async function get_fractus_count() {
   const res = await fetch(API_FRACTUS_LIST);
   const json = await res.json();
- var thundercount = json.data.filter(data=> data.benchmark.bench.thunder == true).length;
+  const thunderCount = json.data.filter((data) => data.benchmark.bench.thunder).length;
+
+  return thunderCount;
 }
 
 /* ======================================================================= */
