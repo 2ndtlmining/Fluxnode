@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useMemo } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo } from 'react';
 import { StoreKeys, appStore } from 'persistance/store';
 import { useState } from 'react';
 
@@ -10,7 +10,9 @@ export function LayoutConfigurationProvider(props) {
   const [normalFontSize, setFontSize] = useState(true);
   const [enablePrivacyMode, setPrivacyMode] = useState(false);
   const [enableDashboardCells, setDashboardCells] = useState(true);
-  const [enableNotableNodesTab, setNotableNodesTab] = useState(false);
+
+  const savedNotableNodes = appStore.getItem(StoreKeys.NOTABLE_NODES)
+  const [enableNotableNodesTab, setNotableNodesTab] = useState(savedNotableNodes);
 
   appStore.setItem(StoreKeys.PRIVACY_MODE, enablePrivacyMode);
 
@@ -36,7 +38,7 @@ export function LayoutConfigurationProvider(props) {
     setPrivacyMode((prevState) => {
       try {
         appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
-      } catch {}
+      } catch { }
       return !prevState;
     });
   }, [setPrivacyMode]);
@@ -48,9 +50,12 @@ export function LayoutConfigurationProvider(props) {
   }, [setDashboardCells]);
 
   const toggleNotableNodesTab = useCallback(() => {
-    setNotableNodesTab((prevState) => !prevState);
-    //TODO: replace with persistence/store
-    localStorage.setItem('notableNodes', enableNotableNodesTab);
+    setNotableNodesTab((prevState) => {
+      try {
+        appStore.setItem(StoreKeys.NOTABLE_NODES, !prevState);
+      } catch { }
+      return !prevState;
+    });
   }, [setNotableNodesTab]);
 
   return (

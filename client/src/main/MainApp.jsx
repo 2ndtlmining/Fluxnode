@@ -105,7 +105,7 @@ class MainApp extends React.Component {
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
       this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
-    } catch {}
+    } catch { }
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
@@ -275,9 +275,9 @@ class MainApp extends React.Component {
     this.setState({ isPALoading: false, walletPASummary: summary });
   }
 
-  handleButtonClick = () => { 
+  handleButtonClick = () => {
     this.onProcessAddress();
-    setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button'});
+    setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button' });
   }
 
   handleAddrKeyPress = (e) => {
@@ -365,7 +365,6 @@ class MainApp extends React.Component {
         <MenuItem
           key={i}
           text={addr}
-          shouldDismissPopover={false}
           tagName='span'
           multiline
           selected={selected}
