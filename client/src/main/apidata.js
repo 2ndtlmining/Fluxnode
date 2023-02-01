@@ -129,11 +129,8 @@ function fill_rewards(gstore) {
   );
 }
 
-async function query_transactions_all_pages(walletAddress) {
-  if (!walletAddress) {
-    return Promise.reject(new Error('Empty address'));
-  }
-  const url = 'https://explorer.runonflux.io/api/txs?address=' + walletAddress;
+async function query_donate_transactions_all_pages() {
+  const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
   const firstPage = await fetch(url).then((res) => res.json());
   const { pagesTotal } = firstPage;
   const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
@@ -144,9 +141,9 @@ async function query_transactions_all_pages(walletAddress) {
 }
 
 async function fetch_total_donations(walletAddress) {
-  const txs = await query_transactions_all_pages(walletAddress);
+  const txs = await query_donate_transactions_all_pages();
 
-  return txs.filter((tx) => tx.vout.some((v) => v.scriptPubKey.addresses[0] === window.gContent.ADDRESS_FLUX)).length;
+  return txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length;
 }
 
 export async function fetch_global_stats(walletAddress = null) {
