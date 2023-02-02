@@ -1,26 +1,22 @@
 import React from 'react';
 import './index.scss';
 
-import { Icon, Button, Tag, Spinner, ProgressBar, NonIdealState, NonIdealStateIconSize } from '@blueprintjs/core';
-import { Classes as PClasses, Popover2, Tooltip2 } from '@blueprintjs/popover2';
+import { Button, Tag, Spinner, ProgressBar } from '@blueprintjs/core';
+import { Tooltip2 } from '@blueprintjs/popover2';
 
 import { sleep, format_seconds, hide_sensitive_number } from 'utils';
 
 import { Projection } from './Projection';
 import { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from 'content/index';
 
-import { fluxos_version_desc, fluxos_version_string, fv_compare } from 'main/flux_version';
+import { fluxos_version_string, fv_compare } from 'main/flux_version';
 import {
-  create_global_store,
   getWalletNodes,
   wallet_health_full,
-  normalize_raw_node_tier,
   fill_health,
   fillPartialNode,
   transformRawNode,
-  isWalletDOSState,
-  calc_mtn_window,
-  fetchMostHostedLocalApps
+  calc_mtn_window
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
@@ -476,6 +472,7 @@ export class WalletNodes extends React.Component {
     this.state = {
       loadingHealth: false,
       loadingNodeList: false,
+      loadingWalletNodes: false,
 
       nodesListProgress: 0,
 
@@ -494,7 +491,7 @@ export class WalletNodes extends React.Component {
     await sleep(1);
 
     const batchSize = 20;
-    for (let i = 0; i < partialNodes.length; ) {
+    for (let i = 0; i < partialNodes.length;) {
       const batch = [];
 
       let batchActualSize = 0;
@@ -517,10 +514,11 @@ export class WalletNodes extends React.Component {
 
       i += batchSize;
 
+      this.setState({ nodes: partialNodes.slice(0, i) });
+
       const lastIndex = Math.min(i, partialNodes.length);
 
       this.updateNodesListProgress((lastIndex + 1) / partialNodes.length);
-      console.log('Processed batch nodes upto count ' + lastIndex);
       await sleep(1);
     }
     return partialNodes;
@@ -530,26 +528,33 @@ export class WalletNodes extends React.Component {
     this.setState({
       loadingHealth: true,
       loadingNodeList: true,
+      loadingWalletNodes: true,
       nodesListProgress: 0,
       gstore: gstore
     });
     await sleep(1);
 
-    const walletNodesRaw = await getWalletNodes(address);
+    const walletNodesRaw = await getWalletNodes(address).then((res) => {
+      this.setState({ loadingWalletNodes: false });
+      return res;
+    });
 
     let partialNodes = [];
-
-    let highestRankedNode = null;
-
-    let bestUptimeNode = null;
-
-    let mostHostedNode = null;
 
     const health = wallet_health_full();
 
     partialNodes = walletNodesRaw.map(rawNode => transformRawNode(rawNode));
 
-    let nodes = await this._loadNodes(partialNodes);
+    this.setState({ totalNodeOverviewPages: Math.round(walletNodesRaw.length / 20) });
+
+    let nodes = await this._loadNodes(partialNodes).then((res) => {
+      this.setState({ loadingNodeList: false });
+      return res;
+    });
+
+    let highestRankedNode = null;
+    let bestUptimeNode = null;
+    let mostHostedNode = null;
 
     for (const node of nodes) {
       const { tier, thunder } = node;
@@ -577,7 +582,7 @@ export class WalletNodes extends React.Component {
     health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
 
     fill_health(health, gstore);
-    this.setState({ loadingHealth: false, health, loadingNodeList: false, nodes });
+    this.setState({ loadingHealth: false, health });
 
     onCalculateNotableNodes({ highestRankedNode, bestUptimeNode, mostHostedNode });
   }
@@ -587,18 +592,14 @@ export class WalletNodes extends React.Component {
     setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
-  renderNodeOverview(loadingHealth, loadingNodeList) {
+  renderNodeOverview(loadingWalletNodes, loadingNodeList) {
     const activeAddress = this.props.activeAddress;
     const noAddress = activeAddress == null;
 
-    if (loadingNodeList) {
+    if (loadingWalletNodes) {
       return (
         <div className='flex-fill center-everything px-5'>
-          {loadingHealth ? (
-            <Spinner intent='success' size={150} />
-          ) : (
-            <ProgressBar animate intent='success' stripes={true} value={this.state.nodesListProgress} />
-          )}
+          <Spinner intent='success' size={150} />
         </div>
       );
     }
@@ -623,6 +624,9 @@ export class WalletNodes extends React.Component {
               outlined={true}
             />
           </div>
+          {loadingNodeList &&
+            <ProgressBar animate intent='success' stripes={true} value={this.state.nodesListProgress} />
+          }
         </div>
         {NodeGridTable(this.state.nodes, this.state.gstore || this.props.initGStore)}
       </>
@@ -634,6 +638,7 @@ export class WalletNodes extends React.Component {
 
     const loadingHealth = parentLoading || this.state.loadingHealth;
     const loadingNodeList = parentLoading || this.state.loadingNodeList;
+    const loadingWalletNodes = parentLoading || this.state.loadingWalletNodes;
 
     const estimatedEarningsTab = (
       <LayoutContext.Consumer>
@@ -651,7 +656,7 @@ export class WalletNodes extends React.Component {
       <div className='wallet-nodes-area'>
         {estimatedEarningsTab}
         <div className='adp-border overview-wrapper mb-3 p-0 shadow-lg rounded-3 adp-bg-normal'>
-          {this.renderNodeOverview(loadingHealth, loadingNodeList)}
+          {this.renderNodeOverview(loadingWalletNodes, loadingNodeList)}
         </div>
       </div>
     );

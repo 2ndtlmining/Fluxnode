@@ -369,7 +369,6 @@ class MainApp extends React.Component {
         <MenuItem
           key={i}
           text={addr}
-          shouldDismissPopover={false}
           tagName='span'
           multiline
           selected={selected}
