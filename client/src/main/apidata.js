@@ -17,6 +17,7 @@ import {
   CC_COLLATERAL_STRATUS,
   CC_COLLATERAL_FRACTUS
 } from 'content/index';
+import { appStore, StoreKeys } from 'persistance/store';
 
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
@@ -129,22 +130,24 @@ function fill_rewards(gstore) {
   );
 }
 
-async function query_donate_transactions_all_pages() {
-  const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
-  const firstPage = await fetch(url).then((res) => res.json());
-  const { pagesTotal } = firstPage;
-  const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-  const results = await Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)));
-
-  const json = await Promise.all(results.map((result) => result.json()));
-  return [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
+export function fetch_total_donations(walletAddress) {
+  return new Promise((resolve) => {
+    const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
+    fetch(url)
+      .then((res) => res.json())
+      .then((firstPage) => {
+        const { pagesTotal } = firstPage;
+        const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+        Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)))
+          .then((results) => Promise.all(results.map((result) => result.json())))
+          .then((json) => {
+            const txs = [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
+            resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
+          });
+      });
+  });
 }
 
-async function fetch_total_donations(walletAddress) {
-  const txs = await query_donate_transactions_all_pages();
-
-  return txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length;
-}
 
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
@@ -157,7 +160,6 @@ export async function fetch_global_stats(walletAddress = null) {
     resBenchInfo,
     resFluxInfo,
     resRichList,
-    resTotalDonations,
     resFractusCount
   ] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
@@ -169,8 +171,7 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    fetch_total_donations(walletAddress),
-    get_fractus_count()
+    lazy_load_fractus_count()
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -222,11 +223,6 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = resRichList.value;
     const json = await res.json();
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
-  }
-
-  if (resTotalDonations.status == 'fulfilled') {
-    const res = resTotalDonations.value;
-    store.total_donations = res;
   }
 
   if (resFractusCount.status == 'fulfilled') {
@@ -338,7 +334,7 @@ export async function getWalletNodes(walletAddress) {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
-    } catch {}
+    } catch { }
   } else {
     const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
     const data = await listResponse.json();
@@ -453,7 +449,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch {}
+    } catch { }
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -555,12 +551,18 @@ export async function getDemoWallet() {
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
 
-async function get_fractus_count() {
-  const res = await fetch(API_FRACTUS_LIST);
-  const json = await res.json();
-  const thunderCount = json.data.filter((data) => data.benchmark.bench.thunder).length;
+async function lazy_load_fractus_count() {
+  const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);
+  if (!storedFractusCount) {
+    const res = await fetch(API_FRACTUS_LIST);
+    const json = await res.json();
+    const thunderCount = json.data.filter((data) => data.benchmark.bench.thunder).length;
 
-  return thunderCount;
+    appStore.setItem(StoreKeys.FRACTUS_COUNT, thunderCount);
+    return thunderCount;
+  } else {
+    return storedFractusCount;
+  }
 }
 
 /* ======================================================================= */
