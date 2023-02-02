@@ -8,7 +8,7 @@ window.appStore = appStore = localforage.createInstance({
 });
 
 export function initStore() {
-  // noop
+  appStore.removeItem(StoreKeys.FRACTUS_COUNT)
 }
 
 let StoreKeys = {};
@@ -16,6 +16,7 @@ let StoreKeys = {};
 StoreKeys.ADDR_SEARCH_HISTORY = 'history_addrs';
 StoreKeys.PRIVACY_MODE = 'privacy_mode';
 StoreKeys.NOTABLE_NODES = 'notable_nodes';
+StoreKeys.FRACTUS_COUNT = 'fractus_count';
 
 window.SK = window.StoreKeys = StoreKeys;
 Object.freeze(StoreKeys);

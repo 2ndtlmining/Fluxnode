@@ -27,7 +27,8 @@ import {
   isWalletDOSState,
   pa_summary_full,
   validateAddress,
-  wallet_pas_summary
+  wallet_pas_summary,
+  fetch_total_donations
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -60,7 +61,9 @@ class MainApp extends React.Component {
       isPALoading: false,
       walletPASummary: pa_summary_full(),
       privacyMode: false,
-      isZelId: false
+      isZelId: false,
+
+      totalDonations: 0
     };
 
     this.walletNodes = React.createRef();
@@ -251,6 +254,9 @@ class MainApp extends React.Component {
     this.setState({ isDOS });
 
     const gstore = await fetch_global_stats(address);
+    fetch_total_donations(address).then((res) => {
+      this.setState({ totalDonations: res })
+    });
     this.setState({
       isWalletAvailable: true,
 
@@ -308,13 +314,11 @@ class MainApp extends React.Component {
   );
 
   renderActiveAddressView() {
-    const totalDonations = this.state.gstore && this.state.gstore.total_donations;
-
     return (
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
         <div className='d-flex gap-2'>
           <span>Current Wallet Address</span>
-          {totalDonations > 0 ? (
+          {this.state.totalDonations > 0 ? (
             <Tooltip2
               usePortal={true}
               intent='danger'
@@ -322,14 +326,14 @@ class MainApp extends React.Component {
               transitionDuration={100}
               content={
                 <div>
-                  Total donations: <strong>{totalDonations}</strong>
+                  Total donations: <strong>{this.state.totalDonations}</strong>
                 </div>
               }
               hoverOpenDelay={60}
             >
               <span className='d-inline-flex align-items-center gap-1'>
                 <FaMedal color='gold' size={16} />
-                {totalDonations}
+                {this.state.totalDonations}
               </span>
             </Tooltip2>
           ) : null}
@@ -486,7 +490,7 @@ class MainApp extends React.Component {
                 <title>Wallet</title>
               </Helmet>
 
-              {enableDashboardCells ? <DashboardCells gstore={this.state.gstore} /> : null}
+              {enableDashboardCells ? <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} /> : null}
               {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
               <Container fluid style={{ margin: '20px 20px' }}>

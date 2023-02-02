@@ -106,14 +106,14 @@ function CellTooltip({ children, tooltipContent }) {
 
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
-export function DashboardCells({ gstore: gs }) {
+export function DashboardCells({ gstore: gs, total_donations }) {
   const [enableFractusNodesCell, setToggleFractusNodesCell] = useState(false);
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
   const suffixClassName = normalFontSize ? '' : '-small';
 
-  const walletType = gs.in_rich_list ? 'richlist' : gs.total_donations > 0 ? 'donate' : 'default';
+  const walletType = gs.in_rich_list ? 'richlist' : total_donations > 0 ? 'donate' : 'default';
 
   const walletCellStyles = WALLET_CELL_ATTRIBUTES[walletType];
 
@@ -151,17 +151,17 @@ export function DashboardCells({ gstore: gs }) {
         {(ref, tooltipProps) => {
           const cellProps = enableFractusNodesCell
             ? {
-                name: 'Fractus Nodes',
-                value: gs.node_count.fractus,
-                icon: <FiHardDrive size={iconSize} />,
-                iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
-              }
+              name: 'Fractus Nodes',
+              value: gs.node_count.fractus,
+              icon: <FiHardDrive size={iconSize} />,
+              iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
+            }
             : {
-                name: 'Cumulus Nodes',
-                value: gs.node_count.cumulus,
-                icon: <FiZap size={iconSize} />,
-                iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
-              };
+              name: 'Cumulus Nodes',
+              value: gs.node_count.cumulus,
+              icon: <FiZap size={iconSize} />,
+              iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
+            };
 
           return (
             <Cell
