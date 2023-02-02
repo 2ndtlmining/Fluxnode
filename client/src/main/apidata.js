@@ -165,7 +165,7 @@ export async function fetch_global_stats(walletAddress = null) {
       ? Promise.reject(new Error('Empty address'))
       : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
     fetch('https://api.runonflux.io/daemon/getzelnodecount'),
-    fetch('https://api.runonflux.io/flux/version'),
+    fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json'),
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
@@ -201,7 +201,7 @@ export async function fetch_global_stats(walletAddress = null) {
   if (resFluxVersion.status == 'fulfilled') {
     const res = resFluxVersion.value;
     const json = await res.json();
-    store.fluxos_latest_version = fluxos_version_desc_parse(json.data);
+    store.fluxos_latest_version = fluxos_version_desc_parse(json.version);
   }
 
   if (resBenchInfo.status == 'fulfilled') {
