@@ -96,7 +96,7 @@ class Application extends React.Component {
                   path='/nodes'
                   element={
                     <React.Suspense fallback={<PageLoader />}>
-                      <MainApp />
+                      <MainApp theme={darkMode ? 'dark' : 'light'} />
                     </React.Suspense>
                   }
                 />

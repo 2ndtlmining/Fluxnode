@@ -20,6 +20,7 @@ import {
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
+import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
 
 function NodeTierView({ tier, thunder }) {
   if (tier == 'CUMULUS') {
@@ -628,7 +629,8 @@ export class WalletNodes extends React.Component {
             <ProgressBar animate intent='success' stripes={true} value={this.state.nodesListProgress} />
           }
         </div>
-        {NodeGridTable(this.state.nodes, this.state.gstore || this.props.initGStore)}
+        {/* {NodeGridTable(this.state.nodes, this.state.gstore || this.props.initGStore)} */}
+        <NodeGridTableV2 data={this.state.nodes} gstore={this.state.gstore || this.props.initGStore} theme={this.props.theme} />
       </>
     );
   }

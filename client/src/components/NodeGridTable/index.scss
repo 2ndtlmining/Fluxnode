@@ -1,0 +1,87 @@
+@import 'ag-grid-community/styles/ag-grid.css';
+@import 'ag-grid-community/styles/ag-theme-alpine.css';
+@import 'styles/functional';
+
+.outdated-flux-ver {
+    color: #c87619 !important;
+}
+
+.closed-maintenance-window {
+    color: black !important;
+    font-weight: bold !important;
+    @include rule-mode-dark() {
+        color: white !important;
+        font-weight: bold !important;
+    }
+}
+
+.ag-header-cell-label {
+    justify-content: center;
+}
+
+.maintenance-width{
+    width: 100px;
+}
+
+.grid-cell {
+    text-align: center;
+    width: 100%;
+    font-size: 0.85rem;
+    color: #495057!important;
+}
+
+.customHeaderMenuButton {
+    float: left;
+    margin: 0 0 0 3px;
+}
+
+.ag-header-cell {
+    min-width: max-content!important;
+   
+}
+
+.ag-header-cell-comp-wrapper {
+    justify-content: center;
+}
+
+.custom-header-centre{
+    justify-content: center;
+    align-items: center;
+}
+
+.label {
+    padding-top: 0.05rem;
+    float: left;
+    margin: 0 0 0 3px;
+    vertical-align: middle;
+    font-size: 0.85rem;
+    padding-left: 0.15rem;
+    padding-right: 0.15rem;
+}
+
+.header-icon, .label, .grid-cell {
+    color: #495057!important;
+    @include rule-mode-dark() {
+        color: #b5afa6!important;
+    }
+}
+
+.customSortDownLabel {
+    float: left;
+    margin: 0 0 0 3px;
+}
+
+.customSortUpLabel {
+    float: left;
+    margin: 0;
+}
+
+.customSortRemoveLabel {
+    float: left;
+    margin: 0 0 0 3px;
+    font-size: 11px;
+}
+
+.active {
+    color: cornflowerblue;
+}
