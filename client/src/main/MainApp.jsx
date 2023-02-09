@@ -539,6 +539,7 @@ class MainApp extends React.Component {
                 onRefreshRequest={this.onRefreshRequest}
                 activeAddress={this.state.activeAddress}
                 initGStore={this.state.gstore}
+                theme={this.props.theme}
               />
 
               {enableParallelAssetsTab && this.state.isWalletAvailable ? (
