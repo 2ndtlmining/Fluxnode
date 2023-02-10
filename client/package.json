@@ -28,6 +28,7 @@
     "react-bootstrap": "^2.4.0",
     "react-countup": "^6.4.0",
     "react-dom": "^18.2.0",
+    "react-easyfullscreen": "^1.1.2",
     "react-ga4": "^2.0.0",
     "react-grid-system": "^8.1.5",
     "react-helmet": "^6.1.0",
