@@ -21,6 +21,7 @@ import {
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
+import ReactFullscreen from 'react-easyfullscreen';
 
 function NodeTierView({ tier, thunder }) {
   if (tier == 'CUMULUS') {
@@ -332,8 +333,7 @@ function _failed_specs(node) {
   let reqObj = {};
   if (tier == 'CUMULUS') {
     reqObj = thunder ? getreq('fractus', true) : getreq('cumulus', true);
-  }
-  else if (tier == 'NIMBUS') reqObj = getreq('nimbus', true);
+  } else if (tier == 'NIMBUS') reqObj = getreq('nimbus', true);
   else if (tier == 'STRATUS') reqObj = getreq('stratus', true);
 
   const failed = {};
@@ -479,7 +479,9 @@ export class WalletNodes extends React.Component {
 
       nodes: [],
       health: wallet_health_full(),
-      gstore: null
+      gstore: null,
+      isFullScreen: false,
+      isMaximize: false
     };
   }
 
@@ -492,7 +494,7 @@ export class WalletNodes extends React.Component {
     await sleep(1);
 
     const batchSize = 20;
-    for (let i = 0; i < partialNodes.length;) {
+    for (let i = 0; i < partialNodes.length; ) {
       const batch = [];
 
       let batchActualSize = 0;
@@ -544,7 +546,7 @@ export class WalletNodes extends React.Component {
 
     const health = wallet_health_full();
 
-    partialNodes = walletNodesRaw.map(rawNode => transformRawNode(rawNode));
+    partialNodes = walletNodesRaw.map((rawNode) => transformRawNode(rawNode));
 
     this.setState({ totalNodeOverviewPages: Math.round(walletNodesRaw.length / 20) });
 
@@ -580,7 +582,8 @@ export class WalletNodes extends React.Component {
       if (mostHostedNode === null || node.appCount > mostHostedNode.appCount) mostHostedNode = node;
     }
 
-    health.total_nodes = health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
+    health.total_nodes =
+      health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
 
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
@@ -593,9 +596,10 @@ export class WalletNodes extends React.Component {
     setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
-  renderNodeOverview(loadingWalletNodes, loadingNodeList) {
+  renderNodeOverview(loadingWalletNodes, loadingNodeList, onToggleFullScreen) {
     const activeAddress = this.props.activeAddress;
     const noAddress = activeAddress == null;
+    const { isMaximize, isFullScreen } = this.state;
 
     if (loadingWalletNodes) {
       return (
@@ -616,21 +620,33 @@ export class WalletNodes extends React.Component {
                 Hover mouse over a column header to see more information.
               </span>
             </span>
-            <Button
-              text='Refresh'
-              rightIcon='refresh'
-              intent='success'
-              onClick={this.handleRefreshClick}
-              disabled={loadingNodeList || noAddress}
-              outlined={true}
-            />
+            <div className='cta-button-wrapper'>
+              <Button
+                text='Refresh'
+                rightIcon='refresh'
+                intent='success'
+                onClick={this.handleRefreshClick}
+                disabled={loadingNodeList || noAddress}
+                outlined={true}
+              />
+              <Button
+                rightIcon={isMaximize ? 'minimize' : 'maximize'}
+                onClick={() => this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }))}
+                disabled={isFullScreen}
+              />
+              <Button rightIcon={isFullScreen ? 'arrow-bottom-right' :'fullscreen'} onClick={() => onToggleFullScreen()} />
+            </div>
           </div>
-          {loadingNodeList &&
+          {loadingNodeList && (
             <ProgressBar animate intent='success' stripes={true} value={this.state.nodesListProgress} />
-          }
+          )}
         </div>
         {/* {NodeGridTable(this.state.nodes, this.state.gstore || this.props.initGStore)} */}
-        <NodeGridTableV2 data={this.state.nodes} gstore={this.state.gstore || this.props.initGStore} theme={this.props.theme} />
+        <NodeGridTableV2
+          data={this.state.nodes}
+          gstore={this.state.gstore || this.props.initGStore}
+          theme={this.props.theme}
+        />
       </>
     );
   }
@@ -642,11 +658,14 @@ export class WalletNodes extends React.Component {
     const loadingNodeList = parentLoading || this.state.loadingNodeList;
     const loadingWalletNodes = parentLoading || this.state.loadingWalletNodes;
 
+    const overviewWrapperClass = this.state.isMaximize ? 'overview-wrapper-expand' : 'overview-wrapper';
+    const healthWrapperClass = this.state.isMaximize ? 'health-wrapper-expand' : 'health-wrapper';
+
     const estimatedEarningsTab = (
       <LayoutContext.Consumer>
         {({ enableEstimatedEarningsTab }) =>
           enableEstimatedEarningsTab ? (
-            <div className='health-wrapper mb-3 mx-1 p-0'>
+            <div className={`${healthWrapperClass} mb-3 mx-1 p-0`}>
               <Projection loading={loadingHealth} health={this.state.health} />
             </div>
           ) : null
@@ -657,9 +676,20 @@ export class WalletNodes extends React.Component {
     return (
       <div className='wallet-nodes-area'>
         {estimatedEarningsTab}
-        <div className='adp-border overview-wrapper mb-3 p-0 shadow-lg rounded-3 adp-bg-normal'>
-          {this.renderNodeOverview(loadingWalletNodes, loadingNodeList)}
-        </div>
+        {
+          <ReactFullscreen
+            onChange={() => this.setState((prev) => ({ isFullScreen: !prev.isFullScreen }))}
+          >
+            {({ ref, onToggle: onToggleFullScreen }) => (
+              <div
+                ref={ref}
+                className={`adp-border ${overviewWrapperClass} mb-3 p-0 shadow-lg rounded-3 adp-bg-normal`}
+              >
+                {this.renderNodeOverview(loadingWalletNodes, loadingNodeList, onToggleFullScreen)}
+              </div>
+            )}
+          </ReactFullscreen>
+        }
       </div>
     );
   }

@@ -26,6 +26,13 @@
         flex-shrink: 0;
         max-width: 500px;
         width: 100%;
+        order: 1;
+    }
+
+    .health-wrapper-expand {
+        flex-shrink: 0;
+        width: 100%;
+        order: 1;
     }
 
     .overview-wrapper {
@@ -33,10 +40,19 @@
         margin: 0 5px;
         height: 510px;
         max-height: 510px;
+        order: 2
+    }
+    
+    .overview-wrapper-expand {
+        flex: 1 1 100%;
+        margin: 0 5px;
+        height: 50vw;
+        max-height: 50vw;
+        order: 0
     }
 }
 
-.overview-wrapper {
+.overview-wrapper, .overview-wrapper-expand {
     td {
         vertical-align: middle;
     }
@@ -57,7 +73,7 @@
 
 /* ============================ */
 
-.health-wrapper {
+.health-wrapper, .health-wrapper-expand {
     td,
     th {
         white-space: normal;
@@ -86,6 +102,11 @@
     }
 }
 
+.cta-button-wrapper {
+    display: flex;
+    gap: 5px;
+}
+
 /* ============================ */
 
 .outdated-flux-ver {
@@ -106,7 +127,7 @@
 /* ============= TABLE AND MOBILE =============== */
 // max-width: 1200px for medium-sized laptops and desktops
 @media (max-width: 1200px) {
-    .health-wrapper {
+    .health-wrapper, .health-wrapper-expand {
         min-width: 100%;
         max-width: inherit;
     }
@@ -115,4 +136,8 @@
         min-width: 100%;
     }
 
+    .overview-wrapper-expand {
+        min-width: 100%;
+        height: 100vw;
+    }
 }
