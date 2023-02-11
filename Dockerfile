@@ -3,7 +3,7 @@
 # name of the rust crate
 ARG RUST_APP_PACKAGE_NAME=fluxnode_api_mask
 
-FROM rust:1.62 as build
+FROM rust:1.67 as build
 USER root
 
 # renew the argument after FROM directive
@@ -45,7 +45,7 @@ RUN cargo build --release
 # ==========================================================
 # ==========================================================
 
-FROM nginx:1.22.0
+FROM nginx:1.23.0
 USER root
 
 # --------------------
