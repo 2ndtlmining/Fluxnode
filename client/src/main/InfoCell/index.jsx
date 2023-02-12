@@ -17,8 +17,10 @@ export function InfoCell({
   elementRef,
   iconWrapClassName,
   isPrivacy,
-  prefix,
+  prefix = '',
+  suffix = '',
   toggleBtn,
+  children,
   ...otherProps
 }) {
   const style = {};
@@ -29,19 +31,19 @@ export function InfoCell({
 
   const isDecimal = !Number.isInteger(value);
 
-  const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal prefix={prefix ?? ''} />);
+  const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal prefix={prefix} suffix={suffix} />);
 
   return (
     <div {...otherProps} className={'information-cell-layout' + (!!className ? ' ' + className : '')} ref={elementRef}>
       <div className='icl-icon'>
-        <div className={'icl-i-wrap' + (!!iconWrapClassName ? ' ' + iconWrapClassName : '')} {...styleProps}>
+        {icon && <div className={'icl-i-wrap' + (!!iconWrapClassName ? ' ' + iconWrapClassName : '')} {...styleProps}>
           <IconContext.Provider value={{ size: '28px', color: iconColor }}>{icon}</IconContext.Provider>
-        </div>
+        </div>}
       </div>
 
       <div className='icl-content'>
         <p className={'icl-c-val' + (small ? ' icl-val-small' : large ? ' icl-val-large' : '')}>
-          {!isPrivacy ? countupValue : format_amount(value, isPrivacy)}
+          {!isPrivacy ? countupValue : `${format_amount(value, isPrivacy)}${suffix}`}
         </p>
         <p className='icl-c-name'>{name}</p>
       </div>

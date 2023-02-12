@@ -48,6 +48,7 @@
         max-height: $size !important;
         min-width: $size !important;
         min-height: $size !important;
+        padding: 15px;
         @include rule-mode-dark() {
             background-color: $backgroundDark;
             color: $colorDark;
@@ -55,6 +56,35 @@
             max-height: $size !important;
             min-width: $size !important;
             min-height: $size !important;
+            padding: 15px;
+        }
+    }
+    @at-root .dash-cell__#{$slug}-small {
+        @extend .dash-cell__#{$slug};
+        max-width: $size - 6 !important;
+        max-height: $size - 6 !important;
+        min-width: $size - 6 !important;
+        min-height: $size - 6 !important;
+    }
+}
+
+@mixin def-dash-cell-pecentage($slug, $background, $color, $backgroundDark, $colorDark, $size) {
+    @at-root .dash-cell__#{$slug} {
+        color: $color;
+        background-color: $background;
+        max-width: $size !important;
+        max-height: $size !important;
+        min-width: $size !important;
+        min-height: $size !important;
+        padding: 8px;
+        @include rule-mode-dark() {
+            background-color: $backgroundDark;
+            color: $colorDark;
+            max-width: $size !important;
+            max-height: $size !important;
+            min-width: $size !important;
+            min-height: $size !important;
+            padding: 8px;
         }
     }
     @at-root .dash-cell__#{$slug}-small {
@@ -85,6 +115,10 @@
 @include def-dash-cell(amount-usd-in-rich-list, rgb(200, 195, 125), rgb(255, 230, 1), rgb(120, 112, 52), gold, 28px);
 
 @include def-dash-cell(amount-usd-donate, #e7b876, #fbbd04, rgb(84, 52, 19), rgb(233, 123, 7), 28px);
+
+@include def-dash-cell-pecentage(utilisation-percentage, transparent, transparent, transparent, transparent, 70px);
+
+@include def-dash-cell-pecentage(utilisation-percentage-small, transparent, transparent, transparent, transparent, 70px);
 
 /* ============= TABLE AND MOBILE =============== */
 // max-width: 1200px for medium-sized laptops and desktops

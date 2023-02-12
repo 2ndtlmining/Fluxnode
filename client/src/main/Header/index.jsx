@@ -8,12 +8,16 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 import { InfoCell } from 'main/InfoCell';
 // import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
-import { FiCpu, FiDollarSign, FiFolder, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
+import { FiCpu, FiDollarSign, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
 import { FaCrown, FaWallet } from 'react-icons/fa';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
 import { useContext, useState } from 'react';
+
+import { CircularProgressbar } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import { RadialCircularProgressbar } from 'components/RadialCircularProgressbar';
 
 const WALLET_CELL_ATTRIBUTES = {
   richlist: {
@@ -151,17 +155,17 @@ export function DashboardCells({ gstore: gs, total_donations }) {
         {(ref, tooltipProps) => {
           const cellProps = enableFractusNodesCell
             ? {
-              name: 'Fractus Nodes',
-              value: gs.node_count.fractus,
-              icon: <FiHardDrive size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
-            }
+                name: 'Fractus Nodes',
+                value: gs.node_count.fractus,
+                icon: <FiHardDrive size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
+              }
             : {
-              name: 'Cumulus Nodes',
-              value: gs.node_count.cumulus,
-              icon: <FiZap size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
-            };
+                name: 'Cumulus Nodes',
+                value: gs.node_count.cumulus,
+                icon: <FiZap size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
+              };
 
           return (
             <Cell
@@ -226,6 +230,110 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
+      <Cell
+        name='Node Utilisation'
+        value={gs.utilisation.node}
+        icon={
+          <RadialCircularProgressbar
+            value={gs.utilisation.node}
+            count={20}
+            rootStyles={{
+              pathColor: `#ff4d94`,
+              glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0 2px #ff4d94)
+                          drop-shadow(0 0 2px #ff0066`,
+              textColor: `#fff`
+            }}
+            radialSeparatorStyles={{
+              background: '#181a1b',
+              width: '2px',
+              // This needs to be equal to props.strokeWidth
+              height: `${8}%`
+            }}
+          />
+        }
+        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
+        small={!normalFontSize}
+        suffix={'%'}
+      />
+      <Cell
+        name='CPU Utilisation'
+        value={gs.utilisation.cpu}
+        icon={
+          <RadialCircularProgressbar
+            value={gs.utilisation.cpu}
+            count={20}
+            rootStyles={{
+              pathColor: `#38ef7d`,
+              glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0px 1px #11998e)
+                          drop-shadow(0 0 1px #38ef7d`,
+              textColor: `#fff`
+            }}
+            radialSeparatorStyles={{
+              background: '#181a1b',
+              width: '2px',
+              // This needs to be equal to props.strokeWidth
+              height: `${8}%`
+            }}
+          />
+        }
+        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
+        small={!normalFontSize}
+        suffix={'%'}
+      />
+      <Cell
+        name='Ram Utilisation'
+        value={gs.utilisation.ram}
+        icon={
+          <RadialCircularProgressbar
+            value={gs.utilisation.ram}
+            count={20}
+            rootStyles={{
+              pathColor: `#8E2DE2`,
+              glowColor: `drop-shadow(0 0 1px #000)
+                          drop-shadow(0 0 4px #8E2DE2)
+                          drop-shadow(0 0 4px #4A00E0`,
+              textColor: `#fff`
+            }}
+            radialSeparatorStyles={{
+              background: '#181a1b',
+              width: '2px',
+              // This needs to be equal to props.strokeWidth
+              height: `${8}%`
+            }}
+          />
+        }
+        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
+        small={!normalFontSize}
+        suffix={'%'}
+      />
+      <Cell
+        name='SSD Utilisation'
+        value={gs.utilisation.ssd}
+        icon={
+          <RadialCircularProgressbar
+            value={gs.utilisation.ssd}
+            count={20}
+            rootStyles={{
+              pathColor: `#36D1DC`,
+              glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0 1px #36D1DC)
+                          drop-shadow(0 0 1px #5B86E5`,
+              textColor: `#fff`
+            }}
+            radialSeparatorStyles={{
+              background: '#181a1b',
+              width: '2px',
+              // This needs to be equal to props.strokeWidth
+              height: `${8}%`
+            }}
+          />
+        }
+        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
+        small={!normalFontSize}
+        suffix={'%'}
+      />
     </div>
   );
 }

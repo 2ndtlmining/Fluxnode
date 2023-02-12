@@ -22,7 +22,8 @@ import { appStore, StoreKeys } from 'persistance/store';
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
-const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.thunder,benchmark.bench.totalstorage';
+const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo/benchmark';
+const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo/apps.resources';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -67,7 +68,15 @@ export function create_global_store() {
     bench_latest_version: fluxos_version_desc(0, 0, 0),
     current_block_height: 0,
     in_rich_list: false,
-    total_donations: 0
+    total_donations: 0,
+    totalLockedCores: 0,
+    totalLockedRam: 0,
+    utilisation: {
+      node: 0,
+      cpu: 0,
+      ram: 0,
+      ssd: 0,
+    }
   };
 }
 
@@ -160,7 +169,8 @@ export async function fetch_global_stats(walletAddress = null) {
     resBenchInfo,
     resFluxInfo,
     resRichList,
-    resFractusCount
+    resFluxNetworkUtils,
+    resNodeBenchmarks
   ] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
     walletAddress == null
@@ -171,7 +181,8 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    lazy_load_fractus_count()
+    fetch(API_FLUX_NETWORK_UTILISATION),
+    fetch(API_NODE_BENCHMARKS)
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -225,9 +236,39 @@ export async function fetch_global_stats(walletAddress = null) {
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
   }
 
-  if (resFractusCount.status == 'fulfilled') {
-    const res = resFractusCount.value;
-    store.node_count.fractus = res;
+  if (resFluxNetworkUtils.status == 'fulfilled') {
+    const res = resFluxNetworkUtils.value;
+    const json = await res.json();
+    const utilisedNodes = json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
+
+    // Total locked resources
+    store.totalLockedRam = (json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0)) / 1000000 // MB to TB;
+    store.totalLockedCores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+
+    // Utilised Node Percentage
+    store.utilisation.node = (utilisedNodes / store.node_count.total) * 100;
+  }
+
+  if (resNodeBenchmarks.status == 'fulfilled') {
+    let totalRam = 0, totalSsd = 0, totalCores = 0;
+    const res = resNodeBenchmarks.value;
+    const json = await res.json();
+    if (json.data?.length > 0) {
+      for (const data of json.data) {
+        totalRam = totalRam + data.benchmark.bench.ram;
+        totalSsd = totalSsd + data.benchmark.bench.ssd;
+        totalCores = totalCores + data.benchmark.bench.cores;
+      }
+  
+      // Covert from GB to TB
+      totalRam = totalRam / 1000;
+  
+      // Utilised Resources Percentage
+      store.utilisation.ram = ((totalRam - store.totalLockedRam) / totalRam) * 100;
+      store.utilisation.ssd = ((totalSsd - store.totalLockedRam) / totalSsd) * 100;
+      store.utilisation.cpu = ((totalCores - store.totalLockedCores) / totalCores) * 100;
+      store.node_count.fractus = await lazy_load_fractus_count(json.data);
+    }
   }
 
   fill_rewards(store);
@@ -551,17 +592,19 @@ export async function getDemoWallet() {
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
 
-async function lazy_load_fractus_count() {
-  const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);
-  if (!storedFractusCount) {
-    const res = await fetch(API_FRACTUS_LIST);
-    const json = await res.json();
-    const thunderCount = json.data.filter((data) => data.benchmark.bench.thunder).length;
+async function lazy_load_fractus_count(benchmarks) {
+  try {
+    const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);
+    if (storedFractusCount) return storedFractusCount;
+
+    const thunderCount = benchmarks.filter((data) => data.benchmark.bench.thunder).length;
 
     appStore.setItem(StoreKeys.FRACTUS_COUNT, thunderCount);
     return thunderCount;
-  } else {
-    return storedFractusCount;
+
+
+  } catch (e) {
+    console.error(e);
   }
 }
 
