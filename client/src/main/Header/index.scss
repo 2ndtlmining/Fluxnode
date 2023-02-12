@@ -116,9 +116,9 @@
 
 @include def-dash-cell(amount-usd-donate, #e7b876, #fbbd04, rgb(84, 52, 19), rgb(233, 123, 7), 28px);
 
-@include def-dash-cell-pecentage(utilisation-percentage, transparent, transparent, transparent, transparent, 70px);
+@include def-dash-cell-pecentage(utilisation-percentage, transparent, transparent, transparent, transparent, 60px);
 
-@include def-dash-cell-pecentage(utilisation-percentage-small, transparent, transparent, transparent, transparent, 70px);
+@include def-dash-cell-pecentage(utilisation-percentage-small, transparent, transparent, transparent, transparent, 60px);
 
 /* ============= TABLE AND MOBILE =============== */
 // max-width: 1200px for medium-sized laptops and desktops
