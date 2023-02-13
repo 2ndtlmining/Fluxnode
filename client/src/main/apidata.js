@@ -69,9 +69,12 @@ export function create_global_store() {
     current_block_height: 0,
     in_rich_list: false,
     total_donations: 0,
-    totalLockedCores: 0,
-    totalLockedRam: 0,
-    utilisation: {
+    total_locked_cores: 0,
+    total_locked_ram: 0,
+    total_cores: 0,
+    total_ram: 0,
+    total_ssd: 0,
+    utilization: {
       node: 0,
       cpu: 0,
       ram: 0,
@@ -157,6 +160,56 @@ export function fetch_total_donations(walletAddress) {
   });
 }
 
+export async function fetch_total_network_utils(gstore) {
+  const store = gstore;
+
+  const [resFluxNetworkUtils, resNodeBenchmarks] = await Promise.allSettled([fetch(API_FLUX_NETWORK_UTILISATION), fetch(API_NODE_BENCHMARKS)]);
+
+  if (resFluxNetworkUtils.status == 'fulfilled') {
+    const res = resFluxNetworkUtils.value;
+    const json = await res.json();
+    const utilizedNodes = Array.isArray(json.data) && json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
+    
+    store.total_utilized_nodes = utilizedNodes;
+
+    // Total locked resources
+    store.total_locked_ram = (json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0)) / 1000000 // MB to TB;
+    store.total_locked_cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+
+    // Utilised Node Percentage
+    store.utilization.node = (utilizedNodes / store.node_count.total) * 100;
+  }
+
+  if (resNodeBenchmarks.status == 'fulfilled') {
+    let totalRam = 0, totalSsd = 0, totalCores = 0;
+    const res = resNodeBenchmarks.value;
+    const json = await res.json();
+    if (Array.isArray(json.data)) {
+      for (const data of json.data) {
+        totalRam = totalRam + data.benchmark.bench.ram;
+        totalSsd = totalSsd + data.benchmark.bench.ssd;
+        totalCores = totalCores + data.benchmark.bench.cores;
+      }
+  
+      // Covert from GB to TB
+      totalRam = totalRam / 1000;
+
+      store.total_ram = totalRam;
+      store.total_ssd = totalSsd;
+      store.total_cores = totalCores;
+  
+      // Utilized Resources Percentage
+      store.utilization.ram = (store.total_locked_ram / totalRam) * 100;
+      store.utilization.ssd = (store.total_locked_ram / totalSsd) * 100;
+      store.utilization.cpu = (store.total_locked_cores / totalCores) * 100;
+      store.node_count.fractus = await lazy_load_fractus_count(json.data);
+    }
+  }
+
+  window.gstore = store;
+  return store;
+}
+
 
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
@@ -168,9 +221,7 @@ export async function fetch_global_stats(walletAddress = null) {
     resFluxVersion,
     resBenchInfo,
     resFluxInfo,
-    resRichList,
-    resFluxNetworkUtils,
-    resNodeBenchmarks
+    resRichList
   ] = await Promise.allSettled([
     fetch('https://explorer.runonflux.io/api/currency'),
     walletAddress == null
@@ -180,9 +231,7 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json'),
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
-    fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    fetch(API_FLUX_NETWORK_UTILISATION),
-    fetch(API_NODE_BENCHMARKS)
+    fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list')
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -234,41 +283,6 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = resRichList.value;
     const json = await res.json();
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
-  }
-
-  if (resFluxNetworkUtils.status == 'fulfilled') {
-    const res = resFluxNetworkUtils.value;
-    const json = await res.json();
-    const utilisedNodes = json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
-
-    // Total locked resources
-    store.totalLockedRam = (json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0)) / 1000000 // MB to TB;
-    store.totalLockedCores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
-
-    // Utilised Node Percentage
-    store.utilisation.node = (utilisedNodes / store.node_count.total) * 100;
-  }
-
-  if (resNodeBenchmarks.status == 'fulfilled') {
-    let totalRam = 0, totalSsd = 0, totalCores = 0;
-    const res = resNodeBenchmarks.value;
-    const json = await res.json();
-    if (json.data?.length > 0) {
-      for (const data of json.data) {
-        totalRam = totalRam + data.benchmark.bench.ram;
-        totalSsd = totalSsd + data.benchmark.bench.ssd;
-        totalCores = totalCores + data.benchmark.bench.cores;
-      }
-  
-      // Covert from GB to TB
-      totalRam = totalRam / 1000;
-  
-      // Utilised Resources Percentage
-      store.utilisation.ram = ((totalRam - store.totalLockedRam) / totalRam) * 100;
-      store.utilisation.ssd = ((totalSsd - store.totalLockedRam) / totalSsd) * 100;
-      store.utilisation.cpu = ((totalCores - store.totalLockedCores) / totalCores) * 100;
-      store.node_count.fractus = await lazy_load_fractus_count(json.data);
-    }
   }
 
   fill_rewards(store);

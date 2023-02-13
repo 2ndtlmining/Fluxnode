@@ -76,6 +76,21 @@ function FluxOSVersionView({ versionDesc }) {
   );
 }
 
+function UtilizationView({ utilized, total }) {
+  return (
+    <div className='d-block mb-0 cell-tooltip-box'>
+      <p>
+        <span className='ct-name'>Utilized: </span>
+        <span className='ct-val'>{Math.round(utilized * 100) / 100}</span>
+      </p>
+      <p>
+        <span className='ct-name'>Total: </span>
+        <span className='ct-val'>{Math.round(total * 100) / 100}</span>
+      </p>
+    </div>
+  );
+}
+
 function Cell({ name, value, icon, iconColor, iconColorAlt, small, cellHover, elementRef, ...otherProps }) {
   return (
     <InfoCell
@@ -230,110 +245,134 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <Cell
-        name='Node Utilisation'
-        value={gs.utilisation.node}
-        icon={
-          <RadialCircularProgressbar
-            value={gs.utilisation.node}
-            count={20}
-            rootStyles={{
-              pathColor: `#ff4d94`,
-              glowColor: `drop-shadow(0 0 2px #000)
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_utilized_nodes} total={gs.node_count.total} />}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='Node Utilisation'
+            value={gs.utilization.node}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilization.node}
+                count={20}
+                rootStyles={{
+                  pathColor: `#ff4d94`,
+                  glowColor: `drop-shadow(0 0 2px #000)
                           drop-shadow(0 0 2px #ff4d94)
                           drop-shadow(0 0 2px #ff0066`,
-              textColor: `#fff`
-            }}
-            radialSeparatorStyles={{
-              background: '#181a1b',
-              width: '2px',
-              // This needs to be equal to props.strokeWidth
-              height: `${8}%`
-            }}
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
           />
-        }
-        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
-        small={!normalFontSize}
-        suffix={'%'}
-      />
-      <Cell
-        name='CPU Utilisation'
-        value={gs.utilisation.cpu}
-        icon={
-          <RadialCircularProgressbar
-            value={gs.utilisation.cpu}
-            count={20}
-            rootStyles={{
-              pathColor: `#38ef7d`,
-              glowColor: `drop-shadow(0 0 2px #000)
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_cores} total={gs.total_cores} />}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='CPU Utilisation'
+            value={gs.utilization.cpu}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilization.cpu}
+                count={20}
+                rootStyles={{
+                  pathColor: `#38ef7d`,
+                  glowColor: `drop-shadow(0 0 2px #000)
                           drop-shadow(0 0px 1px #11998e)
                           drop-shadow(0 0 1px #38ef7d`,
-              textColor: `#fff`
-            }}
-            radialSeparatorStyles={{
-              background: '#181a1b',
-              width: '2px',
-              // This needs to be equal to props.strokeWidth
-              height: `${8}%`
-            }}
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
           />
-        }
-        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
-        small={!normalFontSize}
-        suffix={'%'}
-      />
-      <Cell
-        name='Ram Utilisation'
-        value={gs.utilisation.ram}
-        icon={
-          <RadialCircularProgressbar
-            value={gs.utilisation.ram}
-            count={20}
-            rootStyles={{
-              pathColor: `#8E2DE2`,
-              glowColor: `drop-shadow(0 0 1px #000)
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_ram} total={gs.total_ram} />}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='Ram Utilisation'
+            value={gs.utilization.ram}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilization.ram}
+                count={20}
+                rootStyles={{
+                  pathColor: `#8E2DE2`,
+                  glowColor: `drop-shadow(0 0 1px #000)
                           drop-shadow(0 0 4px #8E2DE2)
                           drop-shadow(0 0 4px #4A00E0`,
-              textColor: `#fff`
-            }}
-            radialSeparatorStyles={{
-              background: '#181a1b',
-              width: '2px',
-              // This needs to be equal to props.strokeWidth
-              height: `${8}%`
-            }}
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
           />
-        }
-        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
-        small={!normalFontSize}
-        suffix={'%'}
-      />
-      <Cell
-        name='SSD Utilisation'
-        value={gs.utilisation.ssd}
-        icon={
-          <RadialCircularProgressbar
-            value={gs.utilisation.ssd}
-            count={20}
-            rootStyles={{
-              pathColor: `#36D1DC`,
-              glowColor: `drop-shadow(0 0 2px #000)
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_ram} total={gs.total_ssd} />}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='SSD Utilisation'
+            value={gs.utilization.ssd}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilization.ssd}
+                count={20}
+                rootStyles={{
+                  pathColor: `#36D1DC`,
+                  glowColor: `drop-shadow(0 0 2px #000)
                           drop-shadow(0 0 1px #36D1DC)
                           drop-shadow(0 0 1px #5B86E5`,
-              textColor: `#fff`
-            }}
-            radialSeparatorStyles={{
-              background: '#181a1b',
-              width: '2px',
-              // This needs to be equal to props.strokeWidth
-              height: `${8}%`
-            }}
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
           />
-        }
-        iconWrapClassName={`dash-cell__utilisation-percentage${suffixClassName}`}
-        small={!normalFontSize}
-        suffix={'%'}
-      />
+        )}
+      </CellTooltip>
     </div>
   );
 }

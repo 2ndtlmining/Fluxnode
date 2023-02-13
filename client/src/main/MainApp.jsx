@@ -28,7 +28,8 @@ import {
   pa_summary_full,
   validateAddress,
   wallet_pas_summary,
-  fetch_total_donations
+  fetch_total_donations,
+  fetch_total_network_utils
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -257,6 +258,9 @@ class MainApp extends React.Component {
     fetch_total_donations(address).then((res) => {
       this.setState({ totalDonations: res })
     });
+    fetch_total_network_utils(gstore).then((store) => {
+      this.setState({ gstore: store });
+    })
     this.setState({
       isWalletAvailable: true,
 
