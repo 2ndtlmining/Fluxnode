@@ -76,16 +76,16 @@ function FluxOSVersionView({ versionDesc }) {
   );
 }
 
-function UtilizationView({ utilized, total }) {
+function UtilizationView({ utilized, total, suffix = '' }) {
   return (
     <div className='d-block mb-0 cell-tooltip-box'>
       <p>
         <span className='ct-name'>Utilized: </span>
-        <span className='ct-val'>{Math.round(utilized * 100) / 100}</span>
+        <span className='ct-val'>{Math.round(utilized * 100) / 100} {suffix}</span>
       </p>
       <p>
         <span className='ct-name'>Total: </span>
-        <span className='ct-val'>{Math.round(total * 100) / 100}</span>
+        <span className='ct-val'>{Math.round(total * 100) / 100} {suffix}</span>
       </p>
     </div>
   );
@@ -245,16 +245,16 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_utilized_nodes} total={gs.node_count.total} />}>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.nodes} total={gs.node_count.total}/>}>
         {(ref, tooltipProps) => (
           <Cell
             elementRef={ref}
             {...tooltipProps}
             name='Node Utilisation'
-            value={gs.utilization.node}
+            value={gs.utilized.nodes_percentage}
             icon={
               <RadialCircularProgressbar
-                value={gs.utilization.node}
+                value={gs.utilized.nodes_percentage}
                 count={20}
                 rootStyles={{
                   pathColor: `#ff4d94`,
@@ -277,16 +277,16 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_cores} total={gs.total_cores} />}>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.cores} total={gs.total.cores} suffix="vCores"/>}>
         {(ref, tooltipProps) => (
           <Cell
             elementRef={ref}
             {...tooltipProps}
             name='CPU Utilisation'
-            value={gs.utilization.cpu}
+            value={gs.utilized.cores_percentage}
             icon={
               <RadialCircularProgressbar
-                value={gs.utilization.cpu}
+                value={gs.utilized.cores_percentage}
                 count={20}
                 rootStyles={{
                   pathColor: `#38ef7d`,
@@ -309,16 +309,16 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_ram} total={gs.total_ram} />}>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ram} suffix="TB"/>}>
         {(ref, tooltipProps) => (
           <Cell
             elementRef={ref}
             {...tooltipProps}
             name='Ram Utilisation'
-            value={gs.utilization.ram}
+            value={gs.utilized.ram_percentage}
             icon={
               <RadialCircularProgressbar
-                value={gs.utilization.ram}
+                value={gs.utilized.ram_percentage}
                 count={20}
                 rootStyles={{
                   pathColor: `#8E2DE2`,
@@ -341,16 +341,16 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<UtilizationView utilized={gs.total_locked_ram} total={gs.total_ssd} />}>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ssd} suffix="TB"/>}>
         {(ref, tooltipProps) => (
           <Cell
             elementRef={ref}
             {...tooltipProps}
             name='SSD Utilisation'
-            value={gs.utilization.ssd}
+            value={gs.utilized.ssd_percentage}
             icon={
               <RadialCircularProgressbar
-                value={gs.utilization.ssd}
+                value={gs.utilized.ssd_percentage}
                 count={20}
                 rootStyles={{
                   pathColor: `#36D1DC`,
