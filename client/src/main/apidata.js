@@ -26,7 +26,6 @@ const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.th
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
-const API_FLUX_UPTIME_ENDPOINT = '/flux/uptime';
 
 const FLUX_PER_DAY = (24 * 60) / 2; /* 1 flux every 2 minutes */
 
@@ -427,8 +426,20 @@ function _fillPartial_apps(fluxNode, installedApps) {
   }
 }
 
-function _fillPartial_uptime(fluxNode, uptime) {
-  if (uptime !== null) fluxNode.uptime = uptime;
+async function _fillPartial_uptime(fluxNode) {
+  try {
+    const response = await fetch(`${API_FLUX_NODE_URL}` + make_node_ip(fluxNode), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    const jsonData = await response.json();
+    const { activesince: activeSince } = jsonData.data[0] || {};
+    fluxNode.uptime = activeSince ? dayjs().unix() - activeSince : null;
+  } catch(e) {
+    console.error(e);
+  }
 }
 
 const make_node_ip = (fluxNode) => fluxNode.ip_full.host + ':' + fluxNode.ip_full.active_port_api;
@@ -459,7 +470,6 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
     _fillPartial_benchmarks(fluxNode, targetNode['node_info'].data?.benchmark?.bench);
     _fillPartial_version(fluxNode, targetNode['node_info'].data?.flux?.version);
     _fillPartial_apps(fluxNode, targetNode['apps'].data);
-    _fillPartial_uptime(fluxNode, targetNode['uptime'].data);
   };
 }
 // FLUXNODE_INFO_API_MODE == 'debug'
@@ -469,19 +479,16 @@ else {
 
     const promiseNodeInfo = fetch(server + API_NODE_INFO_ENDPOINT, { ...REQUEST_OPTIONS_API });
     const promiseAppList = fetch(server + API_FLUX_APPLIST_ENDPOINT, { ...REQUEST_OPTIONS_API });
-    const promiseUptimeData = fetch(server + API_FLUX_UPTIME_ENDPOINT, { ...REQUEST_OPTIONS_API });
 
     let reqSuccess;
 
     let resultNodeInfo;
     let resultAppList;
-    let resultUptime;
 
     try {
-      [resultNodeInfo, resultAppList, resultUptime] = await Promise.all([
+      [resultNodeInfo, resultAppList] = await Promise.all([
         promiseNodeInfo,
         promiseAppList,
-        promiseUptimeData
       ]);
       reqSuccess = true;
     } catch {
@@ -494,7 +501,6 @@ else {
       _fillPartial_benchmarks(fluxNode, nodeInfo?.benchmark?.bench);
       _fillPartial_version(fluxNode, nodeInfo?.flux?.version);
       _fillPartial_apps(fluxNode, (await resultAppList.json()).data);
-      _fillPartial_uptime(fluxNode, (await resultUptime.json()).data);
     }
   };
 }
@@ -504,6 +510,7 @@ export async function fillPartialNode(node) {
   if (!node.maybe_online) return make_offline(node);
 
   await _fetchAndFillNodeInfo(node);
+  await _fillPartial_uptime(node);
 }
 
 function fill_tier_health(target, tierRewardProjections, fluxPriceUsd) {
