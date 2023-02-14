@@ -78,7 +78,7 @@ function FluxOSVersionView({ versionDesc }) {
 
 function UtilizationView({ utilized, total, suffix = '' }) {
   const displayUtilized = `${calculate_float_number(utilized)} ${suffix}`;
-  const displayTotal = total === 0 ? `${calculate_float_number(total)} ${suffix}` : 'Not Available';
+  const displayTotal = total ? `${calculate_float_number(total)} ${suffix}` : 'Not Available';
 
   return (
     <div className='d-block mb-0 cell-tooltip-box'>
