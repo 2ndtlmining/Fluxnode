@@ -1,4 +1,4 @@
-import { format_minutes } from 'utils';
+import { calculate_float_number, format_minutes } from 'utils';
 
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 
@@ -77,15 +77,18 @@ function FluxOSVersionView({ versionDesc }) {
 }
 
 function UtilizationView({ utilized, total, suffix = '' }) {
+  const displayUtilized = `${calculate_float_number(utilized)} ${suffix}`;
+  const displayTotal = total === 0 ? `${calculate_float_number(total)} ${suffix}` : 'Not Available';
+
   return (
     <div className='d-block mb-0 cell-tooltip-box'>
       <p>
         <span className='ct-name'>Utilized: </span>
-        <span className='ct-val'>{Math.round(utilized * 100) / 100} {suffix}</span>
+        <span className='ct-val'>{displayUtilized}</span>
       </p>
       <p>
         <span className='ct-name'>Total: </span>
-        <span className='ct-val'>{Math.round(total * 100) / 100} {suffix}</span>
+        <span className='ct-val'>{displayTotal}</span>
       </p>
     </div>
   );

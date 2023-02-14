@@ -123,3 +123,11 @@ function format_thousands_separator(amount) {
   }
   return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
+
+export function calculate_float_number(amount) {
+  if (Number.isNaN(amount)) {
+    throw new Error('Invalid amount type');
+  }
+
+  return Math.round(amount * 100) / 100;
+}

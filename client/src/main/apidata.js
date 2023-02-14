@@ -190,6 +190,7 @@ export async function fetch_total_network_utils(gstore) {
     store.utilized.ram =
       json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
     store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+    store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000 // GB to TB;
 
     // Utilised Node Percentage
     store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
@@ -216,7 +217,7 @@ export async function fetch_total_network_utils(gstore) {
 
       // Utilized Resources Percentage
       store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
-      store.utilized.ssd_percentage = (store.utilized.ram / store.total.ssd) * 100;
+      store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
       store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
       store.node_count.fractus = await lazy_load_fractus_count(json.data);
     }
