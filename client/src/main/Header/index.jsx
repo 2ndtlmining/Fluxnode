@@ -344,7 +344,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
           />
         )}
       </CellTooltip>
-      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ssd} suffix="TB"/>}>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ssd} total={gs.total.ssd} suffix="TB"/>}>
         {(ref, tooltipProps) => (
           <Cell
             elementRef={ref}
