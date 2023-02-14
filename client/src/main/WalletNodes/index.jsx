@@ -504,8 +504,8 @@ export class WalletNodes extends React.Component {
         if (rawIndex >= partialNodes.length) break;
 
         ++batchActualSize;
-        const raw = partialNodes[rawIndex];
-        batch.push(fillPartialNode(raw));
+        const rawNode = partialNodes[rawIndex];
+        batch.push(fillPartialNode(rawNode, this.props.activeAddress));
       }
 
       if (batchActualSize == 0)

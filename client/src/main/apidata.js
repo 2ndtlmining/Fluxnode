@@ -426,16 +426,17 @@ function _fillPartial_apps(fluxNode, installedApps) {
   }
 }
 
-async function _fillPartial_uptime(fluxNode) {
+async function _fillPartial_uptime(fluxNode, activeWalletAddress) {
   try {
-    const response = await fetch(`${API_FLUX_NODE_URL}` + make_node_ip(fluxNode), {
+    const response = await fetch(`${API_FLUX_NODE_URL}` + activeWalletAddress, {
       method: 'GET',
       headers: {
         Accept: 'application/json'
       }
     });
     const jsonData = await response.json();
-    const { activesince: activeSince } = jsonData.data[0] || {};
+    const { activesince: activeSince } = jsonData.data.find(node => node.ip === fluxNode.ip_full.host);
+
     fluxNode.uptime = activeSince ? dayjs().unix() - activeSince : null;
   } catch(e) {
     console.error(e);
@@ -505,12 +506,12 @@ else {
   };
 }
 
-export async function fillPartialNode(node) {
+export async function fillPartialNode(node, activeAddress) {
   // Do not try to reach servers if they are confirmed to be offline
   if (!node.maybe_online) return make_offline(node);
 
   await _fetchAndFillNodeInfo(node);
-  await _fillPartial_uptime(node);
+  await _fillPartial_uptime(node, activeAddress);
 }
 
 function fill_tier_health(target, tierRewardProjections, fluxPriceUsd) {
