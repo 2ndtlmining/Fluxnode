@@ -1,4 +1,4 @@
-import { format_minutes } from 'utils';
+import { calculate_float_number, format_minutes } from 'utils';
 
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 
@@ -8,12 +8,16 @@ import { FluxIcon } from 'components/FluxIcon.jsx';
 import { InfoCell } from 'main/InfoCell';
 // import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
-import { FiCpu, FiDollarSign, FiFolder, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
+import { FiCpu, FiDollarSign, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
 import { FaCrown, FaWallet } from 'react-icons/fa';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
 import { useContext, useState } from 'react';
+
+import { CircularProgressbar } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import { RadialCircularProgressbar } from 'components/RadialCircularProgressbar';
 
 const WALLET_CELL_ATTRIBUTES = {
   richlist: {
@@ -67,6 +71,24 @@ function FluxOSVersionView({ versionDesc }) {
       <p>
         <span style={{ color: '#ced1db', fontWeight: 500 }}>FluxOS Latest Version: </span>
         <span style={{ color: '#fff', fontWeight: 600 }}>{fluxos_version_string(versionDesc)}</span>
+      </p>
+    </div>
+  );
+}
+
+function UtilizationView({ utilized, total, suffix = '' }) {
+  const displayUtilized = `${calculate_float_number(utilized)} ${suffix}`;
+  const displayTotal = total ? `${calculate_float_number(total)} ${suffix}` : 'Not Available';
+
+  return (
+    <div className='d-block mb-0 cell-tooltip-box'>
+      <p>
+        <span className='ct-name'>Utilized: </span>
+        <span className='ct-val'>{displayUtilized}</span>
+      </p>
+      <p>
+        <span className='ct-name'>Total: </span>
+        <span className='ct-val'>{displayTotal}</span>
       </p>
     </div>
   );
@@ -151,17 +173,17 @@ export function DashboardCells({ gstore: gs, total_donations }) {
         {(ref, tooltipProps) => {
           const cellProps = enableFractusNodesCell
             ? {
-              name: 'Fractus Nodes',
-              value: gs.node_count.fractus,
-              icon: <FiHardDrive size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
-            }
+                name: 'Fractus Nodes',
+                value: gs.node_count.fractus,
+                icon: <FiHardDrive size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
+              }
             : {
-              name: 'Cumulus Nodes',
-              value: gs.node_count.cumulus,
-              icon: <FiZap size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
-            };
+                name: 'Cumulus Nodes',
+                value: gs.node_count.cumulus,
+                icon: <FiZap size={iconSize} />,
+                iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
+              };
 
           return (
             <Cell
@@ -223,6 +245,134 @@ export function DashboardCells({ gstore: gs, total_donations }) {
             small={!normalFontSize}
             prefix='$'
             isPrivacy={enablePrivacyMode}
+          />
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.nodes} total={gs.node_count.total}/>}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='Node Utilisation'
+            value={gs.utilized.nodes_percentage}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilized.nodes_percentage}
+                count={20}
+                rootStyles={{
+                  pathColor: `#ff4d94`,
+                  glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0 2px #ff4d94)
+                          drop-shadow(0 0 2px #ff0066`,
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
+          />
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.cores} total={gs.total.cores} suffix="vCores"/>}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='CPU Utilisation'
+            value={gs.utilized.cores_percentage}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilized.cores_percentage}
+                count={20}
+                rootStyles={{
+                  pathColor: `#38ef7d`,
+                  glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0px 1px #11998e)
+                          drop-shadow(0 0 1px #38ef7d`,
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
+          />
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ram} suffix="TB"/>}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='Ram Utilisation'
+            value={gs.utilized.ram_percentage}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilized.ram_percentage}
+                count={20}
+                rootStyles={{
+                  pathColor: `#8E2DE2`,
+                  glowColor: `drop-shadow(0 0 1px #000)
+                          drop-shadow(0 0 4px #8E2DE2)
+                          drop-shadow(0 0 4px #4A00E0`,
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
+          />
+        )}
+      </CellTooltip>
+      <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ssd} suffix="TB"/>}>
+        {(ref, tooltipProps) => (
+          <Cell
+            elementRef={ref}
+            {...tooltipProps}
+            name='SSD Utilisation'
+            value={gs.utilized.ssd_percentage}
+            icon={
+              <RadialCircularProgressbar
+                value={gs.utilized.ssd_percentage}
+                count={20}
+                rootStyles={{
+                  pathColor: `#36D1DC`,
+                  glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0 1px #36D1DC)
+                          drop-shadow(0 0 1px #5B86E5`,
+                  textColor: `#fff`
+                }}
+                radialSeparatorStyles={{
+                  background: '#181a1b',
+                  width: '2px',
+                  // This needs to be equal to props.strokeWidth
+                  height: `${8}%`
+                }}
+              />
+            }
+            iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+            small={!normalFontSize}
+            suffix={'%'}
           />
         )}
       </CellTooltip>

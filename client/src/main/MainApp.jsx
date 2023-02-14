@@ -28,7 +28,8 @@ import {
   pa_summary_full,
   validateAddress,
   wallet_pas_summary,
-  fetch_total_donations
+  fetch_total_donations,
+  fetch_total_network_utils
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -108,7 +109,7 @@ class MainApp extends React.Component {
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
       this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
-    } catch { }
+    } catch {}
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
@@ -187,9 +188,15 @@ class MainApp extends React.Component {
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
     } else {
-      fetch_global_stats(null).then((gstore) => {
-        this.setState({ gstore });
-      });
+      fetch_global_stats(null)
+        .then((gstore) => {
+          this.setState({ gstore });
+          return fetch_total_network_utils(gstore);
+        })
+        .then((gstore) => {
+          this.setState({ gstore });
+          appStore.setItem(StoreKeys.GLOBAL_STATS_STORE, gstore);
+        });
     }
   }
 
@@ -253,10 +260,14 @@ class MainApp extends React.Component {
     let isDOS = await isWalletDOSState(address);
     this.setState({ isDOS });
 
+    const saveGstore = await appStore.get(StoreKeys.GLOBAL_STATS_STORE);
+
     const gstore = await fetch_global_stats(address);
+
     fetch_total_donations(address).then((res) => {
-      this.setState({ totalDonations: res })
+      this.setState({ totalDonations: res });
     });
+    
     this.setState({
       isWalletAvailable: true,
 
@@ -267,24 +278,27 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(
-      address,
-      gstore,
-      ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
-        highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
-        bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
-        mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
-      }
-    );
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
+      highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
+      bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
+      mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+    });
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
+
+    if (!saveGstore) {
+      // If no saved gstore, fetch all global stats and network utils
+      fetch_total_network_utils(gstore).then((res) => {
+        this.setState({ gstore: res });
+      });
+    }
   }
 
   handleButtonClick = () => {
     this.onProcessAddress();
     setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button' });
-  }
+  };
 
   handleAddrKeyPress = (e) => {
     if (e.key == 'Enter') {
@@ -490,7 +504,9 @@ class MainApp extends React.Component {
                 <title>Wallet</title>
               </Helmet>
 
-              {enableDashboardCells ? <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} /> : null}
+              {enableDashboardCells ? (
+                <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} />
+              ) : null}
               {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
               <Container fluid style={{ margin: '20px 20px' }}>

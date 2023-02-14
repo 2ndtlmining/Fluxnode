@@ -28,7 +28,28 @@ $information-cell-circle-size: 27px;
         .icl-i-wrap {
             box-sizing: content-box;
             display: inline-block;
-            padding: 15px;
+            border-radius: 100px;
+
+            width: $information-cell-circle-size;
+            min-width: $information-cell-circle-size;
+            max-width: $information-cell-circle-size;
+            height: $information-cell-circle-size;
+            min-height: $information-cell-circle-size;
+            max-height: $information-cell-circle-size;
+
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            &::after {
+                content: '';
+                margin-top: 100%;
+            }
+        }
+
+        .icl-i-wrap-custom {
+            box-sizing: content-box;
+            display: inline-block;
             border-radius: 100px;
 
             width: $information-cell-circle-size;

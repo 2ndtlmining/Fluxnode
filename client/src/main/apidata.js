@@ -22,7 +22,8 @@ import { appStore, StoreKeys } from 'persistance/store';
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
-const API_FRACTUS_LIST = 'https://stats.runonflux.io/fluxinfo/benchmark.bench.thunder,benchmark.bench.totalstorage';
+const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo/benchmark';
+const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo/apps.resources';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -67,7 +68,23 @@ export function create_global_store() {
     bench_latest_version: fluxos_version_desc(0, 0, 0),
     current_block_height: 0,
     in_rich_list: false,
-    total_donations: 0
+    total_donations: 0,
+
+    total: {
+      cores: 0,
+      ram: 0,
+      ssd: 0
+    },
+    utilized: {
+      cores: 0,
+      nodes: 0,
+      ram: 0,
+      ssd: 0,
+      cores_percentage: 0,
+      nodes_percentage: 0,
+      ram_percentage: 0,
+      ssd_percentage: 0
+    }
   };
 }
 
@@ -88,7 +105,12 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
   projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
-function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral, percentage = 15) {
+function fill_tier_g_projection_fractus(
+  projectionTargetObj,
+  nodeCount,
+  networkFluxPerDay,
+  collateral,
+) {
   // pay freq = node_count * 2 minutes
   projectionTargetObj.pay_frequency = nodeCount * 2;
 
@@ -126,7 +148,7 @@ function fill_rewards(gstore) {
     gstore.reward_projections.fractus,
     gstore.node_count.cumulus,
     CLC_NETWORK_FRACTUS_PER_DAY,
-    CC_COLLATERAL_FRACTUS,
+    CC_COLLATERAL_FRACTUS
   );
 }
 
@@ -148,31 +170,78 @@ export function fetch_total_donations(walletAddress) {
   });
 }
 
+export async function fetch_total_network_utils(gstore) {
+  const store = gstore;
+
+  const [resFluxNetworkUtils, resNodeBenchmarks] = await Promise.allSettled([
+    fetch(API_FLUX_NETWORK_UTILISATION),
+    fetch(API_NODE_BENCHMARKS)
+  ]);
+
+  if (resFluxNetworkUtils.status == 'fulfilled') {
+    const res = resFluxNetworkUtils.value;
+    const json = await res.json();
+    const emptyNodes =
+      Array.isArray(json.data) && json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
+
+    store.utilized.nodes = store.node_count.total - emptyNodes;
+
+    // Total locked resources
+    store.utilized.ram =
+      json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
+    store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+    store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000 // GB to TB;
+
+    // Utilised Node Percentage
+    store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
+  }
+
+  if (resNodeBenchmarks.status == 'fulfilled') {
+    let totalRam = 0,
+      totalSsd = 0,
+      totalCores = 0;
+    const res = resNodeBenchmarks.value;
+    const json = await res.json();
+    if (Array.isArray(json.data)) {
+      for (const data of json.data) {
+        totalRam = totalRam + data.benchmark.bench.ram;
+        totalSsd = totalSsd + data.benchmark.bench.ssd;
+        totalCores = totalCores + data.benchmark.bench.cores;
+      }
+
+      // Covert from GB to TB
+      store.total.ram = totalRam / 1000;
+      store.total.ssd = totalSsd / 1000;
+
+      store.total.cores = totalCores;
+
+      // Utilized Resources Percentage
+      store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
+      store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
+      store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
+      store.node_count.fractus = await lazy_load_fractus_count(json.data);
+    }
+  }
+
+  window.gstore = store;
+  return store;
+}
 
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [
-    resCurrency,
-    resWallet,
-    resFluxNodes,
-    resFluxVersion,
-    resBenchInfo,
-    resFluxInfo,
-    resRichList,
-    resFractusCount
-  ] = await Promise.allSettled([
-    fetch('https://explorer.runonflux.io/api/currency'),
-    walletAddress == null
-      ? Promise.reject(new Error('Empty address'))
-      : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
-    fetch('https://api.runonflux.io/daemon/getzelnodecount'),
-    fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json'),
-    fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
-    fetch('https://api.runonflux.io/daemon/getinfo'),
-    fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    lazy_load_fractus_count()
-  ]);
+  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo, resRichList] =
+    await Promise.allSettled([
+      fetch('https://explorer.runonflux.io/api/currency'),
+      walletAddress == null
+        ? Promise.reject(new Error('Empty address'))
+        : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
+      fetch('https://api.runonflux.io/daemon/getzelnodecount'),
+      fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json'),
+      fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
+      fetch('https://api.runonflux.io/daemon/getinfo'),
+      fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list')
+    ]);
 
   if (resCurrency.status == 'fulfilled') {
     const res = resCurrency.value;
@@ -223,11 +292,6 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = resRichList.value;
     const json = await res.json();
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
-  }
-
-  if (resFractusCount.status == 'fulfilled') {
-    const res = resFractusCount.value;
-    store.node_count.fractus = res;
   }
 
   fill_rewards(store);
@@ -334,7 +398,7 @@ export async function getWalletNodes(walletAddress) {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
-    } catch { }
+    } catch {}
   } else {
     const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
     const data = await listResponse.json();
@@ -449,7 +513,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch { }
+    } catch {}
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -551,17 +615,17 @@ export async function getDemoWallet() {
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
 
-async function lazy_load_fractus_count() {
-  const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);
-  if (!storedFractusCount) {
-    const res = await fetch(API_FRACTUS_LIST);
-    const json = await res.json();
-    const thunderCount = json.data.filter((data) => data.benchmark.bench.thunder).length;
+async function lazy_load_fractus_count(benchmarks) {
+  try {
+    const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);
+    if (storedFractusCount) return storedFractusCount;
+
+    const thunderCount = benchmarks.filter((data) => data.benchmark.bench.thunder).length;
 
     appStore.setItem(StoreKeys.FRACTUS_COUNT, thunderCount);
     return thunderCount;
-  } else {
-    return storedFractusCount;
+  } catch (e) {
+    console.error(e);
   }
 }
 
