@@ -193,7 +193,10 @@ class MainApp extends React.Component {
           this.setState({ gstore });
           return fetch_total_network_utils(gstore);
         })
-        .then((gstore) => this.setState({ gstore }));
+        .then((gstore) => {
+          this.setState({ gstore });
+          appStore.setItem(StoreKeys.GLOBAL_STORE, gstore);
+        });
     }
   }
 
@@ -257,13 +260,17 @@ class MainApp extends React.Component {
     let isDOS = await isWalletDOSState(address);
     this.setState({ isDOS });
 
-    const gstore = await fetch_global_stats(address);
+    let gstore = await appStore.getItem(StoreKeys.GLOBAL_STORE);
+
     fetch_total_donations(address).then((res) => {
       this.setState({ totalDonations: res });
     });
-    fetch_total_network_utils(gstore).then((store) => {
-      this.setState({ gstore: store });
-    });
+
+    // If no saved gstore, fetch all global stats and network utils
+    if (!gstore) {
+      gstore = await fetch_global_stats(address).then((gstore) => fetch_total_network_utils(gstore));
+    }
+
     this.setState({
       isWalletAvailable: true,
 
