@@ -173,9 +173,6 @@ export async function fetch_total_network_utils(gstore) {
     fetch(API_NODE_BENCHMARKS)
   ]);
 
-  // const resFluxNetworkUtils = await fetch(API_FLUX_NETWORK_UTILISATION);
-  // const resNodeBenchmarks = await fetch(API_NODE_BENCHMARKS);
-
   if (resFluxNetworkUtils.status == 'fulfilled') {
     const res = resFluxNetworkUtils.value;
     const json = await res.json();
