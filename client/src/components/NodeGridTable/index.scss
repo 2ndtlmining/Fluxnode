@@ -2,6 +2,18 @@
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
 @import 'styles/functional';
 
+.mini-req-table {
+    th,
+    td {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    .rq-name {
+        text-align: right;
+        padding-right: 7px;
+    }
+}
+
 .outdated-flux-ver {
     color: #c87619 !important;
 }
@@ -37,7 +49,8 @@
 
 .ag-header-cell {
     min-width: max-content!important;
-   
+    padding-left: 6px;
+    padding-right: 6px;
 }
 
 .ag-header-cell-comp-wrapper {
@@ -84,4 +97,10 @@
 
 .active {
     color: cornflowerblue;
+}
+
+.ag-cell {
+    padding-left: 6px;
+    padding-right: 6px;
+    width:max-content;
 }

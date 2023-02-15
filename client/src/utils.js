@@ -35,7 +35,7 @@ window.split_duration = split_duration;
 export function format_duration(duration) {
   const { days, hours, minutes, seconds } = split_duration(duration);
 
-  if(days == 0 && hours == 0 && minutes ==0)
+  if (days == 0 && hours == 0 && minutes == 0)
     return `${seconds} seconds`;
 
   if (days == 0 && hours == 0)
@@ -64,14 +64,14 @@ export function pad_start(num, size = 2) {
 }
 
 export function hide_sensitive_number(number) {
-  if(number) {
+  if (number) {
     return number.toString().replace(/\d/g, 'X');
   }
   return number;
 }
 
 export function hide_sensitive_string(string) {
-  if(string) {
+  if (string) {
     return string.toString().replace(/[a-zA-Z0-9]/g, 'X');
   }
   return string;
@@ -108,6 +108,33 @@ function output_json_source(obj, title = 'Title') {
 </html>`;
 
   win.document.body.innerHTML = targetHTML;
+}
+
+export function dateComparator(date1, date2) {
+  const date1Formatted = new Date(date1);
+  const date2Formatted = new Date(date2);
+
+  return date1Formatted.getTime() - date2Formatted.getTime();
+}
+
+export function nextRewardComparator(data1, data2) {
+  const val1 = data1.split(" ");
+  const val2 = data2.split(" ");
+  if (val1[1] === val2[1]) {
+    return parseInt(val1[0]) - parseInt(val2[0]);
+  }
+
+  if (val1[1] === 'days') return 1;
+  if (val2[1] === 'days') return -1;
+
+  if (val1[1] === 'Hrs') return 1;
+  if (val2[1] === 'Hrs') return -1;
+
+  if (val1[1] === 'mins') return 1;
+  if (val2[1] === 'mins') return -1;
+
+  if (val1[1] === 'seconds') return 1;
+  if (val2[1] === 'seconds') return -1;
 }
 
 export function format_amount(amount, enablePrivacyMode) {

@@ -46,21 +46,35 @@ export default class CustomHeader extends Component {
         let sort = null;
         if (this.props.enableSorting) {
             sort = (
-                <div style={{ display: 'inline-block' }}>
-                    <div
-                        onClick={this.onSortRequested.bind(this, 'asc')}
-                        onTouchEnd={this.onSortRequested.bind(this, 'asc')}
-                        className={`customSortDownLabel ${this.state.ascSort}`}
-                    >
-                        <Icon className='header-icon' icon='arrow-down' size={12} />
-                    </div>
-                    <div
-                        onClick={this.onSortRequested.bind(this, 'desc')}
-                        onTouchEnd={this.onSortRequested.bind(this, 'desc')}
-                        className={`customSortUpLabel ${this.state.descSort}`}
-                    >
-                        <Icon className='header-icon' icon='arrow-up' size={12} />
-                    </div>
+                <div style={{ display: 'inline-block', paddingLeft: '3px' }}>
+                    {this.state.ascSort === 'active' ?
+                        <div
+                            onClick={this.onSortRequested.bind(this, 'desc')}
+                            onTouchEnd={this.onSortRequested.bind(this, 'desc')}
+                            className={`customSortDownLabel ${this.state.ascSort}`}
+                        >
+                            <Icon className='header-icon' icon='arrow-down' size={12} />
+                        </div> : undefined
+                    }
+                    {this.state.descSort === 'active' ?
+                        <div
+                            onClick={this.onSortRequested.bind(this, 'no')}
+                            onTouchEnd={this.onSortRequested.bind(this, 'no')}
+                            className={`customSortUpLabel ${this.state.descSort}`}
+                        >
+                            <Icon className='header-icon' icon='arrow-up' size={12} />
+                        </div> : undefined
+                    }
+                    {this.state.noSort === 'active' ?
+                        <div
+                            onClick={this.onSortRequested.bind(this, 'asc')}
+                            onTouchEnd={this.onSortRequested.bind(this, 'asc')}
+                            className={`customSortUpLabel ${this.state.noSort}`}
+                        >
+                            <Icon className='header-icon' icon='arrows-vertical' size={12} />
+                        </div> : undefined
+                    }
+
                 </div>
             );
         }

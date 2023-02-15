@@ -43,15 +43,15 @@ class Demo extends React.Component {
     return (
       <>
         {hasValidWalletAddress ? (
-          <MainApp defaultAddress={this.state.demoWallet?.address} />
+          <MainApp defaultAddress={this.state.demoWallet?.address} theme={this.props.theme} />
         ) : (
-          <FailedToLoadDemo errorCode={this.state.demoWallet ? "404" : this.state.demoWallet?.errorCode } errorMsg="Failed to load the demo wallet"/>
+          <FailedToLoadDemo errorCode={this.state.demoWallet ? "404" : this.state.demoWallet?.errorCode} errorMsg="Failed to load the demo wallet" />
         )}
       </>
     );
   }
 
-  render() {    
+  render() {
     return (
       <>
         {this.state.isAddressLoading ? (
