@@ -287,13 +287,6 @@ class MainApp extends React.Component {
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
-
-    if (!saveGstore) {
-      // If no saved gstore, fetch all global stats and network utils
-      fetch_total_network_utils(gstore).then((res) => {
-        this.setState({ gstore: res });
-      });
-    }
   }
 
   handleButtonClick = () => {
