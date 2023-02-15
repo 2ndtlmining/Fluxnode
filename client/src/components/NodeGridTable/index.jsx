@@ -11,14 +11,22 @@ import { NumberCell } from './CustomisedCells/NumberCell';
 import { UptimeCell } from './CustomisedCells/UptimeCell';
 import { AppCountCell } from './CustomisedCells/AppCountCell';
 import CustomHeader from './CustomHeader';
-import { dateComparator, fluxVersionComparator, nextRewardComparator } from 'utils';
+import { fluxos_version_string } from 'main/flux_version';
+import { dateComparator, nextRewardComparator } from 'utils';
 
 export const NodeGridTable = ({ data, gstore, theme }) => {
   const gridRef = useRef();
   const [rowData, setRowData] = useState(data);
   const [appTheme, setAppTheme] = useState(theme);
   useEffect(() => {
-    setRowData(data.map((x) => ({ ...x, gstore: gstore })));
+    setRowData(
+      data.map((x) => ({
+        ...x,
+        gstore: gstore,
+        flux_os_display: fluxos_version_string(x.flux_os),
+        bench_version_display: fluxos_version_string(x.bench_version)
+      }))
+    );
     setAppTheme(theme);
   }, [data, gstore, theme]);
 
@@ -82,19 +90,17 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
       filter: 'agTextColumnFilter'
     },
     {
-      field: 'flux_os',
+      field: 'flux_os_display',
       headerName: 'Flux OS',
       cellRenderer: 'fluxOSCell',
-      filter: 'agTextColumnFilter',
-      comparator: fluxVersionComparator
+      filter: 'agTextColumnFilter'
     },
     {
-      field: 'bench_version',
+      field: 'bench_version_display',
       headerName: 'Flux Bench version',
       cellRenderer: 'benchVersionCell',
       filter: 'agTextColumnFilter',
-      minWidth: 200,
-      comparator: fluxVersionComparator
+      minWidth: 200
     },
     {
       field: 'eps',
