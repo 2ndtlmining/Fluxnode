@@ -105,12 +105,7 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
   projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
-function fill_tier_g_projection_fractus(
-  projectionTargetObj,
-  nodeCount,
-  networkFluxPerDay,
-  collateral,
-) {
+function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral) {
   // pay freq = node_count * 2 minutes
   projectionTargetObj.pay_frequency = nodeCount * 2;
 
@@ -178,22 +173,27 @@ export async function fetch_total_network_utils(gstore) {
     fetch(API_NODE_BENCHMARKS)
   ]);
 
+  // const resFluxNetworkUtils = await fetch(API_FLUX_NETWORK_UTILISATION);
+  // const resNodeBenchmarks = await fetch(API_NODE_BENCHMARKS);
+
   if (resFluxNetworkUtils.status == 'fulfilled') {
     const res = resFluxNetworkUtils.value;
     const json = await res.json();
-    const emptyNodes =
-      Array.isArray(json.data) && json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
 
-    store.utilized.nodes = store.node_count.total - emptyNodes;
+    if (json.status !== 'error') {
+      const emptyNodes = json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
 
-    // Total locked resources
-    store.utilized.ram =
-      json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
-    store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
-    store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000 // GB to TB;
+      store.utilized.nodes = store.node_count.total - emptyNodes;
 
-    // Utilised Node Percentage
-    store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
+      // Total locked resources
+      store.utilized.ram =
+        json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
+      store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+      store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000; // GB to TB;
+
+      // Utilised Node Percentage
+      store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
+    }
   }
 
   if (resNodeBenchmarks.status == 'fulfilled') {
@@ -202,7 +202,7 @@ export async function fetch_total_network_utils(gstore) {
       totalCores = 0;
     const res = resNodeBenchmarks.value;
     const json = await res.json();
-    if (Array.isArray(json.data)) {
+    if (json.status !== 'error') {
       for (const data of json.data) {
         totalRam = totalRam + data.benchmark.bench.ram;
         totalSsd = totalSsd + data.benchmark.bench.ssd;
