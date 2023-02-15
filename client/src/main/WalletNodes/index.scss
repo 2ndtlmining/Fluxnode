@@ -1,16 +1,5 @@
 @import 'styles/functional';
 
-.mini-req-table {
-    th,
-    td {
-        padding-top: 0;
-        padding-bottom: 0;
-    }
-    .rq-name {
-        text-align: right;
-        padding-right: 7px;
-    }
-}
 
 .wallet-nodes-area {
     margin-top: 10px;
@@ -111,16 +100,6 @@
 
 .outdated-flux-ver {
     color: #c87619 !important;
-}
-
-/* ============= CUSTOM =============== */
-.closed-maintenance-window {
-    color: black !important;
-    font-weight: bold !important;
-    @include rule-mode-dark() {
-        color: white !important;
-        font-weight: bold !important;
-    }
 }
 
 

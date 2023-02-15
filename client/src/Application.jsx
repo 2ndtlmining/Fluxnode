@@ -112,7 +112,7 @@ class Application extends React.Component {
                   path='/demo'
                   element={
                     <React.Suspense fallback={<PageLoader />}>
-                      <Demo />
+                      <Demo theme={darkMode ? 'dark' : 'light'} />
                     </React.Suspense>
                   }
                 />

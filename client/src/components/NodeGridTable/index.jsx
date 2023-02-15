@@ -11,6 +11,7 @@ import { NumberCell } from './CustomisedCells/NumberCell';
 import { UptimeCell } from './CustomisedCells/UptimeCell';
 import { AppCountCell } from './CustomisedCells/AppCountCell';
 import CustomHeader from './CustomHeader';
+import { dateComparator, nextRewardComparator } from 'utils';
 
 export const NodeGridTable = ({ data, gstore, theme }) => {
     const gridRef = useRef();
@@ -25,6 +26,18 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
         gridRef.current.api.sizeColumnsToFit();
     }, [data]);
 
+    const reloadColumnState = () => {
+        var columnState = JSON.parse(localStorage.getItem('myColumnState'));
+        if (columnState) {
+            gridRef.current.columnApi.applyColumnState({ state: columnState, applyOrder: true });
+        }
+    }
+
+    const onGridReady = () => {
+        reloadColumnState();
+        sizeToFit();
+    }
+
     const autoSizeAll = useCallback(() => {
         if (data && data.length > 0) {
             const allColumnIds = [];
@@ -33,8 +46,13 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
             });
             gridRef.current.columnApi.autoSizeColumns(allColumnIds, false);
         }
-
+        reloadColumnState();
     }, [data]);
+
+    const onColumnMoved = (params) => {
+        var columnState = JSON.stringify(params.columnApi.getColumnState());
+        localStorage.setItem('myColumnState', columnState);
+    }
 
     const defaultColDef = {
         resizable: true,
@@ -51,26 +69,26 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
     };
 
     const columnDefs = [
-        { field: 'ip_full', headerName: 'IP', cellRenderer: 'ipCell', sortable: false },
-        { field: 'tier', headerName: 'Tier', cellRenderer: 'tierCell', filter: 'agTextColumnFilter', },
-        { field: 'rank', headerName: 'Rank', filter: 'agTextColumnFilter', },
-        { field: 'last_reward', headerName: 'Last Reward' },
-        { field: 'next_reward', headerName: 'Next Reward' },
+        { field: 'ip_display', headerName: 'IP', cellRenderer: 'ipCell', filter: 'agTextColumnFilter', minWidth: 100 },
+        { field: 'tier', headerName: 'Tier', cellRenderer: 'tierCell', filter: 'agTextColumnFilter', minWidth: 100 },
+        { field: 'rank', headerName: 'Rank', filter: 'agTextColumnFilter', minWidth: 100 },
+        { field: 'last_reward', headerName: 'Last Reward', comparator: dateComparator, filter: 'agTextColumnFilter' },
+        { field: 'next_reward', headerName: 'Next Reward', filter: 'agTextColumnFilter', comparator: nextRewardComparator },
         { field: 'benchmark_status', headerName: 'Benchmark', cellRenderer: 'benchmarkCell', filter: 'agTextColumnFilter', },
         { field: 'last_confirmed_height', headerName: 'Maintenance', cellRenderer: 'maintenanceCell', filter: 'agTextColumnFilter', },
-        { field: 'flux_os', headerName: 'Flux OS', cellRenderer: 'fluxOSCell', sortable: false },
-        { field: 'bench_version', headerName: 'Flux Bench version', cellRenderer: 'benchVersionCell', minWidth: 200, sortable: false },
-        { field: 'eps', headerName: 'EPS', cellRenderer: 'numberCell', refData: { 'toFixed': '2' }, filter: 'agNumberColumnFilter' },
-        { field: 'ram', headerName: 'RAM', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'GB' }, filter: 'agNumberColumnFilter' },
-        { field: 'cores', headerName: 'Cores', cellRenderer: 'numberCell', filter: 'agNumberColumnFilter' },
+        { field: 'flux_os', headerName: 'Flux OS', cellRenderer: 'fluxOSCell', filter: 'agTextColumnFilter' },
+        { field: 'bench_version', headerName: 'Flux Bench version', cellRenderer: 'benchVersionCell', filter: 'agTextColumnFilter', minWidth: 200 },
+        { field: 'eps', headerName: 'EPS', cellRenderer: 'numberCell', refData: { 'toFixed': '2' }, filter: 'agNumberColumnFilter', minWidth: 100 },
+        { field: 'ram', headerName: 'RAM', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'GB' }, filter: 'agNumberColumnFilter', minWidth: 100 },
+        { field: 'cores', headerName: 'Cores', cellRenderer: 'numberCell', filter: 'agNumberColumnFilter', minWidth: 100 },
         { field: 'threads', headerName: 'Threads', cellRenderer: 'numberCell', filter: 'agNumberColumnFilter' },
-        { field: 'dws', headerName: 'DWS', cellRenderer: 'numberCell', refData: { 'toFixed': '2', filter: 'agNumberColumnFilter' } },
-        { field: 'total_storage', headerName: 'Size', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'GB' }, filter: 'agNumberColumnFilter', minWidth: 130 },
-        { field: 'down_speed', headerName: 'Download', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'Mb/s' }, filter: 'agNumberColumnFilter', minWidth: 140 },
-        { field: 'up_speed', headerName: 'Upload', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'Mb/s' }, filter: 'agNumberColumnFilter', minWidth: 130 },
-        { field: 'last_benchmark', headerName: 'Last Benchmark', width: '200px' },
-        { field: 'uptime', headerName: 'Uptime', filter: 'agNumberColumnFilter', cellRenderer: 'uptimeCell', width: '150px' },
-        { field: 'appCount', headerName: 'Apps', filter: 'agNumberColumnFilter', cellRenderer: 'appCountCell' }
+        { field: 'dws', headerName: 'DWS', cellRenderer: 'numberCell', refData: { 'toFixed': '2', filter: 'agNumberColumnFilter' }, minWidth: 100 },
+        { field: 'total_storage', headerName: 'Size', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'GB' }, filter: 'agNumberColumnFilter', minWidth: 100 },
+        { field: 'down_speed', headerName: 'Download', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'Mb/s' }, filter: 'agNumberColumnFilter', minWidth: 100 },
+        { field: 'up_speed', headerName: 'Upload', cellRenderer: 'numberCell', refData: { 'toFixed': '2', 'postText': 'Mb/s' }, filter: 'agNumberColumnFilter', minWidth: 100 },
+        { field: 'last_benchmark', headerName: 'Last Benchmark' },
+        { field: 'uptime', headerName: 'Uptime', filter: 'agNumberColumnFilter', cellRenderer: 'uptimeCell', width: '150px', minWidth: 100 },
+        { field: 'appCount', headerName: 'Apps', filter: 'agNumberColumnFilter', cellRenderer: 'appCountCell', minWidth: 100 }
     ];
 
     return (
@@ -81,8 +99,10 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
                 columnDefs={columnDefs}
                 defaultColDef={defaultColDef}
                 ref={gridRef}
-                onGridReady={sizeToFit}
+                onDragStopped={onColumnMoved}
+                onGridReady={onGridReady}
                 onFirstDataRendered={autoSizeAll}
+                maintainColumnOrder={true}
                 overlayNoRowsTemplate={'<span>No Nodes</span>'}
                 frameworkComponents={{
                     ipCell: IpCell,
