@@ -435,7 +435,10 @@ async function _fillPartial_uptime(fluxNode, activeWalletAddress) {
       }
     });
     const jsonData = await response.json();
-    const { activesince: activeSince } = jsonData.data.find(node => node.ip === fluxNode.ip_full.host);
+    const { activesince: activeSince } = jsonData.data.find(
+      (node) =>
+        node.ip === fluxNode.ip_full.host + ':' + fluxNode.ip_full.active_port_os || node.ip === fluxNode.ip_full.host
+    );
 
     fluxNode.uptime = activeSince ? dayjs().unix() - activeSince : null;
   } catch(e) {
@@ -487,10 +490,7 @@ else {
     let resultAppList;
 
     try {
-      [resultNodeInfo, resultAppList] = await Promise.all([
-        promiseNodeInfo,
-        promiseAppList,
-      ]);
+      [resultNodeInfo, resultAppList] = await Promise.all([promiseNodeInfo, promiseAppList]);
       reqSuccess = true;
     } catch {
       reqSuccess = false;
