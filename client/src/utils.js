@@ -110,6 +110,13 @@ function output_json_source(obj, title = 'Title') {
   win.document.body.innerHTML = targetHTML;
 }
 
+export function fluxVersionComparator(val1, val2) {
+  if (val1?.major !== val2?.major) return val1?.major - val2?.major;
+  if (val1?.minnor !== val2?.minnor) return val1?.minnor - val2?.minnor;
+  if (val1?.patch !== val2?.patch) return val1?.patch - val2?.patch;
+  return -1;
+}
+
 export function dateComparator(date1, date2) {
   const date1Formatted = new Date(date1);
   const date2Formatted = new Date(date2);
