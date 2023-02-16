@@ -22,8 +22,8 @@ import { appStore, StoreKeys } from 'persistance/store';
 const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
-const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo/benchmark';
-const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo/apps.resources';
+const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo?projection=benchmark';
+const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo?projection=apps.resources';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
