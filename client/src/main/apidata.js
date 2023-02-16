@@ -655,7 +655,7 @@ export function pa_summary_full() {
       sol: single_pa_info(),
       avx: single_pa_info(),
       erg: single_pa_info(),
-      alg: single_pa_info()
+      algo: single_pa_info()
     }
   };
 }
@@ -713,8 +713,8 @@ export async function wallet_pas_summary(walletAddress) {
         case 'erg':
           targetPAInfo = summary.assets.erg;
           break;
-        case 'alg':
-          targetPAInfo = summary.assets.alg;
+        case 'algo':
+          targetPAInfo = summary.assets.algo;
           break;
 
         default:
@@ -740,6 +740,7 @@ export async function wallet_pas_summary(walletAddress) {
     summary.assets.sol.fusion_fee = fees['sol'];
     summary.assets.avx.fusion_fee = fees['avax'];
     summary.assets.erg.fusion_fee = fees['erg'];
+    summary.assets.algo.fusion_fee = fees['algo'];
   }
 
   return summary;
