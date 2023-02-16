@@ -1,6 +1,6 @@
 {
   "name": "flux-app",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "homepage": ".",
   "scripts": {
