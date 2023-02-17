@@ -11,8 +11,12 @@ export function LayoutConfigurationProvider(props) {
   const [enablePrivacyMode, setPrivacyMode] = useState(false);
   const [enableDashboardCells, setDashboardCells] = useState(true);
 
-  const savedNotableNodes = appStore.getItem(StoreKeys.NOTABLE_NODES)
+  const savedNotableNodes = appStore.getItem(StoreKeys.NOTABLE_NODES);
   const [enableNotableNodesTab, setNotableNodesTab] = useState(savedNotableNodes);
+
+  const defaultCurrency = { currency: 'USD', rate: 1 };
+  const savedSelectedCurrency = JSON.parse(localStorage.getItem('selectedCurrency'));
+  const [selectedCurrency, setSelectedCurrency] = useState(savedSelectedCurrency ?? defaultCurrency);
 
   appStore.setItem(StoreKeys.PRIVACY_MODE, enablePrivacyMode);
 
@@ -38,7 +42,7 @@ export function LayoutConfigurationProvider(props) {
     setPrivacyMode((prevState) => {
       try {
         appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
-      } catch { }
+      } catch {}
       return !prevState;
     });
   }, [setPrivacyMode]);
@@ -53,10 +57,18 @@ export function LayoutConfigurationProvider(props) {
     setNotableNodesTab((prevState) => {
       try {
         appStore.setItem(StoreKeys.NOTABLE_NODES, !prevState);
-      } catch { }
+      } catch {}
       return !prevState;
     });
   }, [setNotableNodesTab]);
+
+  const onSelectCurrency = useCallback(
+    (val) => {
+      setSelectedCurrency(val);
+      localStorage.setItem('selectedCurrency', JSON.stringify(val));
+    },
+    [setSelectedCurrency]
+  );
 
   return (
     <LayoutContext.Provider
@@ -68,12 +80,14 @@ export function LayoutConfigurationProvider(props) {
           enablePrivacyMode,
           enableDashboardCells,
           enableNotableNodesTab,
+          selectedCurrency,
           onToggleEstimatedEarningsTab: toggleEstimatedEarningsTab,
           onToggleParallelAssetsTab: toggleParallelAssetsTab,
           onToggleChangeFontSize: toggleFontSize,
           onTogglePrivacyMode: togglePrivacyMode,
           onToggleDashboardCells: toggleDashboardCells,
-          onToggleNotableNodesTab: toggleNotableNodesTab
+          onToggleNotableNodesTab: toggleNotableNodesTab,
+          onSelectCurrency: onSelectCurrency
         }),
         [
           enableEstimatedEarningsTab,
@@ -82,12 +96,14 @@ export function LayoutConfigurationProvider(props) {
           enablePrivacyMode,
           enableDashboardCells,
           enableNotableNodesTab,
+          selectedCurrency,
           toggleEstimatedEarningsTab,
           toggleParallelAssetsTab,
           toggleFontSize,
           togglePrivacyMode,
           toggleDashboardCells,
-          toggleNotableNodesTab
+          toggleNotableNodesTab,
+          onSelectCurrency
         ]
       )}
     >

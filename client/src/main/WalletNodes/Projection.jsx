@@ -12,11 +12,13 @@ import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 
 import { IconContext } from 'react-icons';
 import CountUp from 'components/CountUp';
+import { LayoutContext } from 'contexts/LayoutContext';
 
 const RenderedFluxIcon = (
   <FluxIcon width={21} height={21} viewBox='5 5 21.71 21.71' style={{ margin: '0 4px 0 6px' }} />
 );
 const RenderedUSDIcon = <Icon icon='dollar' size={21} style={{ margin: '0 2px 0 6px' }} />;
+const RenderedEURIcon = <Icon icon='euro' size={21} style={{ margin: '0 2px 0 6px' }} />;
 
 export class Projection extends React.Component {
   constructor(props) {
@@ -32,8 +34,8 @@ export class Projection extends React.Component {
     return this.state.toggleTime == 'month' ? 'Monthly' : 'Daily';
   }
 
-  viewToggleStatusCurrency() {
-    return this.state.toggleCurrency == 'usd' ? 'USD' : 'Flux';
+  viewToggleStatusCurrency(selectedCurrency) {
+    return this.state.toggleCurrency == 'usd' ? selectedCurrency?.currency ?? 'USD' : 'Flux';
   }
 
   onToggleChangeTime = () => {
@@ -85,27 +87,37 @@ export class Projection extends React.Component {
           >
             {this.viewToggleStatusTime()}
           </Button>
-
-          <Button
-            alignText='right'
-            intent='danger'
-            className='proj-view-toggle'
-            rightIcon='exchange'
-            onClick={this.onToggleChangeCurrency}
-          >
-            {this.viewToggleStatusCurrency()}
-          </Button>
+          <LayoutContext.Consumer>
+            {({ selectedCurrency }) => (
+              <Button
+                alignText='right'
+                intent='danger'
+                className='proj-view-toggle'
+                rightIcon='exchange'
+                onClick={this.onToggleChangeCurrency}
+              >
+                {this.viewToggleStatusCurrency(selectedCurrency)}
+              </Button>
+            )}
+          </LayoutContext.Consumer>
         </ButtonGroup>
       </div>
     );
   }
 
-  getCurrencyIcon() {
+  getCurrencyIcon(selectedCurrency) {
+    if (selectedCurrency?.currency === 'EUR') {
+      return this.state.toggleCurrency == 'usd' ? RenderedEURIcon : RenderedFluxIcon;
+    }
     return this.state.toggleCurrency == 'usd' ? RenderedUSDIcon : RenderedFluxIcon;
   }
 
-  formatEarningValue(value) {
-    return <CountUp duration={5} end={value} separator=',' decimals={4} />;
+  formatEarningValue(value, selectedCurrency) {
+    let processedVal = value;
+    if (this.state.toggleCurrency === 'usd') {
+      processedVal *= selectedCurrency.rate;
+    }
+    return <CountUp duration={5} end={processedVal} separator=',' decimals={4} />;
   }
 
   formatTotalNodes(value) {
@@ -121,101 +133,125 @@ export class Projection extends React.Component {
     let earningTotal = earningCumulus + earningNimbus + earningStratus + earningFractus;
 
     return (
-      <IconContext.Provider value={{ size: '19px', color: 'currentColor' }}>
-        <div className='proj-body'>
-          <div className='tier-proj'>
-            <div className='tp-icon'>
-              <div className='tp-i-wrap dash-cell__nodes-cumulus'>
-                <FiZap />
+      <LayoutContext.Consumer>
+        {({ selectedCurrency }) => (
+          <IconContext.Provider value={{ size: '19px', color: 'currentColor' }}>
+            <div className='proj-body'>
+              <div className='tier-proj'>
+                <div className='tp-icon'>
+                  <div className='tp-i-wrap dash-cell__nodes-cumulus'>
+                    <FiZap />
+                  </div>
+                </div>
+                <span className='tp-name adp-text-normal'>Cumulus</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <div className='center-text-flow'>
+                    <span className='tp-value adp-text-normal'>
+                      {this.formatEarningValue(earningCumulus, selectedCurrency)}
+                    </span>
+                    <span className='adp-text-muted currency-name'>
+                      {this.viewToggleStatusCurrency(selectedCurrency)}
+                    </span>
+                  </div>
+                  <span className='mt-1 adp-text-muted'>
+                    Node Count: <span className='fw-bold fs-6'>{this.props.health.cumulus.node_count}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <span className='tp-name adp-text-normal'>Cumulus</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <div className='center-text-flow'>
-                <span className='tp-value adp-text-normal'>{this.formatEarningValue(earningCumulus)}</span>
-                <span className='adp-text-muted currency-name'>{this.viewToggleStatusCurrency()}</span>
-              </div>
-              <span className='mt-1 adp-text-muted'>
-                Node Count: <span className='fw-bold fs-6'>{this.props.health.cumulus.node_count}</span>
-              </span>
-            </div>
-          </div>
 
-          <div className='tier-proj'>
-            <div className='tp-icon'>
-              <div className='tp-i-wrap dash-cell__nodes-nimbus'>
-                <FiCpu />
+              <div className='tier-proj'>
+                <div className='tp-icon'>
+                  <div className='tp-i-wrap dash-cell__nodes-nimbus'>
+                    <FiCpu />
+                  </div>
+                </div>
+                <span className='tp-name adp-text-normal'>Nimbus</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <div className='center-text-flow'>
+                    <span className='tp-value adp-text-normal'>
+                      {this.formatEarningValue(earningNimbus, selectedCurrency)}
+                    </span>
+                    <span className='adp-text-muted currency-name'>
+                      {this.viewToggleStatusCurrency(selectedCurrency)}
+                    </span>
+                  </div>
+                  <span className='mt-1 adp-text-muted'>
+                    Node Count: <span className='fw-bold fs-6'>{this.props.health.nimbus.node_count}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <span className='tp-name adp-text-normal'>Nimbus</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <div className='center-text-flow'>
-                <span className='tp-value adp-text-normal'>{this.formatEarningValue(earningNimbus)}</span>
-                <span className='adp-text-muted currency-name'>{this.viewToggleStatusCurrency()}</span>
-              </div>
-              <span className='mt-1 adp-text-muted'>
-                Node Count: <span className='fw-bold fs-6'>{this.props.health.nimbus.node_count}</span>
-              </span>
-            </div>
-          </div>
 
-          <div className='tier-proj'>
-            <div className='tp-icon'>
-              <div className='tp-i-wrap dash-cell__nodes-stratus'>
-                <FiPackage />
+              <div className='tier-proj'>
+                <div className='tp-icon'>
+                  <div className='tp-i-wrap dash-cell__nodes-stratus'>
+                    <FiPackage />
+                  </div>
+                </div>
+                <span className='tp-name adp-text-normal'>Stratus</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <div className='center-text-flow'>
+                    <span className='tp-value adp-text-normal'>
+                      {this.formatEarningValue(earningStratus, selectedCurrency)}
+                    </span>
+                    <span className='adp-text-muted currency-name'>
+                      {this.viewToggleStatusCurrency(selectedCurrency)}
+                    </span>
+                  </div>
+                  <span className='mt-1 adp-text-muted'>
+                    Node Count: <span className='fw-bold fs-6'>{this.props.health.stratus.node_count}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <span className='tp-name adp-text-normal'>Stratus</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <div className='center-text-flow'>
-                <span className='tp-value adp-text-normal'>{this.formatEarningValue(earningStratus)}</span>
-                <span className='adp-text-muted currency-name'>{this.viewToggleStatusCurrency()}</span>
-              </div>
-              <span className='mt-1 adp-text-muted'>
-                Node Count: <span className='fw-bold fs-6'>{this.props.health.stratus.node_count}</span>
-              </span>
-            </div>
-          </div>
 
-          <div className='tier-proj'>
-            <div className='tp-icon'>
-              <div className='tp-i-wrap dash-cell__nodes-fractus'>
-                <FiHardDrive />
+              <div className='tier-proj'>
+                <div className='tp-icon'>
+                  <div className='tp-i-wrap dash-cell__nodes-fractus'>
+                    <FiHardDrive />
+                  </div>
+                </div>
+                <span className='tp-name adp-text-normal'>Fractus</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <div className='center-text-flow'>
+                    <span className='tp-value adp-text-normal'>
+                      {this.formatEarningValue(earningFractus, selectedCurrency)}
+                    </span>
+                    <span className='adp-text-muted currency-name'>
+                      {this.viewToggleStatusCurrency(selectedCurrency)}
+                    </span>
+                  </div>
+                  <span className='mt-1 adp-text-muted'>
+                    Node Count: <span className='fw-bold fs-6'>{this.props.health.fractus.node_count}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <span className='tp-name adp-text-normal'>Fractus</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <div className='center-text-flow'>
-                <span className='tp-value adp-text-normal'>{this.formatEarningValue(earningFractus)}</span>
-                <span className='adp-text-muted currency-name'>{this.viewToggleStatusCurrency()}</span>
-              </div>
-              <span className='mt-1 adp-text-muted'>
-                Node Count: <span className='fw-bold fs-6'>{this.props.health.fractus.node_count}</span>
-              </span>
-            </div>
-          </div>
 
-          <div className='tier-proj pt-3 border-bottom-0'>
-            <span className='tp-name adp-text-normal'>Total Earnings</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <div className='center-text-flow'>
-                <span className='tp-value adp-text-normal'>{this.formatEarningValue(earningTotal)}</span>
-                <span className='adp-text-muted center-text-flow'>
-                  {this.getCurrencyIcon()}
-                  {this.viewToggleStatusCurrency()}
-                </span>
+              <div className='tier-proj pt-3 border-bottom-0'>
+                <span className='tp-name adp-text-normal'>Total Earnings</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <div className='center-text-flow'>
+                    <span className='tp-value adp-text-normal'>
+                      {this.formatEarningValue(earningTotal, selectedCurrency)}
+                    </span>
+                    <span className='adp-text-muted center-text-flow'>
+                      {this.getCurrencyIcon(selectedCurrency)}
+                      {this.viewToggleStatusCurrency(selectedCurrency)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className='tier-proj pt-3'>
+                <span className='tp-name adp-text-normal'>Total Nodes</span>
+                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
+                  <span className='tp-value adp-text-normal'>
+                    {this.formatTotalNodes(this.props.health.total_nodes)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className='tier-proj pt-3'>
-            <span className='tp-name adp-text-normal'>Total Nodes</span>
-            <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-              <span className='tp-value adp-text-normal'>{this.formatTotalNodes(this.props.health.total_nodes)}</span>
-            </div>
-          </div>
-        </div>
-      </IconContext.Provider>
+          </IconContext.Provider>
+        )}
+      </LayoutContext.Consumer>
     );
   }
 

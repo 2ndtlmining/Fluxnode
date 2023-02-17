@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './index.scss';
 
 import { Alignment, Button, Menu, Navbar, Switch } from '@blueprintjs/core';
 
@@ -6,16 +7,17 @@ import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { matchPath, useMatch } from 'react-router';
 import { useNavigate } from 'react-router-dom';
+import { CurrencyMenuItem } from 'components/Navbar/CurrencyMenuItem';
 
 window.matchPath = matchPath;
 window.useMatch = useMatch;
 
-function no_op() { }
+function no_op() {}
 
 const APP_LOGO_THEME_LIGHT = '/app-logo.svg';
 const APP_LOGO_THEME_DARK = '/app-logo-dark.svg';
 
-export function AppNavbar({ onThemeSwitch, theme }) {
+export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
   const [isSettingMenuOpen, setSettingMenuOpen] = useState(false);
 
   theme = theme || 'light';
@@ -55,12 +57,14 @@ export function AppNavbar({ onThemeSwitch, theme }) {
             enablePrivacyMode,
             enableDashboardCells,
             enableNotableNodesTab,
+            selectedCurrency,
             onToggleEstimatedEarningsTab,
             onToggleParallelAssetsTab,
             onToggleChangeFontSize,
             onTogglePrivacyMode,
             onToggleDashboardCells,
-            onToggleNotableNodesTab
+            onToggleNotableNodesTab,
+            onSelectCurrency
           }) => (
             <Popover2
               content={
@@ -110,7 +114,7 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                       />
                     }
                   />
-                   <MenuItem2
+                  <MenuItem2
                     shouldDismissPopover={false}
                     text={
                       <Switch
@@ -133,6 +137,11 @@ export function AppNavbar({ onThemeSwitch, theme }) {
                         onChange={onToggleNotableNodesTab}
                       />
                     }
+                  />
+                  <CurrencyMenuItem
+                    selectedCurrency={selectedCurrency}
+                    currencyRates={currencyRates}
+                    onChange={onSelectCurrency}
                   />
                 </Menu>
               }

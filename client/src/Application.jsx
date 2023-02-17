@@ -17,6 +17,7 @@ import MainApp from 'main/MainApp';
 import Demo from 'demo/Demo';
 import NotFoundView from 'notfound/index';
 import { FocusStyleManager } from '@blueprintjs/core';
+import { lazy_load_currency_rate } from 'main/apidata';
 
 // Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
 FocusStyleManager.onlyShowFocusOnTabs();
@@ -58,12 +59,16 @@ class Application extends React.Component {
 
     const theme = getStartupTheme();
     this.state = {
-      darkMode: theme == 'dark'
+      darkMode: theme == 'dark',
+      currencyRates: { USD: 1 }
     };
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     document.body.classList.remove('app-mode-dark');
+    await lazy_load_currency_rate().then((currencyRates) => {
+      this.setState({ currencyRates });
+    });
   }
 
   setDarkMode(enable) {
@@ -77,7 +82,7 @@ class Application extends React.Component {
   }
 
   render() {
-    const { darkMode } = this.state;
+    const { darkMode, currencyRates } = this.state;
 
     return (
       <ScreenClassProvider>
@@ -88,7 +93,11 @@ class Application extends React.Component {
           </Helmet>
           <div className={'App' + (darkMode ? ' ' + DARK_MODE_CLASS : '')}>
             <AppRouter>
-              <AppNavbar theme={darkMode ? 'dark' : 'light'} onThemeSwitch={() => this.setDarkMode(!darkMode)} />
+              <AppNavbar
+                theme={darkMode ? 'dark' : 'light'}
+                onThemeSwitch={() => this.setDarkMode(!darkMode)}
+                currencyRates={currencyRates}
+              />
               <Routes>
                 <Route exact path='/' element={<Navigate to='/nodes' replace />} />
 

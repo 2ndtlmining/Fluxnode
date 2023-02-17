@@ -13,6 +13,7 @@
     "@blueprintjs/core": "^4.5.1",
     "@blueprintjs/icons": "^4.3.0",
     "@blueprintjs/popover2": "^1.4.1",
+    "@blueprintjs/select": "^4.9.2",
     "@fontsource/barlow": "^4.5.7",
     "@fontsource/roboto": "^4.5.7",
     "@testing-library/jest-dom": "^5.14.1",

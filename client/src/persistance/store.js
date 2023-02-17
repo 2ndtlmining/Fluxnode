@@ -8,7 +8,8 @@ window.appStore = appStore = localforage.createInstance({
 });
 
 export function initStore() {
-  appStore.removeItem(StoreKeys.FRACTUS_COUNT)
+  appStore.removeItem(StoreKeys.FRACTUS_COUNT);
+  appStore.removeItem(StoreKeys.CURRENCY_RATES);
 }
 
 let StoreKeys = {};
@@ -17,6 +18,7 @@ StoreKeys.ADDR_SEARCH_HISTORY = 'history_addrs';
 StoreKeys.PRIVACY_MODE = 'privacy_mode';
 StoreKeys.NOTABLE_NODES = 'notable_nodes';
 StoreKeys.FRACTUS_COUNT = 'fractus_count';
+StoreKeys.CURRENCY_RATES = 'currency_rates';
 StoreKeys.GLOBAL_STATS_STORE = 'global_stats_store';
 
 window.SK = window.StoreKeys = StoreKeys;

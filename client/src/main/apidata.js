@@ -395,7 +395,7 @@ export async function getWalletNodes(walletAddress) {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
-    } catch {}
+    } catch { }
   } else {
     const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
     const data = await listResponse.json();
@@ -510,7 +510,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch {}
+    } catch { }
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -607,6 +607,20 @@ export async function getDemoWallet() {
   } catch {
     return null;
   }
+}
+
+export async function lazy_load_currency_rate() {
+  const supportedCurrencies = ['USD', 'EUR', 'AUD']
+  const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
+  if (!storedFCurrencyRates) {
+    const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + supportedCurrencies.join(','));
+    const json = await res.json();
+    const currencyRates = json.rates;
+
+    await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
+    return currencyRates;
+  }
+  return storedFCurrencyRates;
 }
 /* ======================================================================= */
 /* ======================================================================= */
