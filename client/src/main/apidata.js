@@ -67,7 +67,7 @@ export function create_global_store() {
     bench_latest_version: fluxos_version_desc(0, 0, 0),
     current_block_height: 0,
     in_rich_list: false,
-    total_donations: 0
+    total_donations: 0,
   };
 }
 
@@ -171,7 +171,7 @@ export async function fetch_global_stats(walletAddress = null) {
     fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
     fetch('https://api.runonflux.io/daemon/getinfo'),
     fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list'),
-    lazy_load_fractus_count()
+    lazy_load_fractus_count(),
   ]);
 
   if (resCurrency.status == 'fulfilled') {
@@ -546,6 +546,20 @@ export async function getDemoWallet() {
   } catch {
     return null;
   }
+}
+
+export async function lazy_load_currency_rate() {
+  const supportedCurrencies = ['USD', 'EUR', 'AUD']
+  const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
+  if (!storedFCurrencyRates) {
+    const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + supportedCurrencies.join(','));
+    const json = await res.json();
+    const currencyRates = json.rates;
+
+    await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
+    return currencyRates;
+  }
+  return storedFCurrencyRates;
 }
 /* ======================================================================= */
 /* ======================================================================= */

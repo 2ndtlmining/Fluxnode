@@ -9,7 +9,7 @@ import { InfoCell } from 'main/InfoCell';
 // import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
 import { FiCpu, FiDollarSign, FiFolder, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
-import { FaCrown, FaWallet } from 'react-icons/fa';
+import { FaCrown, FaWallet, FaEuroSign } from 'react-icons/fa';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
@@ -119,113 +119,122 @@ export function DashboardCells({ gstore: gs, total_donations }) {
 
   return (
     <div className='dashboard bp4-dark'>
-      <Cell
-        name='Flux USD Value'
-        value={gs.flux_price_usd}
-        icon={<FiDollarSign size={iconSize} />}
-        iconWrapClassName={`dash-cell__flux-usd${suffixClassName}`}
-        small={!normalFontSize}
-        prefix='$'
-      />
-      <CellTooltip tooltipContent={<FluxOSVersionView versionDesc={gs.fluxos_latest_version} />}>
-        {(ref, tooltipProps) => (
-          <Cell
-            elementRef={ref}
-            {...tooltipProps}
-            name='Total Nodes'
-            value={gs.node_count.total}
-            icon={<FiHash size={iconSize} />}
-            iconWrapClassName={`dash-cell__nodes-total${suffixClassName}`}
-            small={!normalFontSize}
-            cellHover
-          />
-        )}
-      </CellTooltip>
-      <CellTooltip
-        tooltipContent={
-          <TierRewardsProjectionView
-            rewards={enableFractusNodesCell ? gs.reward_projections.fractus : gs.reward_projections.cumulus}
-          />
-        }
-      >
-        {(ref, tooltipProps) => {
-          const cellProps = enableFractusNodesCell
-            ? {
-              name: 'Fractus Nodes',
-              value: gs.node_count.fractus,
-              icon: <FiHardDrive size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
-            }
-            : {
-              name: 'Cumulus Nodes',
-              value: gs.node_count.cumulus,
-              icon: <FiZap size={iconSize} />,
-              iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
-            };
-
-          return (
+      <LayoutContext.Consumer>
+        {({ selectedCurrency }) => (
+          <>
             <Cell
-              elementRef={ref}
-              {...tooltipProps}
-              {...cellProps}
+              name={`Flux ${selectedCurrency?.currency} Value`}
+              value={gs.flux_price_usd * selectedCurrency?.rate}
+              icon={
+                selectedCurrency?.currency === 'EUR' ? <FaEuroSign size={iconSize} /> : <FiDollarSign size={iconSize} />
+              }
+              iconWrapClassName={`dash-cell__flux-usd${suffixClassName}`}
               small={!normalFontSize}
-              cellHover
-              toggleBtn={() => setToggleFractusNodesCell((prev) => !prev)}
+              prefix={selectedCurrency?.currency === 'EUR' ? '€' : '$'}
             />
-          );
-        }}
-      </CellTooltip>
-      <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.nimbus} />}>
-        {(ref, tooltipProps) => (
-          <Cell
-            elementRef={ref}
-            {...tooltipProps}
-            name='Nimbus Nodes'
-            value={gs.node_count.nimbus}
-            icon={<FiCpu size={iconSize} />}
-            iconWrapClassName={`dash-cell__nodes-nimbus${suffixClassName}`}
-            small={!normalFontSize}
-            cellHover
-          />
+
+            <CellTooltip tooltipContent={<FluxOSVersionView versionDesc={gs.fluxos_latest_version} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='Total Nodes'
+                  value={gs.node_count.total}
+                  icon={<FiHash size={iconSize} />}
+                  iconWrapClassName={`dash-cell__nodes-total${suffixClassName}`}
+                  small={!normalFontSize}
+                  cellHover
+                />
+              )}
+            </CellTooltip>
+            <CellTooltip
+              tooltipContent={
+                <TierRewardsProjectionView
+                  rewards={enableFractusNodesCell ? gs.reward_projections.fractus : gs.reward_projections.cumulus}
+                />
+              }
+            >
+              {(ref, tooltipProps) => {
+                const cellProps = enableFractusNodesCell
+                  ? {
+                      name: 'Fractus Nodes',
+                      value: gs.node_count.fractus,
+                      icon: <FiHardDrive size={iconSize} />,
+                      iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
+                    }
+                  : {
+                      name: 'Cumulus Nodes',
+                      value: gs.node_count.cumulus,
+                      icon: <FiZap size={iconSize} />,
+                      iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
+                    };
+
+                return (
+                  <Cell
+                    elementRef={ref}
+                    {...tooltipProps}
+                    {...cellProps}
+                    small={!normalFontSize}
+                    cellHover
+                    toggleBtn={() => setToggleFractusNodesCell((prev) => !prev)}
+                  />
+                );
+              }}
+            </CellTooltip>
+            <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.nimbus} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='Nimbus Nodes'
+                  value={gs.node_count.nimbus}
+                  icon={<FiCpu size={iconSize} />}
+                  iconWrapClassName={`dash-cell__nodes-nimbus${suffixClassName}`}
+                  small={!normalFontSize}
+                  cellHover
+                />
+              )}
+            </CellTooltip>
+            <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.stratus} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='Stratus Nodes'
+                  value={gs.node_count.stratus}
+                  icon={<FiPackage size={iconSize} />}
+                  iconWrapClassName={`dash-cell__nodes-stratus${suffixClassName}`}
+                  small={!normalFontSize}
+                  cellHover
+                />
+              )}
+            </CellTooltip>
+            <Cell
+              name='Flux Amount'
+              value={gs.wallet_amount_flux}
+              icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
+              iconWrapClassName={`dash-cell__amount-flux${suffixClassName}`}
+              small={!normalFontSize}
+              isPrivacy={enablePrivacyMode}
+            />
+            <CellTooltip tooltipContent={<WalletTopPercentage topPercentage={0} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name={`Wallet ${selectedCurrency?.currency}`}
+                  value={gs.wallet_amount_flux * gs.flux_price_usd * selectedCurrency?.rate}
+                  icon={walletCellStyles.icon({ size: iconSize })}
+                  iconWrapClassName={walletCellStyles.iconWrapperClassName(suffixClassName)}
+                  small={!normalFontSize}
+                  prefix={selectedCurrency?.currency === 'EUR' ? '€' : '$'}
+                  isPrivacy={enablePrivacyMode}
+                />
+              )}
+            </CellTooltip>
+          </>
         )}
-      </CellTooltip>
-      <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.stratus} />}>
-        {(ref, tooltipProps) => (
-          <Cell
-            elementRef={ref}
-            {...tooltipProps}
-            name='Stratus Nodes'
-            value={gs.node_count.stratus}
-            icon={<FiPackage size={iconSize} />}
-            iconWrapClassName={`dash-cell__nodes-stratus${suffixClassName}`}
-            small={!normalFontSize}
-            cellHover
-          />
-        )}
-      </CellTooltip>
-      <Cell
-        name='Flux Amount'
-        value={gs.wallet_amount_flux}
-        icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
-        iconWrapClassName={`dash-cell__amount-flux${suffixClassName}`}
-        small={!normalFontSize}
-        isPrivacy={enablePrivacyMode}
-      />
-      <CellTooltip tooltipContent={<WalletTopPercentage topPercentage={0} />}>
-        {(ref, tooltipProps) => (
-          <Cell
-            elementRef={ref}
-            {...tooltipProps}
-            name='Wallet USD'
-            value={gs.wallet_amount_flux * gs.flux_price_usd}
-            icon={walletCellStyles.icon({ size: iconSize })}
-            iconWrapClassName={walletCellStyles.iconWrapperClassName(suffixClassName)}
-            small={!normalFontSize}
-            prefix='$'
-            isPrivacy={enablePrivacyMode}
-          />
-        )}
-      </CellTooltip>
+      </LayoutContext.Consumer>
     </div>
   );
 }
