@@ -3,16 +3,10 @@ import './index.scss';
 
 import { Button, Spinner, ProgressBar } from '@blueprintjs/core';
 
-import { sleep } from 'utils';
+import { isIOS, sleep } from 'utils';
 
 import { Projection } from './Projection';
-import {
-  getWalletNodes,
-  wallet_health_full,
-  fill_health,
-  fillPartialNode,
-  transformRawNode,
-} from 'main/apidata';
+import { getWalletNodes, wallet_health_full, fill_health, fillPartialNode, transformRawNode } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
@@ -46,7 +40,7 @@ export class WalletNodes extends React.Component {
     await sleep(1);
 
     const batchSize = 20;
-    for (let i = 0; i < partialNodes.length;) {
+    for (let i = 0; i < partialNodes.length; ) {
       const batch = [];
 
       let batchActualSize = 0;
@@ -181,12 +175,19 @@ export class WalletNodes extends React.Component {
                 disabled={loadingNodeList || noAddress}
                 outlined={true}
               />
-              <Button
-                rightIcon={isMaximize ? 'minimize' : 'maximize'}
-                onClick={() => this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }))}
-                disabled={isFullScreen}
-              />
-              <Button rightIcon={isFullScreen ? 'arrow-bottom-right' : 'fullscreen'} onClick={() => onToggleFullScreen()} />
+              {!isIOS() ? (
+                <>
+                  <Button
+                    rightIcon={isMaximize ? 'minimize' : 'maximize'}
+                    onClick={() => this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }))}
+                    disabled={isFullScreen}
+                  />
+                  <Button
+                    rightIcon={isFullScreen ? 'arrow-bottom-right' : 'fullscreen'}
+                    onClick={() => onToggleFullScreen()}
+                  />
+                </>
+              ) : undefined}
             </div>
           </div>
           {loadingNodeList && (
@@ -227,10 +228,8 @@ export class WalletNodes extends React.Component {
     return (
       <div className='wallet-nodes-area'>
         {estimatedEarningsTab}
-        {
-          <ReactFullscreen
-            onChange={() => this.setState((prev) => ({ isFullScreen: !prev.isFullScreen }))}
-          >
+        {!isIOS() ? (
+          <ReactFullscreen onChange={() => this.setState((prev) => ({ isFullScreen: !prev.isFullScreen }))}>
             {({ ref, onToggle: onToggleFullScreen }) => (
               <div
                 ref={ref}
@@ -240,7 +239,11 @@ export class WalletNodes extends React.Component {
               </div>
             )}
           </ReactFullscreen>
-        }
+        ) : (
+          <div className={`adp-border ${overviewWrapperClass} mb-3 p-0 shadow-lg rounded-3 adp-bg-normal`}>
+            {this.renderNodeOverview(loadingWalletNodes, loadingNodeList)}
+          </div>
+        )}
       </div>
     );
   }
