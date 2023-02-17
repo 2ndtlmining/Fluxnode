@@ -144,6 +144,19 @@ export function format_amount(amount, enablePrivacyMode) {
   return format_thousands_separator(amount);
 }
 
+export function isIOS() {
+  return [
+    'iPad Simulator',
+    'iPhone Simulator',
+    'iPod Simulator',
+    'iPad',
+    'iPhone',
+    'iPod'
+  ].includes(navigator.platform)
+    // iPad on iOS 13 detection
+    || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+}
+
 function format_thousands_separator(amount) {
   if (Number.isNaN(amount)) {
     throw new Error('Invalid amount type');
