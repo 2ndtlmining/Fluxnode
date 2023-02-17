@@ -19,6 +19,7 @@ StoreKeys.PRIVACY_MODE = 'privacy_mode';
 StoreKeys.NOTABLE_NODES = 'notable_nodes';
 StoreKeys.FRACTUS_COUNT = 'fractus_count';
 StoreKeys.CURRENCY_RATES = 'currency_rates';
+StoreKeys.GLOBAL_STATS_STORE = 'global_stats_store';
 
 window.SK = window.StoreKeys = StoreKeys;
 Object.freeze(StoreKeys);

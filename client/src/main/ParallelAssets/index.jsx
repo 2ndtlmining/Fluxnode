@@ -146,7 +146,7 @@ export function ParallelAssets({ summary }) {
               assetName={'Ergo'}
             />
             <PAssetCard
-              paInfo={summary.assets.alg}
+              paInfo={summary.assets.algo}
               blockStyle='alg'
               logoUrl='https://cryptologos.cc/logos/algorand-algo-logo.png'
               assetName={'Algorand'}
