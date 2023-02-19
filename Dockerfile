@@ -3,7 +3,7 @@
 # name of the rust crate
 ARG RUST_APP_PACKAGE_NAME=fluxnode_api_mask
 
-FROM rust:1.67 as build
+FROM rust:1.67.1 as build
 USER root
 
 # renew the argument after FROM directive
@@ -45,7 +45,7 @@ RUN cargo build --release
 # ==========================================================
 # ==========================================================
 
-FROM nginx:1.23.0
+FROM nginx:1.23.3
 USER root
 
 # --------------------
@@ -64,11 +64,20 @@ STOPSIGNAL SIGTERM
 
 ARG RUST_APP_PACKAGE_NAME
 
+# create a new non-root user
+RUN adduser --disabled-password myuser
+
 RUN mkdir -p /app
 WORKDIR /app
 
 # Copy over API build files from the previous stage
 COPY --from=build /app-build/target/release/${RUST_APP_PACKAGE_NAME} ./main
+
+# Change ownership of the application files to the new user
+RUN chown -R myuser:myuser /app
+
+# switch to the new user
+USER myuser
 
 # --------------------
 
@@ -83,6 +92,8 @@ COPY ${FRONTED_SRC}/build /usr/share/nginx/html
 ## Container entrypoint and services
 
 COPY service/dumb-init/init ./init
+
+USER root
 RUN chmod +x ./init
 
 COPY service/container-entrypoint.sh ./container-entrypoint.sh
