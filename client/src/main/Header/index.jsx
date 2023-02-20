@@ -326,7 +326,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
                 <Cell
                   elementRef={ref}
                   {...tooltipProps}
-                  name='Ram Utilisation'
+                  name='RAM Utilisation'
                   value={gs.utilized.ram_percentage}
                   icon={
                     <RadialCircularProgressbar
