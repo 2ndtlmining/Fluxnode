@@ -258,7 +258,7 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json')
     if (res.status === 200) {
       const json = await res.json();
-      store.bench_latest_version = fluxos_version_desc_parse(json['version']);
+      store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
     }
   }
 
@@ -266,7 +266,7 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API })
     if (res.status === 200) {
       const json = await res.json();
-      store.fluxos_latest_version = fluxos_version_desc_parse(json.version);
+      store.bench_latest_version = fluxos_version_desc_parse(json.version);
     }
   }
 
