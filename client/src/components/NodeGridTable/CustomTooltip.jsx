@@ -20,10 +20,10 @@ export const CustomTooltip = ({ componentName, displayName, gstore }) => {
         case 'last_confirmed_height':
             Component = MaintenanceTooltip;
             break;
-        case 'flux_os':
+        case 'flux_os_display':
             Component = FluxOSTooltip;
             break;
-        case 'bench_version':
+        case 'bench_version_display':
             Component = FluxBenchTooltip;
             break;
         case 'eps':
