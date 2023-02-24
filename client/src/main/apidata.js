@@ -262,6 +262,14 @@ export async function fetch_global_stats(walletAddress = null) {
     }
   }
 
+  const fetchFluxVer = async () => {
+    const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API })
+    if (res.status === 200) {
+      const json = await res.json();
+      store.fluxos_latest_version = fluxos_version_desc_parse(json.version);
+    }
+  }
+
   const fetchBlockHeight = async () => {
     const res = await fetch('https://api.runonflux.io/daemon/getinfo')
     const json = await res.json();
@@ -274,7 +282,7 @@ export async function fetch_global_stats(walletAddress = null) {
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
   }
 
-  await Promise.all([fetchCurrency(), fetchWallet(), fetchNode(), fetchBenchVer(), fetchBlockHeight(), fetchRichList()])
+  await Promise.all([fetchCurrency(), fetchWallet(), fetchNode(), fetchBenchVer(), fetchFluxVer(), fetchBlockHeight(), fetchRichList()])
 
   fill_rewards(store);
   window.gstore = store;
