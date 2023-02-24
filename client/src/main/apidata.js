@@ -227,34 +227,23 @@ export async function fetch_total_network_utils(gstore) {
 export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
-  const [resCurrency, resWallet, resFluxNodes, resFluxVersion, resBenchInfo, resFluxInfo, resRichList] =
-    await Promise.allSettled([
-      fetch('https://explorer.runonflux.io/api/currency'),
-      walletAddress == null
-        ? Promise.reject(new Error('Empty address'))
-        : fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1'),
-      fetch('https://api.runonflux.io/daemon/getzelnodecount'),
-      fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json'),
-      fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API }),
-      fetch('https://api.runonflux.io/daemon/getinfo'),
-      fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list')
-    ]);
-
-  if (resCurrency.status == 'fulfilled') {
-    const res = resCurrency.value;
+  const fetchCurrency = async () => {
+    const res = await fetch('https://explorer.runonflux.io/api/currency');
     const json = await res.json();
     store.flux_price_usd = json.data.rate;
   }
 
-  if (resWallet.status == 'fulfilled') {
-    const res = resWallet.value;
-    const json = await res.json();
-    const balance = json['balance'];
-    store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+  const fetchWallet = async () => {
+    if (walletAddress) {
+      const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1')
+      const json = await res.json();
+      const balance = json['balance'];
+      store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+    }
   }
 
-  if (resFluxNodes.status == 'fulfilled') {
-    const res = resFluxNodes.value;
+  const fetchNode = async () => {
+    const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount')
     const json = await res.json();
     const stats = json.data;
 
@@ -265,31 +254,35 @@ export async function fetch_global_stats(walletAddress = null) {
     store.node_count.total = stats['total'];
   }
 
-  if (resFluxVersion.status == 'fulfilled') {
-    const res = resFluxVersion.value;
-    const json = await res.json();
-    store.fluxos_latest_version = fluxos_version_desc_parse(json.version);
-  }
-
-  if (resBenchInfo.status == 'fulfilled') {
-    const res = resBenchInfo.value;
+  const fetchBenchVer = async () => {
+    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json')
     if (res.status === 200) {
       const json = await res.json();
       store.bench_latest_version = fluxos_version_desc_parse(json['version']);
     }
   }
 
-  if (resFluxInfo.status == 'fulfilled') {
-    const res = resFluxInfo.value;
+  const fetchFluxVer = async () => {
+    const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API })
+    if (res.status === 200) {
+      const json = await res.json();
+      store.fluxos_latest_version = fluxos_version_desc_parse(json.version);
+    }
+  }
+
+  const fetchBlockHeight = async () => {
+    const res = await fetch('https://api.runonflux.io/daemon/getinfo')
     const json = await res.json();
     store.current_block_height = json['data']['blocks'];
   }
 
-  if (resRichList.status == 'fulfilled') {
-    const res = resRichList.value;
+  const fetchRichList = async () => {
+    const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list')
     const json = await res.json();
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
   }
+
+  await Promise.all([fetchCurrency(), fetchWallet(), fetchNode(), fetchBenchVer(), fetchFluxVer(), fetchBlockHeight(), fetchRichList()])
 
   fill_rewards(store);
   window.gstore = store;
