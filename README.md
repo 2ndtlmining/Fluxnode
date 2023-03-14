@@ -1,4 +1,4 @@
-# Flux-node Website
+# Fluxnode Website
 
 [Frontend website](https://fluxnode.app.runonflux.io)
 
