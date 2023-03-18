@@ -741,7 +741,7 @@ export async function wallet_pas_summary(walletAddress) {
     const fees = resultFees.value;
 
     summary.assets.kda.fusion_fee = fees['kda'];
-    summary.assets.eth.fusion_fee = fees['eth'];
+    summary.assets.eth.fusion_fee = fees['eth'] ? fees['eth'] : 5;
     summary.assets.bsc.fusion_fee = fees['bsc'];
     summary.assets.trn.fusion_fee = fees['trx'];
     summary.assets.sol.fusion_fee = fees['sol'];
