@@ -493,8 +493,7 @@ sudo systemctl restart zelcash
           <Accordion.Body>
             <p>Run the following command:</p>
             {CodeBlock.Full(`
-bash -i <(curl -s 
-https://raw.githubusercontent.com/JKTUNING/Flux-Node-Tools/main/flux_node_viewer.sh)
+bash -i <(curl -s https://raw.githubusercontent.com/JKTUNING/Flux-Node-Tools/main/flux_node_viewer.sh)
 `)}
           </Accordion.Body>
         </Accordion.Item>
