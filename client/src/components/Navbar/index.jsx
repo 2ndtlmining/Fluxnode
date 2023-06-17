@@ -26,7 +26,8 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
   const activeProps = { intent: 'danger', outlined: true };
   const inActiveProps = { minimal: true };
 
-  let homeBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
+  let homeBtnProps = useMatch('/home') == null ? inActiveProps : activeProps;
+  let nodesBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
   let guidesBtnProps = useMatch('/guide') == null ? inActiveProps : activeProps;
   let demoBtnProps = useMatch('/demo') == null ? inActiveProps : activeProps;
 
@@ -38,7 +39,8 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
         <img className='ms-3' src={theme == 'dark' ? APP_LOGO_THEME_DARK : APP_LOGO_THEME_LIGHT} />
       </Navbar.Group>
       <Navbar.Group align={Alignment.RIGHT} className='me-3'>
-        <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/nodes')} />
+        <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/home')} />
+        <Button className='margin-r-s' icon='layout-auto' text='Nodes' {...nodesBtnProps} onClick={() => navigate('/nodes')} />
         <Button icon='manual' text='Guides' {...guidesBtnProps} onClick={() => navigate('/guide')} />
         <Button icon='build' text='Demo' {...demoBtnProps} onClick={() => navigate('/demo')} />
         <Navbar.Divider />

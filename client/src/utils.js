@@ -1,4 +1,5 @@
 import * as dayjs from 'dayjs';
+import millify from "millify";
 import * as duration from 'dayjs/plugin/duration';
 dayjs.extend(duration);
 
@@ -141,6 +142,7 @@ export function format_amount(amount, enablePrivacyMode) {
   if (enablePrivacyMode) {
     return hide_sensitive_number(amount);
   }
+  // return millify(amount);
   return format_thousands_separator(amount);
 }
 

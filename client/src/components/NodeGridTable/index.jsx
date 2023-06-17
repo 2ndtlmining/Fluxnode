@@ -12,12 +12,24 @@ import { UptimeCell } from './CustomisedCells/UptimeCell';
 import { AppCountCell } from './CustomisedCells/AppCountCell';
 import CustomHeader from './CustomHeader';
 import { fluxos_version_string } from 'main/flux_version';
-import { dateComparator, nextRewardComparator } from 'utils';
+import { dateComparator, nextRewardComparator, isIOS } from 'utils';
+import { Button } from '@blueprintjs/core';
 
-export const NodeGridTable = ({ data, gstore, theme }) => {
+export const NodeGridTable = ({
+  data,
+  gstore,
+  theme,
+  handleRefreshClick,
+  loadingNodeList,
+  noAddress,
+  isMaximize,
+  isFullScreen,
+  onToggleFullScreen
+}) => {
   const gridRef = useRef();
   const [rowData, setRowData] = useState(data);
   const [appTheme, setAppTheme] = useState(theme);
+
   useEffect(() => {
     setRowData(
       data.map((x) => ({
@@ -58,9 +70,14 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
   }, [data]);
 
   const onColumnMoved = (params) => {
-    var columnState = JSON.stringify(params.columnApi.getColumnState());
+    let columnState = JSON.stringify(params.columnApi.getColumnState());
     localStorage.setItem('myColumnState', columnState);
   };
+
+  const handleResetColumnState = () => {
+    gridRef.current.columnApi.resetColumnState();
+    localStorage.removeItem('myColumnState');
+  }
 
   const defaultColDef = {
     resizable: true,
@@ -170,30 +187,65 @@ export const NodeGridTable = ({ data, gstore, theme }) => {
   ];
 
   return (
-    <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>
-      <AgGridReact
-        autoSizeAllColumns={true}
-        rowData={rowData}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        ref={gridRef}
-        onDragStopped={onColumnMoved}
-        onGridReady={onGridReady}
-        onFirstDataRendered={autoSizeAll}
-        maintainColumnOrder={true}
-        overlayNoRowsTemplate={'<span>No Nodes</span>'}
-        frameworkComponents={{
-          ipCell: IpCell,
-          tierCell: TierCell,
-          benchmarkCell: BenchmarkCell,
-          maintenanceCell: MaintenanceCell,
-          fluxOSCell: FluxOSCell,
-          benchVersionCell: BenchVersionCell,
-          numberCell: NumberCell,
-          uptimeCell: UptimeCell,
-          appCountCell: AppCountCell
-        }}
-      />
-    </div>
+    <>
+      <div className='table-header'>
+        <span className='title adp-text-normal'>
+          Nodes Overview
+          <br />
+          <span className='adp-text-muted overview-info-subtitle'>
+            Hover mouse over a column header to see more information.
+          </span>
+        </span>
+        <div className='cta-button-wrapper'>
+          <Button text='Reset' rightIcon='reset' intent='danger' onClick={handleResetColumnState} />
+          <Button
+            text='Refresh'
+            rightIcon='refresh'
+            intent='success'
+            onClick={handleRefreshClick}
+            disabled={loadingNodeList || noAddress}
+            outlined={true}
+          />
+          {!isIOS() ? (
+            <>
+              <Button
+                rightIcon={isMaximize ? 'minimize' : 'maximize'}
+                onClick={() => this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }))}
+                disabled={isFullScreen}
+              />
+              <Button
+                rightIcon={isFullScreen ? 'arrow-bottom-right' : 'fullscreen'}
+                onClick={() => onToggleFullScreen()}
+              />
+            </>
+          ) : undefined}
+        </div>
+      </div>
+      <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>
+        <AgGridReact
+          autoSizeAllColumns={true}
+          rowData={rowData}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          ref={gridRef}
+          onDragStopped={onColumnMoved}
+          onGridReady={onGridReady}
+          onFirstDataRendered={autoSizeAll}
+          maintainColumnOrder={true}
+          overlayNoRowsTemplate={'<span>No Nodes</span>'}
+          frameworkComponents={{
+            ipCell: IpCell,
+            tierCell: TierCell,
+            benchmarkCell: BenchmarkCell,
+            maintenanceCell: MaintenanceCell,
+            fluxOSCell: FluxOSCell,
+            benchVersionCell: BenchVersionCell,
+            numberCell: NumberCell,
+            uptimeCell: UptimeCell,
+            appCountCell: AppCountCell
+          }}
+        />
+      </div>
+    </>
   );
 };

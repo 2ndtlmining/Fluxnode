@@ -25,6 +25,7 @@
     "dayjs": "^1.11.3",
     "localforage": "^1.10.0",
     "localforage-observable": "^2.1.1",
+    "millify": "^6.1.0",
     "react": "^18.2.0",
     "react-bootstrap": "^2.4.0",
     "react-circular-progressbar": "^2.1.0",

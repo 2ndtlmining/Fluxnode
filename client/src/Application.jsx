@@ -14,6 +14,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import AppGuidesView from 'guides/GuidesView';
 import MainApp from 'main/MainApp';
+import Home from 'home/Home';
 import Demo from 'demo/Demo';
 import NotFoundView from 'notfound/index';
 import { FocusStyleManager } from '@blueprintjs/core';
@@ -99,8 +100,16 @@ class Application extends React.Component {
                 currencyRates={currencyRates}
               />
               <Routes>
-                <Route exact path='/' element={<Navigate to='/nodes' replace />} />
+                <Route exact path='/' element={<Navigate to='/home' replace />} />
 
+                <Route
+                  path='/home'
+                  element={
+                    <React.Suspense fallback={<PageLoader />}>
+                      <Home theme={darkMode ? 'dark' : 'light'} />
+                    </React.Suspense>
+                  }
+                />
                 <Route
                   path='/nodes'
                   element={

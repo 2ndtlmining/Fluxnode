@@ -1,5 +1,5 @@
 import React from 'react';
-import './MainApp.scss';
+import './Home.scss';
 
 import { Helmet } from 'react-helmet';
 
@@ -7,12 +7,12 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 
 import { Col, Container, Row } from 'react-grid-system';
 
-import { AppToaster } from 'main/AppToaster';
-import { DashboardCells } from 'main/Header';
-import { ParallelAssets } from 'main/ParallelAssets';
-import { PayoutTimer } from 'main/PayoutTimer';
-import { WalletNodes } from 'main/WalletNodes';
-import { BestUptime } from 'main/BestUptime';
+import { AppToaster } from 'home/AppToaster';
+import { DashboardCells } from 'home/Header';
+import { ParallelAssets } from 'home/ParallelAssets';
+import { PayoutTimer } from 'home/PayoutTimer';
+import { WalletNodes } from 'home/WalletNodes';
+import { BestUptime } from 'home/BestUptime';
 import { MostHosted } from './MostHosted';
 
 import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
@@ -42,10 +42,10 @@ import { setGAEvent } from 'g-analytic';
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
 
-class MainApp extends React.Component {
+class Home extends React.Component {
   constructor(props) {
     super(props);
-    window.MainApp = this;
+    window.HomeApp = this;
 
     this.state = {
       activeAddress: null,
@@ -94,11 +94,6 @@ class MainApp extends React.Component {
   }
 
   async componentDidMount() {
-    // this.setState({ ...this.state, activeAddress: this.props.router.location.state.walletAddress });
-    // this.addressInputRef.current.value = this.props.router.location.state.walletAddress;
-    // console.log('this.props.router.location.state--before', this.props.router.location.state.walletAddress);
-    // this.props.router.navigate(this.props.router.location.pathname, { replace: true });
-    // console.log("this.props.router.location.state--after", this.props.router.location.state.walletAddress)
     if (this.mounted) return;
     this.mounted = true;
 
@@ -295,8 +290,10 @@ class MainApp extends React.Component {
   }
 
   handleButtonClick = () => {
-    this.onProcessAddress();
-    setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button' });
+    // console.log('this.addressInputRef.current.value', this.addressInputRef.current.value);
+    this.props.router.navigate(`/nodes?wallet=${this.addressInputRef.current.value}`);
+    // this.onProcessAddress();
+    // setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button' });
   };
 
   handleAddrKeyPress = (e) => {
@@ -500,13 +497,8 @@ class MainApp extends React.Component {
           return (
             <>
               <Helmet>
-                <title>Wallet</title>
+                <title>Home</title>
               </Helmet>
-
-              {enableDashboardCells ? (
-                <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} />
-              ) : null}
-              {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
               <Container fluid style={{ margin: '20px 20px' }}>
                 <Row justify='center'>
@@ -535,49 +527,22 @@ class MainApp extends React.Component {
                     </FormGroup>
                   </Col>
                 </Row>
-                <Row style={{ paddingBottom: '10px', display: enableNotableNodesTab ? 'flex' : 'none' }}>
-                  <Col md={24} lg={8}>
-                    <PayoutTimer ref={this._payoutTimerRef} />
-                  </Col>
-                  <Col md={12} lg={8}>
-                    <BestUptime ref={this._bestUptimeRef} />
-                  </Col>
-                  <Col md={12} lg={8}>
-                    <MostHosted ref={this._mostHostedRef} />
-                  </Col>
-                </Row>
+
               </Container>
 
-              <WalletNodes
-                ref={this.walletNodes}
-                parentLoading={this.state.isNodesLoading}
-                onRefreshRequest={this.onRefreshRequest}
-                activeAddress={this.state.activeAddress}
-                initGStore={this.state.gstore}
-                theme={this.props.theme}
-              />
-
-              {enableParallelAssetsTab && this.state.isWalletAvailable ? (
-                <div className='pa-area border-top adp-border-color'>
-                  <h1
-                    className={`fs-3 text-center text-success p-3 border-bottom adp-border-color center-text-flow-mid pa-heading${suffixClassName}`}
-                  >
-                    <Icon icon='comparison' size={normalFontSize ? 30 : 20} className='me-3' />
-                    Parallel Assets
-                  </h1>
-                  <br />
-                  {this.state.isPALoading ? (
-                    <Spinner intent='primary' size={150} />
-                  ) : (
-                    <ParallelAssets summary={this.state.walletPASummary} theme={this.props.theme} />
-                  )}
-                </div>
-              ) : (
-                <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
+              {enableDashboardCells && (
+                <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} />
               )}
+              {this.state.isWalletAvailable && this.renderActiveAddressView()}
+              <br />
+                <br />
+                <br />
+                <br />
+                <br />
             </>
           );
         }}
+
       </LayoutContext.Consumer>
     );
   }
@@ -593,4 +558,4 @@ function withRouter(Component) {
   };
 }
 
-export default withRouter(MainApp);
+export default withRouter(Home);
