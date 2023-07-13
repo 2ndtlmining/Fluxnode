@@ -291,10 +291,12 @@ export async function fetch_global_stats(walletAddress = null) {
   const fetchTotalDeployedApps = async () => {
     const kadena = process.env.REACT_APP_KADENA;
     const presearch = process.env.REACT_APP_PRE_SEARCH;
+    const watchtower = 'containrrr/watchtower:latest'
 
     let totalRunningApps = 0;
     let kadenaCount = 0;
     let presearchCount = 0;
+    let watchtowerCount = 0;
 
     try {
       const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
@@ -304,9 +306,10 @@ export async function fetch_global_stats(walletAddress = null) {
         totalRunningApps += item?.apps?.runningapps?.length;
         if (JSON.stringify(item?.apps?.runningapps).includes(kadena)) kadenaCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
+        if (JSON.stringify(item?.apps?.runningapps).includes(watchtower)) watchtowerCount++;
       });
 
-      store.totalRunningApps = totalRunningApps;
+      store.totalRunningApps = (totalRunningApps - watchtowerCount) ;
       store.kadenaRunningApps = kadenaCount;
       store.presearchRunningApps = presearchCount;
     } catch (error) {

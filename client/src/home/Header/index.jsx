@@ -106,7 +106,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
             />
 
             <Cell
-              name={`Total Running Apps`}
+              name={`Total Running Apps instances`}
               value={gs.totalRunningApps}
               icon={<FaRocket size={iconSize} />}
               iconWrapClassName={`dash-cell__nodes-nimbus${suffixClassName}`}
@@ -114,7 +114,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
             />
 
             <Cell
-              name={`PreSearch Running Apps`}
+              name={`Presearch Running Apps`}
               value={gs.presearchRunningApps}
               icon={<FaRocket size={iconSize} />}
               iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}

@@ -156,6 +156,12 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Algorand'}
             />
             <PAssetCard
+              paInfo={summary.assets.matic}
+              blockStyle='matic'
+              logoUrl='https://cryptologos.cc/logos/polygon-matic-logo.png'
+              assetName={'Polygon'}
+            />
+            <PAssetCard
               paInfo=''
               blockStyle=''
               logoUrl=''
