@@ -7,6 +7,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 
 import { Col, Container, Row } from 'react-grid-system';
 
+import { getEnterpriseNodes } from 'main/apidata';
+
 import { AppToaster } from 'main/AppToaster';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
@@ -15,10 +17,9 @@ import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
 import { MostHosted } from './MostHosted';
 
-import { Button, FormGroup, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
+import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
-//DO NOT REMOVE: package for store subscriber
-import localforagebservable from 'localforage-observable';
+
 import * as Rx from 'rxjs';
 
 import {
@@ -48,6 +49,7 @@ class MainApp extends React.Component {
     window.MainApp = this;
 
     this.state = {
+      totalScoreAgainstSearchedWallet: 0,
       activeAddress: null,
       searchHistory: [],
       showSearchHistory: false,
@@ -94,11 +96,6 @@ class MainApp extends React.Component {
   }
 
   async componentDidMount() {
-    // this.setState({ ...this.state, activeAddress: this.props.router.location.state.walletAddress });
-    // this.addressInputRef.current.value = this.props.router.location.state.walletAddress;
-    // console.log('this.props.router.location.state--before', this.props.router.location.state.walletAddress);
-    // this.props.router.navigate(this.props.router.location.pathname, { replace: true });
-    // console.log("this.props.router.location.state--after", this.props.router.location.state.walletAddress)
     if (this.mounted) return;
     this.mounted = true;
 
@@ -161,6 +158,16 @@ class MainApp extends React.Component {
     }
   }
 
+  async _getTotalScoreAgainstSearchedWallet(wallet) {
+    const enterpriseNodesRaw = await getEnterpriseNodes();
+    const enterpriseNodesFiltered = enterpriseNodesRaw?.filter((item) => item?.payment_address === wallet);
+    const sum = enterpriseNodesFiltered.map((item) => item.score).reduce((a, b) => a + b, 0);
+    this.setState({
+      ...this.state,
+      totalScoreAgainstSearchedWallet: sum
+    });
+  }
+
   _createNewHistoryList(oldValues, newTop) {
     if (!oldValues || oldValues.constructor !== Array) {
       if (!newTop) return [];
@@ -180,11 +187,13 @@ class MainApp extends React.Component {
     return _historyClone;
   }
 
-  hydrateApp() {
+  async hydrateApp() {
     const { location } = this.props.router;
     let params = new URLSearchParams(location.search);
 
     let wallet = params.get('wallet');
+    this._getTotalScoreAgainstSearchedWallet(wallet);
+
     if (!!wallet && wallet != '') {
       if (this.state.privacyMode) {
         wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
@@ -442,8 +451,6 @@ class MainApp extends React.Component {
 
     return (
       <div className={'bp4-form-group ' + `bp4-intent-${intent}`}>
-        <label className='bp4-label'>{!this.state.isZelId ? 'Wallet Address' : 'Zel ID'}</label>
-
         <div className='bp4-form-content'>
           <Popover2
             {...this.HISTORY_BOX_POPOVER_OPTIONS}
@@ -456,20 +463,22 @@ class MainApp extends React.Component {
             popoverClassName='_SEARCH_HISTORY_BOX_'
             //
             renderTarget={({ isOpen, ref, ...targetProps }) => (
-              <InputGroup
-                {...targetProps}
-                onKeyDown={this.detectHistoryGestures}
-                fill
-                intent={intent}
-                leftIcon='antenna'
-                placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
-                id={WALLET_INPUT_ID}
-                value={this.state.inputAddress}
-                onChange={this.handleAddrChange}
-                onKeyPress={this.handleAddrKeyPress}
-                inputRef={mergeRefs(ref, this.addressInputRef)}
-                onFocus={this.changeSearchVisibility.bind(this, true)}
-              />
+              <div className='form-group d-flex'>
+                <InputGroup
+                  {...targetProps}
+                  onKeyDown={this.detectHistoryGestures}
+                  fill
+                  intent={intent}
+                  placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
+                  id={WALLET_INPUT_ID}
+                  value={this.state.inputAddress}
+                  onChange={this.handleAddrChange}
+                  onKeyPress={this.handleAddrKeyPress}
+                  inputRef={mergeRefs(ref, this.addressInputRef)}
+                  onFocus={this.changeSearchVisibility.bind(this, true)}
+                />
+                <Button onClick={this.handleButtonClick} intent='success' icon='search' />
+              </div>
             )}
           />
           {dos && <div className='bp4-form-helper-text'>{this.DOS_WARNING}</div>}
@@ -503,38 +512,33 @@ class MainApp extends React.Component {
                 <title>Wallet</title>
               </Helmet>
 
-              {enableDashboardCells ? (
-                <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} />
+              {enableDashboardCells && this.state.totalScoreAgainstSearchedWallet ? (
+                <DashboardCells
+                  gstore={this.state.gstore}
+                  total_donations={this.state.totalDonations}
+                  totalScoreAgainstSearchedWallet={this.state.totalScoreAgainstSearchedWallet}
+                />
               ) : null}
               {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
-              <Container fluid style={{ margin: '20px 20px' }}>
+              <Container fluid style={{ margin: '20px 10px' }}>
                 <Row justify='center'>
                   <Col style={{ paddingBottom: '10px' }} md={9}>
                     {this.renderAddressInput()}
-                  </Col>
-                  <Col md={6}>
-                    {process.env.REACT_APP_SEARCH_BY_ZELID === 'true' ? (
-                      <Switch
-                        checked={this.state.isZelId}
-                        label='Zel ID'
-                        onChange={this.handleZelIdSwitch}
-                        className='zel-id-switch'
-                      />
-                    ) : (
-                      <div className='bp4-label mb-1'>&nbsp;</div>
+                    {process.env.REACT_APP_SEARCH_BY_ZELID === 'true' && (
+                      <div className='d-flex align-items-center justify-content-center'>
+                        <h6>Search by: </h6>
+                        <Switch
+                          checked={this.state.isZelId}
+                          label='Zel ID'
+                          onChange={this.handleZelIdSwitch}
+                          className='zel-id-switch mb-0 ms-3'
+                        />
+                      </div>
                     )}
-                    <FormGroup>
-                      <Button
-                        fill
-                        onClick={this.handleButtonClick}
-                        text={!this.state.isZelId ? 'Search Wallet' : 'Search Zel ID'}
-                        intent='primary'
-                        icon='array-string'
-                      />
-                    </FormGroup>
                   </Col>
                 </Row>
+
                 <Row style={{ paddingBottom: '10px', display: enableNotableNodesTab ? 'flex' : 'none' }}>
                   <Col md={24} lg={8}>
                     <PayoutTimer ref={this._payoutTimerRef} />

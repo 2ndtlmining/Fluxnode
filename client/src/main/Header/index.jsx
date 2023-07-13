@@ -94,6 +94,17 @@ function UtilizationView({ utilized, total, suffix = '' }) {
   );
 }
 
+function DisplayTotalScore({ value }) {
+  return (
+    <div className='d-block mb-0 cell-tooltip-box'>
+      <p>
+        <span className='ct-name'>Total Score: </span>
+        <span className='ct-val'>{value}</span>
+      </p>
+    </div>
+  );
+}
+
 function Cell({ name, value, icon, iconColor, iconColorAlt, small, cellHover, elementRef, ...otherProps }) {
   return (
     <InfoCell
@@ -128,7 +139,7 @@ function CellTooltip({ children, tooltipContent }) {
 
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
-export function DashboardCells({ gstore: gs, total_donations }) {
+export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstSearchedWallet }) {
   const [enableFractusNodesCell, setToggleFractusNodesCell] = useState(false);
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
@@ -139,6 +150,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
 
   const walletCellStyles = WALLET_CELL_ATTRIBUTES[walletType];
 
+  console.log("totalScoreAgainstSearchedWallet", totalScoreAgainstSearchedWallet)
   return (
     <div className='dashboard bp4-dark'>
       <LayoutContext.Consumer>
@@ -230,14 +242,22 @@ export function DashboardCells({ gstore: gs, total_donations }) {
                 />
               )}
             </CellTooltip>
-            <Cell
-              name='Flux Amount'
-              value={gs.wallet_amount_flux}
-              icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
-              iconWrapClassName={`dash-cell__amount-flux${suffixClassName}`}
-              small={!normalFontSize}
-              isPrivacy={enablePrivacyMode}
-            />
+
+            <CellTooltip tooltipContent={<DisplayTotalScore value={totalScoreAgainstSearchedWallet} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='Flux Amount'
+                  value={gs.wallet_amount_flux}
+                  icon={RenderedFluxIcon({ width: iconSize, height: iconSize })}
+                  iconWrapClassName={`dash-cell__amount-flux${suffixClassName}`}
+                  small={!normalFontSize}
+                  isPrivacy={enablePrivacyMode}
+                  cellHover
+                />
+              )}
+            </CellTooltip>
             <CellTooltip tooltipContent={<WalletTopPercentage topPercentage={0} />}>
               {(ref, tooltipProps) => (
                 <Cell

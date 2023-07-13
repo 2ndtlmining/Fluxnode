@@ -41,3 +41,22 @@
     margin-bottom: 5px;
     text-align: end;
 }
+
+.form-group {
+    input {
+        padding: 0.4rem 0.4rem 0.4rem 1.3rem;
+        font-size: 0.9rem;
+        border-radius: 2rem 0 0 2rem;
+        height: auto;
+        outline: none;
+
+        &:focus {
+            box-shadow: none !important;
+        }
+    }
+
+    .bp4-button {
+        padding-inline: 1.7rem;
+        border-radius: 0 2rem 2rem 0;
+    }
+}

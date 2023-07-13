@@ -6,7 +6,14 @@ import { Button, Spinner, ProgressBar } from '@blueprintjs/core';
 import { isIOS, sleep } from 'utils';
 
 import { Projection } from './Projection';
-import { getWalletNodes, wallet_health_full, fill_health, fillPartialNode, transformRawNode } from 'main/apidata';
+import {
+  getWalletNodes,
+  wallet_health_full,
+  fill_health,
+  fillPartialNode,
+  transformRawNode,
+  getEnterpriseNodes
+} from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
@@ -83,6 +90,12 @@ export class WalletNodes extends React.Component {
     });
     await sleep(1);
 
+    const enterpriseNodesRaw = await getEnterpriseNodes();
+    console.log('enterpriseNodesRaw', enterpriseNodesRaw);
+
+    const enterpriseNodesFiltered = enterpriseNodesRaw?.filter((item) => item?.payment_address === address);
+    console.log('enterpriseNodesFiltered', enterpriseNodesFiltered);
+
     const walletNodesRaw = await getWalletNodes(address).then((res) => {
       this.setState({ loadingWalletNodes: false });
       return res;
@@ -93,6 +106,18 @@ export class WalletNodes extends React.Component {
     const health = wallet_health_full();
 
     partialNodes = walletNodesRaw.map((rawNode) => transformRawNode(rawNode));
+    enterpriseNodesFiltered.map((filterNode) => {
+      partialNodes = partialNodes.map((pNode) => {
+        if (pNode?.id === filterNode?.ip) {
+          return {
+            ...pNode,
+            score: filterNode?.score || 0
+          };
+        }
+
+        return pNode;
+      });
+    });
 
     this.setState({ totalNodeOverviewPages: Math.round(walletNodesRaw.length / 20) });
 
@@ -191,7 +216,7 @@ export class WalletNodes extends React.Component {
       <LayoutContext.Consumer>
         {({ enableEstimatedEarningsTab }) =>
           enableEstimatedEarningsTab ? (
-            <div className={`${healthWrapperClass} mb-3 mx-1 p-0`}>
+            <div className={`${healthWrapperClass} mb-3 me-1 p-0`}>
               <Projection loading={loadingHealth} health={this.state.health} />
             </div>
           ) : null

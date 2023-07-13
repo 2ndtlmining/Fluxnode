@@ -1,7 +1,7 @@
 import * as dayjs from 'dayjs';
 
 import { format_minutes } from 'utils';
-import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
+import { fluxos_version_desc, fluxos_version_desc_parse } from 'main/flux_version';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -55,6 +55,7 @@ export function create_global_store() {
     presearchRunningApps: 0,
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
+    fluxBlockHeight: 0,
     node_count: {
       cumulus: 0,
       nimbus: 0,
@@ -288,8 +289,8 @@ export async function fetch_global_stats(walletAddress = null) {
   };
 
   const fetchTotalDeployedApps = async () => {
-    const kadena = 'runonflux/kadena-chainweb-node:latest';
-    const presearch = 'presearch/node:latest';
+    const kadena = process.env.REACT_APP_KADENA;
+    const presearch = process.env.REACT_APP_PRE_SEARCH;
 
     let totalRunningApps = 0;
     let kadenaCount = 0;
@@ -337,6 +338,16 @@ export async function fetch_global_stats(walletAddress = null) {
     }
   };
 
+  const getFluxBlockInfo = async () => {
+    try {
+      const res = await fetch('https://api.runonflux.io/daemon/getinfo');
+      const json = await res.json();
+      store.fluxBlockHeight = json?.data?.blocks;
+    } catch (error) {
+      console.log('error', error);
+    }
+  };
+
   await Promise.all([
     fetchCurrency(),
     fetchWallet(),
@@ -348,6 +359,7 @@ export async function fetch_global_stats(walletAddress = null) {
     fetchTotalDeployedApps(),
     fetchUniqueWalletAddresses(),
     fetchWordpressInstancesCount(),
+    getFluxBlockInfo()
   ]);
 
   fill_rewards(store);

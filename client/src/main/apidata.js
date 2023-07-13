@@ -231,19 +231,19 @@ export async function fetch_global_stats(walletAddress = null) {
     const res = await fetch('https://explorer.runonflux.io/api/currency');
     const json = await res.json();
     store.flux_price_usd = json.data.rate;
-  }
+  };
 
   const fetchWallet = async () => {
     if (walletAddress) {
-      const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1')
+      const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
       const json = await res.json();
       const balance = json['balance'];
       store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
     }
-  }
+  };
 
   const fetchNode = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount')
+    const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount');
     const json = await res.json();
     const stats = json.data;
 
@@ -252,37 +252,45 @@ export async function fetch_global_stats(walletAddress = null) {
     store.node_count.stratus = stats['stratus-enabled'];
 
     store.node_count.total = stats['total'];
-  }
+  };
 
   const fetchBenchVer = async () => {
-    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json')
+    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json');
     if (res.status === 200) {
       const json = await res.json();
       store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
     }
-  }
+  };
 
   const fetchFluxVer = async () => {
-    const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API })
+    const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API });
     if (res.status === 200) {
       const json = await res.json();
       store.bench_latest_version = fluxos_version_desc_parse(json.version);
     }
-  }
+  };
 
   const fetchBlockHeight = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getinfo')
+    const res = await fetch('https://api.runonflux.io/daemon/getinfo');
     const json = await res.json();
     store.current_block_height = json['data']['blocks'];
-  }
+  };
 
   const fetchRichList = async () => {
-    const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list')
+    const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
     const json = await res.json();
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
-  }
+  };
 
-  await Promise.all([fetchCurrency(), fetchWallet(), fetchNode(), fetchBenchVer(), fetchFluxVer(), fetchBlockHeight(), fetchRichList()])
+  await Promise.all([
+    fetchCurrency(),
+    fetchWallet(),
+    fetchNode(),
+    fetchBenchVer(),
+    fetchFluxVer(),
+    fetchBlockHeight(),
+    fetchRichList()
+  ]);
 
   fill_rewards(store);
   window.gstore = store;
@@ -352,6 +360,7 @@ function empty_flux_node() {
     last_benchmark: '-',
     appCount: 0,
     uptime: 0,
+    score: 0,
 
     last_confirmed_height: 0
     // maintenance_win: '-'
@@ -388,13 +397,26 @@ export async function getWalletNodes(walletAddress) {
     try {
       const res = await fetch(API_FLUX_NODE_URL + walletAddress);
       wNodes = (await res.json())?.data;
-    } catch { }
+    } catch {}
   } else {
     const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
     const data = await listResponse.json();
     wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
   }
   return wNodes;
+}
+
+export async function getEnterpriseNodes() {
+  let enterpriseNodes = [];
+  try {
+    const res = await fetch('https://api.runonflux.io/apps/enterprisenodes');
+    enterpriseNodes = (await res.json())?.data;
+    console.log('getEnterpriseNodes-----', enterpriseNodes);
+  } catch (e) {
+    console.log('getEnterpriseNodes', e);
+  }
+
+  return enterpriseNodes;
 }
 
 export function transformRawNode(node) {
@@ -503,7 +525,7 @@ if (FLUXNODE_INFO_API_MODE === 'proxy') {
 
       responseOK = response.status == 200;
       jsonData = await response.json();
-    } catch { }
+    } catch {}
 
     if (!(responseOK && jsonData['success'])) return make_offline(fluxNode);
 
@@ -603,7 +625,7 @@ export async function getDemoWallet() {
 }
 
 export async function lazy_load_currency_rate() {
-  const supportedCurrencies = ['USD', 'EUR', 'AUD']
+  const supportedCurrencies = ['USD', 'EUR', 'AUD'];
   const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
   if (!storedFCurrencyRates) {
     const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + supportedCurrencies.join(','));
