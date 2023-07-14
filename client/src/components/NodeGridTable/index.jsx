@@ -94,7 +94,6 @@ export const NodeGridTable = ({
   };
 
   const columnDefs = [
-    { field: 'score', headerName: 'Score', filter: 'agTextColumnFilter' },
     { field: 'ip_display', headerName: 'IP', cellRenderer: 'ipCell', filter: 'agTextColumnFilter', minWidth: 100 },
     { field: 'tier', headerName: 'Tier', cellRenderer: 'tierCell', filter: 'agTextColumnFilter', minWidth: 100 },
     { field: 'rank', headerName: 'Rank', filter: 'agTextColumnFilter', minWidth: 100 },
@@ -178,6 +177,7 @@ export const NodeGridTable = ({
       width: '150px',
       minWidth: 100
     },
+    { field: 'score', headerName: 'Score', filter: 'agTextColumnFilter' },
     {
       field: 'appCount',
       headerName: 'Apps',

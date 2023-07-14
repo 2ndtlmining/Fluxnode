@@ -512,13 +512,13 @@ class MainApp extends React.Component {
                 <title>Wallet</title>
               </Helmet>
 
-              {enableDashboardCells && this.state.totalScoreAgainstSearchedWallet ? (
+              {enableDashboardCells && (
                 <DashboardCells
                   gstore={this.state.gstore}
                   total_donations={this.state.totalDonations}
                   totalScoreAgainstSearchedWallet={this.state.totalScoreAgainstSearchedWallet}
                 />
-              ) : null}
+              )}
               {this.state.isWalletAvailable && this.renderActiveAddressView()}
 
               <Container fluid style={{ margin: '20px 10px' }}>
