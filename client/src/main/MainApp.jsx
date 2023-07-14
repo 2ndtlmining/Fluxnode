@@ -160,8 +160,8 @@ class MainApp extends React.Component {
 
   async _getTotalScoreAgainstSearchedWallet(wallet) {
     const enterpriseNodesRaw = await getEnterpriseNodes();
-    const enterpriseNodesFiltered = enterpriseNodesRaw?.filter((item) => item?.payment_address === wallet);
-    const sum = enterpriseNodesFiltered.map((item) => item.score).reduce((a, b) => a + b, 0);
+    const enterpriseNodesFiltered = enterpriseNodesRaw.data.filter((item) => item?.payment_address === wallet);
+    const sum = enterpriseNodesFiltered.reduce((prev, current) => prev + current.score, 0);
     this.setState({
       ...this.state,
       totalScoreAgainstSearchedWallet: sum
