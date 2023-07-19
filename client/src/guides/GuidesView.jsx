@@ -497,6 +497,18 @@ bash -i <(curl -s https://raw.githubusercontent.com/JKTUNING/Flux-Node-Tools/mai
 `)}
           </Accordion.Body>
         </Accordion.Item>
+        <Accordion.Item eventKey='13'>
+          <Accordion.Header>{this.renderBullet(26)} Install and run Speedtest </Accordion.Header>
+          <Accordion.Body>
+            <p>Run the following sequence of commands:</p>
+            {CodeBlock.Full(`
+sudo apt-get install curl
+curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
+sudo apt-get install speedtest
+speedtest
+`)}
+          </Accordion.Body>
+        </Accordion.Item>
       </Accordion>
     );
 
