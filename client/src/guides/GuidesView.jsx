@@ -455,7 +455,7 @@ fluxbench-cli restartnodebenchmarks
           </Accordion.Body>
         </Accordion.Item>
         <Accordion.Item eventKey='9'>
-          <Accordion.Header>{this.renderBullet(22)} How to restart MangoDB</Accordion.Header>
+          <Accordion.Header>{this.renderBullet(22)} How to restart MongoDB</Accordion.Header>
           <Accordion.Body>
             <p>Run the following sequence of commands</p>
             {CodeBlock.Full(`

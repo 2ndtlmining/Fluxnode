@@ -122,7 +122,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
             />
 
             <Cell
-              name={`Kadena Running Apps`}
+              name={`Streamr Running Apps`}
               value={gs.kadenaRunningApps}
               icon={<FaRocket size={iconSize} />}
               iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}
