@@ -335,7 +335,7 @@ export async function fetch_global_stats(walletAddress = null) {
     try {
       const res = await fetch('https://jetpackbridge.runonflux.io/api/v1/wordpress.php?action=COUNT');
       const json = await res.json();
-      store.wordpressCount = json?.count;
+      store.wordpressCount = json;
     } catch (error) {
       console.log('error', error);
     }
