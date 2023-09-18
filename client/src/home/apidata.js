@@ -335,6 +335,7 @@ export async function fetch_global_stats(walletAddress = null) {
     try {
       const res = await fetch('https://jetpackbridge.runonflux.io/api/v1/wordpress.php?action=COUNT');
       const json = await res.json();
+      json.count ? json.count : json ? json : 0;
       store.wordpressCount = json;
     } catch (error) {
       console.log('error', error);
@@ -345,7 +346,7 @@ export async function fetch_global_stats(walletAddress = null) {
     try {
       const res = await fetch('https://api.runonflux.io/daemon/getinfo');
       const json = await res.json();
-      store.fluxBlockHeight = json?.data?.blocks;
+      store.fluxBlockHeight = json?.data?.blocks ?? 0;
     } catch (error) {
       console.log('error', error);
     }

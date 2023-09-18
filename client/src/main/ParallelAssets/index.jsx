@@ -109,37 +109,37 @@ export function ParallelAssets({ summary, theme }) {
             <PAssetCard
               paInfo={summary.assets.kda}
               blockStyle='kda'
-              logoUrl='https://runonflux.io/images/kda-logo2x.png'
+              logoUrl='https://cryptologos.cc/logos/kadena-kda-logo.png?v=026'
               assetName={'KDA'}
             />
             <PAssetCard
               paInfo={summary.assets.eth}
               blockStyle='eth'
-              logoUrl='https://runonflux.io/images/eth-logo2x.png'
+              logoUrl='https://cryptologos.cc/logos/ethereum-eth-logo.png?v=026'
               assetName={'Ethereum'}
             />
             <PAssetCard
               paInfo={summary.assets.bsc}
               blockStyle='bsc'
-              logoUrl='https://runonflux.io/images/bnb-logo2x.png'
+              logoUrl='https://cryptologos.cc/logos/bnb-bnb-logo.png?v=026'
               assetName={'BSC'}
             />
             <PAssetCard
               paInfo={summary.assets.trn}
               blockStyle='trn'
-              logoUrl='https://runonflux.io/images/tron-p-500.png'
+              logoUrl='https://cryptologos.cc/logos/tron-trx-logo.png?v=026'
               assetName={'Tron'}
             />
             <PAssetCard
               paInfo={summary.assets.sol}
               blockStyle='sol'
-              logoUrl='https://runonflux.io/images/sol-logo2x.png'
+              logoUrl='https://cryptologos.cc/logos/solana-sol-logo.png?v=026'
               assetName={'Solana'}
             />
             <PAssetCard
               paInfo={summary.assets.avx}
               blockStyle='avx'
-              logoUrl='https://runonflux.io/images/terra-avalanche-flux-parallel-logo.png'
+              logoUrl='https://cryptologos.cc/logos/avalanche-avax-logo.png?v=026'
               assetName={'AVAX'}
             />
             <PAssetCard
