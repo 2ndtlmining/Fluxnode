@@ -29,18 +29,26 @@ export const NodeGridTable = ({
   const gridRef = useRef();
   const [rowData, setRowData] = useState(data);
   const [appTheme, setAppTheme] = useState(theme);
+  const [ipFilter, setIpFilter] = useState('');
 
   useEffect(() => {
+    setRowDataBasedUponFilter(ipFilter, setRowData, data, gstore);
+    setAppTheme(theme);
+  }, [data, gstore, theme, ipFilter]);
+
+  const setRowDataBasedUponFilter = (inputValue, setRowData, data, gstore) => {
+    const filterFunction = (x) => x.ip_display.includes(inputValue);
+
     setRowData(
       data.map((x) => ({
         ...x,
         gstore: gstore,
         flux_os_display: fluxos_version_string(x.flux_os),
-        bench_version_display: fluxos_version_string(x.bench_version)
+        bench_version_display: fluxos_version_string(x.bench_version),
       }))
+        .filter(inputValue === '' ? () => true : filterFunction)
     );
-    setAppTheme(theme);
-  }, [data, gstore, theme]);
+  };
 
   const sizeToFit = useCallback(() => {
     gridRef.current.api.sizeColumnsToFit();
@@ -187,6 +195,7 @@ export const NodeGridTable = ({
     }
   ];
 
+
   return (
     <>
       <div className='table-header'>
@@ -198,6 +207,10 @@ export const NodeGridTable = ({
           </span>
         </span>
         <div className='cta-button-wrapper'>
+          <div>Filter (IP):&nbsp;
+            <input type='text' value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} size={16} />&nbsp;
+            <Button text='Clear' intent='primary' rightIcon={"filter"} onClick={() => setIpFilter('')} />
+          </div>&nbsp;
           <Button text='Reset' rightIcon='reset' intent='danger' onClick={handleResetColumnState} />
           <Button
             text='Refresh'
