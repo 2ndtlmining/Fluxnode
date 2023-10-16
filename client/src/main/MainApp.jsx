@@ -20,7 +20,7 @@ import { MostHosted } from './MostHosted';
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
 
-import * as Rx from 'rxjs';
+import { Observable } from 'rxjs';
 
 import {
   create_global_store,
@@ -72,6 +72,7 @@ class MainApp extends React.Component {
     this.walletNodes = React.createRef();
     window.addressInputRef = this.addressInputRef = React.createRef();
 
+
     this._historyListRef = React.createRef();
 
     this._payoutTimerRef = React.createRef();
@@ -106,6 +107,7 @@ class MainApp extends React.Component {
 
     this.setSearch = this.props.router.search[1];
 
+
     const _this = this;
     let loadedHistory = [];
     try {
@@ -133,8 +135,9 @@ class MainApp extends React.Component {
 
     await appStore.ready(function () {
       appStore.newObservable.factory = function (subscribeFn) {
-        return Rx.Observable.create(subscribeFn);
+        return new Observable(subscribeFn);
       };
+
 
       var methodCallObservable = appStore.newObservable({
         key: StoreKeys.PRIVACY_MODE,
@@ -146,7 +149,9 @@ class MainApp extends React.Component {
           hideSensitiveData(args.newValue);
         }
       });
+      methodCallSubscription.unsubscribe();
     });
+
 
     this._setDefaultAddress(this.props.defaultAddress);
   }
@@ -154,9 +159,11 @@ class MainApp extends React.Component {
   _setDefaultAddress(defaultAddress) {
     if (defaultAddress) {
       this.onProcessAddress(defaultAddress);
-      this.setState({ inputAddress: defaultAddress });
+      this.setState({ inputAddress: defaultAddress || '' });
     }
   }
+
+  
 
   async _getTotalScoreAgainstSearchedWallet(wallet) {
     const enterpriseNodesRaw = await getEnterpriseNodes();
@@ -191,7 +198,10 @@ class MainApp extends React.Component {
     const { location } = this.props.router;
     let params = new URLSearchParams(location.search);
 
+    console.log(location.search)
+
     let wallet = params.get('wallet');
+    console.log(wallet)
     this._getTotalScoreAgainstSearchedWallet(wallet);
 
     if (!!wallet && wallet != '') {
@@ -199,6 +209,7 @@ class MainApp extends React.Component {
         wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
       }
       const address = wallet.toString();
+
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
     } else {
@@ -303,9 +314,13 @@ class MainApp extends React.Component {
     this.setState({ isPALoading: false, walletPASummary: summary });
   }
 
+
+
   handleButtonClick = () => {
     this.onProcessAddress();
     setGAEvent({ category: 'Search Wallet Button', action: 'Click search wallet button' });
+    this.props.router.navigate(`/nodes?wallet=${this.addressInputRef.current.value}`);
+
   };
 
   handleAddrKeyPress = (e) => {
@@ -473,7 +488,7 @@ class MainApp extends React.Component {
                   id={WALLET_INPUT_ID}
                   value={this.state.inputAddress}
                   onChange={this.handleAddrChange}
-                  onKeyPress={this.handleAddrKeyPress}
+                  onKeyUp={this.handleAddrKeyPress}
                   inputRef={mergeRefs(ref, this.addressInputRef)}
                   onFocus={this.changeSearchVisibility.bind(this, true)}
                 />
@@ -502,6 +517,7 @@ class MainApp extends React.Component {
   };
 
   render() {
+    
     return (
       <LayoutContext.Consumer>
         {({ enableParallelAssetsTab, enableDashboardCells, normalFontSize, enableNotableNodesTab }) => {

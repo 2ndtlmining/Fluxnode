@@ -1,4 +1,5 @@
 import * as localforage from 'localforage';
+import 'localforage-observable'; //Buchi: Update needed to gain access to newObservables
 
 export let appStore;
 window.appStore = appStore = localforage.createInstance({
@@ -6,6 +7,7 @@ window.appStore = appStore = localforage.createInstance({
   storeName: '_PrimaryStore',
   version: 3
 });
+console.log(appStore)
 
 export function initStore() {
   appStore.removeItem(StoreKeys.FRACTUS_COUNT);

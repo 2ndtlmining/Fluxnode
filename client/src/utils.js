@@ -65,10 +65,10 @@ export function pad_start(num, size = 2) {
 }
 
 export function hide_sensitive_number(number) {
-  if (number) {
-    return number.toString().replace(/\d/g, 'X');
-  }
-  return number;
+  // if (number) {
+  //   return number.toString().replace(/\d/g, 'X');
+  // }
+  return number.toString().replace(/\d/g, 'X');
 }
 
 export function hide_sensitive_string(string) {

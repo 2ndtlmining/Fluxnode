@@ -9,7 +9,7 @@ import { FooterRendered } from 'components/Footer';
 import { AppNavbar } from 'components/Navbar';
 import { ScreenClassProvider, setConfiguration as setGridConfiguration } from 'react-grid-system';
 import { Helmet } from 'react-helmet';
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import AppGuidesView from 'guides/GuidesView';
@@ -39,7 +39,6 @@ function PageLoader() {
   );
 }
 
-const AppRouter = HashRouter;
 
 const DARK_MODE_CLASS = 'app-mode-dark bp4-dark';
 
@@ -63,6 +62,8 @@ class Application extends React.Component {
       darkMode: theme == 'dark',
       currencyRates: { USD: 1 }
     };
+
+    
   }
 
   async componentDidMount() {
@@ -93,7 +94,7 @@ class Application extends React.Component {
             <meta name='description' content='Overview for flux node wallets' />
           </Helmet>
           <div className={'App' + (darkMode ? ' ' + DARK_MODE_CLASS : '')}>
-            <AppRouter>
+            
               <AppNavbar
                 theme={darkMode ? 'dark' : 'light'}
                 onThemeSwitch={() => this.setDarkMode(!darkMode)}
@@ -144,7 +145,6 @@ class Application extends React.Component {
                 />
               </Routes>
               {FooterRendered}
-            </AppRouter>
           </div>
         </LayoutConfigurationProvider>
       </ScreenClassProvider>

@@ -411,7 +411,7 @@ export async function getEnterpriseNodes() {
   try {
     const res = await fetch('https://api.runonflux.io/apps/enterprisenodes');
     enterpriseNodes = (await res.json())?.data;
-    console.log('getEnterpriseNodes-----', enterpriseNodes);
+    // console.log('getEnterpriseNodes-----', enterpriseNodes);
   } catch (e) {
     console.log('getEnterpriseNodes', e);
   }
@@ -624,16 +624,34 @@ export async function getDemoWallet() {
   }
 }
 
+
 export async function lazy_load_currency_rate() {
+  let myHeaders = new Headers();
+  myHeaders.append("apikey", '6W0WO6L8V8JzLxspD9H1FHbSFfB5z1P9');
+  
+  let requestOptions = {
+    method: 'GET',
+    redirect: 'follow',
+    headers: myHeaders
+  };
   const supportedCurrencies = ['USD', 'EUR', 'AUD'];
   const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
   if (!storedFCurrencyRates) {
-    const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + supportedCurrencies.join(','));
-    const json = await res.json();
-    const currencyRates = json.rates;
-
-    await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
-    return currencyRates;
+    // Fixes : Changed deprecated Api route 'https://api.exchangerate.host/latest?base=USD&symbols=' to the latest 'https://api.apilayer.com/fixer/latest?base=USD&symbols='
+    try {
+      const res = await fetch('https://api.apilayer.com/fixer/latest?base=USD&symbols=' + supportedCurrencies.join(','), requestOptions);
+      const json = await res.json();
+      const currencyRates = json.rates;
+      if(res.ok){
+        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
+        return currencyRates;
+      }else{
+        return null
+      }
+      
+    } catch (error) {
+      console.log(error)
+    }
   }
   return storedFCurrencyRates;
 }

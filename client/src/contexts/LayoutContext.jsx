@@ -5,11 +5,17 @@ import { useState } from 'react';
 export const LayoutContext = createContext(null);
 
 export function LayoutConfigurationProvider(props) {
+
   const [enableEstimatedEarningsTab, setEstimatedEarningsTab] = useState(true);
   const [enableParallelAssetsTab, setParallelAssetsTab] = useState(true);
   const [normalFontSize, setFontSize] = useState(true);
   const [enablePrivacyMode, setPrivacyMode] = useState(false);
   const [enableDashboardCells, setDashboardCells] = useState(true);
+  
+
+
+
+
 
   const savedNotableNodes = appStore.getItem(StoreKeys.NOTABLE_NODES);
   const [enableNotableNodesTab, setNotableNodesTab] = useState(savedNotableNodes);
@@ -42,10 +48,13 @@ export function LayoutConfigurationProvider(props) {
     setPrivacyMode((prevState) => {
       try {
         appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
-      } catch {}
+      } catch { }
       return !prevState;
     });
   }, [setPrivacyMode]);
+
+
+
 
   const toggleDashboardCells = useCallback(() => {
     setDashboardCells((prevState) => !prevState);
@@ -57,7 +66,7 @@ export function LayoutConfigurationProvider(props) {
     setNotableNodesTab((prevState) => {
       try {
         appStore.setItem(StoreKeys.NOTABLE_NODES, !prevState);
-      } catch {}
+      } catch { }
       return !prevState;
     });
   }, [setNotableNodesTab]);
