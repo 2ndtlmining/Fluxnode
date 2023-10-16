@@ -12,12 +12,13 @@ import { CurrencyMenuItem } from 'components/Navbar/CurrencyMenuItem';
 window.matchPath = matchPath;
 window.useMatch = useMatch;
 
-function no_op() {}
+function no_op() { }
 
 const APP_LOGO_THEME_LIGHT = '/app-logo.svg';
 const APP_LOGO_THEME_DARK = '/app-logo-dark.svg';
 
 export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
+  console.log(currencyRates)
   const [isSettingMenuOpen, setSettingMenuOpen] = useState(false);
 
   theme = theme || 'light';

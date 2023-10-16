@@ -14,7 +14,7 @@ import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@bl
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
 //DO NOT REMOVE: package for store subscriber
 
-import * as Rx from 'rxjs';
+import { Observable }  from 'rxjs';
 
 import {
   create_global_store,
@@ -43,6 +43,7 @@ class Home extends React.Component {
     window.HomeApp = this;
 
     this.state = {
+      addressInput: '',
       activeAddress: null,
       searchHistory: [],
       showSearchHistory: false,
@@ -61,9 +62,10 @@ class Home extends React.Component {
 
       totalDonations: 0
     };
-
+    
     this.walletNodes = React.createRef();
     window.addressInputRef = this.addressInputRef = React.createRef();
+    
 
     this._historyListRef = React.createRef();
 
@@ -126,7 +128,7 @@ class Home extends React.Component {
 
     await appStore.ready(function () {
       appStore.newObservable.factory = function (subscribeFn) {
-        return Rx.Observable.create(subscribeFn);
+        return new Observable(subscribeFn);
       };
 
       var methodCallObservable = appStore.newObservable({
@@ -284,9 +286,16 @@ class Home extends React.Component {
     this.setState({ isPALoading: false, walletPASummary: summary });
   }
 
+  handleAddrChange = (e) => {
+    this.setState({inputAddress: e.target.value})
+  }
+
+  
+
   handleButtonClick = () => {
     this.props.router.navigate(`/nodes?wallet=${this.addressInputRef.current.value}`);
   };
+
 
   handleAddrKeyPress = (e) => {
     if (e.key == 'Enter') {
@@ -426,6 +435,7 @@ class Home extends React.Component {
   renderAddressInput() {
     let dos = this.state.isWalletAvailable && this.state.isDOS;
     let intent = dos ? 'warning' : 'none';
+   
 
     let openHistoryBox = this.state.showSearchHistory && this.state.searchHistory.length > 0;
 
@@ -453,7 +463,7 @@ class Home extends React.Component {
                   id={WALLET_INPUT_ID}
                   value={this.state.inputAddress}
                   onChange={this.handleAddrChange}
-                  onKeyPress={this.handleAddrKeyPress}
+                  onKeyUp={this.handleAddrKeyPress}
                   inputRef={mergeRefs(ref, this.addressInputRef)}
                   onFocus={this.changeSearchVisibility.bind(this, true)}
                 />
@@ -486,12 +496,12 @@ class Home extends React.Component {
       <LayoutContext.Consumer>
         {({ enableParallelAssetsTab, enableDashboardCells, normalFontSize, enableNotableNodesTab }) => {
           const suffixClassName = normalFontSize ? '' : '-small';
+          // {console.log(enablePrivacyMode)}
           return (
             <>
               <Helmet>
                 <title>Home</title>
               </Helmet>
-
               <Container fluid style={{ margin: '20px 20px' }}>
                 <Row justify='center'>
                   <Col style={{ paddingBottom: '10px' }} md={9}>
@@ -536,5 +546,7 @@ function withRouter(Component) {
     return <Component {...props} router={{ location, navigate, params, search }} />;
   };
 }
+
+
 
 export default withRouter(Home);

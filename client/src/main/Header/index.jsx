@@ -150,7 +150,8 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
 
   const walletCellStyles = WALLET_CELL_ATTRIBUTES[walletType];
 
-  console.log("totalScoreAgainstSearchedWallet", totalScoreAgainstSearchedWallet)
+  // console.log("totalScoreAgainstSearchedWallet", totalScoreAgainstSearchedWallet)
+  
   return (
     <div className='dashboard bp4-dark'>
       <LayoutContext.Consumer>

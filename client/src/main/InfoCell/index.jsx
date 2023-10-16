@@ -28,7 +28,7 @@ export function InfoCell({
   if (iconColor) style.color = iconColor;
 
   const styleProps = { style };
-
+  
   const isDecimal = !Number.isInteger(value);
 
   const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal prefix={prefix} suffix={suffix} />);
