@@ -632,7 +632,7 @@ export async function lazy_load_currency_rate() {
   let requestOptions = {
     method: 'GET',
     redirect: 'follow',
-    headers: myHeaders
+    headers: myHeaders,
   };
   const supportedCurrencies = ['USD', 'EUR', 'AUD'];
   const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
