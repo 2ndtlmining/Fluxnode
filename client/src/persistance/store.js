@@ -7,7 +7,6 @@ window.appStore = appStore = localforage.createInstance({
   storeName: '_PrimaryStore',
   version: 3
 });
-console.log(appStore)
 
 export function initStore() {
   appStore.removeItem(StoreKeys.FRACTUS_COUNT);

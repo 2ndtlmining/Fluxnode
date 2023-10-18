@@ -44,9 +44,12 @@ const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
 
 class MainApp extends React.Component {
+  static contextType = LayoutContext;
+
   constructor(props) {
     super(props);
     window.MainApp = this;
+
 
     this.state = {
       totalScoreAgainstSearchedWallet: 0,
@@ -96,7 +99,13 @@ class MainApp extends React.Component {
     };
   }
 
+
+
+
+
   async componentDidMount() {
+    const context = this.context;
+    const { enablePrivacyMode } = context
     if (this.mounted) return;
     this.mounted = true;
 
@@ -112,8 +121,8 @@ class MainApp extends React.Component {
     let loadedHistory = [];
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
-      this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
-    } catch {}
+      this.setState({ privacyMode: enablePrivacyMode });
+    } catch { }
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
     appStore.setItem(StoreKeys.ADDR_SEARCH_HISTORY, searchHistory);
@@ -159,11 +168,34 @@ class MainApp extends React.Component {
   _setDefaultAddress(defaultAddress) {
     if (defaultAddress) {
       this.onProcessAddress(defaultAddress);
-      this.setState({ inputAddress: defaultAddress || '' });
+      this.setState({ inputAddress: defaultAddress });
     }
   }
 
-  
+  componentDidUpdate(prevProps, prevState) {
+
+    let inputField = this.addressInputRef.current.value
+    
+    if (prevState.privacyMode !== this.context.enablePrivacyMode) {
+      prevState.privacyMode = this.context.enablePrivacyMode
+
+      this.setState({ inputAddress: !this.state.privacyMode ? this.state.activeAddress : hide_sensitive_string(inputField) });
+
+    }
+
+    
+
+
+
+
+
+  }
+
+
+
+
+
+
 
   async _getTotalScoreAgainstSearchedWallet(wallet) {
     const enterpriseNodesRaw = await getEnterpriseNodes();
@@ -197,16 +229,14 @@ class MainApp extends React.Component {
   async hydrateApp() {
     const { location } = this.props.router;
     let params = new URLSearchParams(location.search);
-
-    console.log(location.search)
-
     let wallet = params.get('wallet');
-    console.log(wallet)
+
     this._getTotalScoreAgainstSearchedWallet(wallet);
 
     if (!!wallet && wallet != '') {
       if (this.state.privacyMode) {
         wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
+        
       }
       const address = wallet.toString();
 
@@ -350,7 +380,7 @@ class MainApp extends React.Component {
     </div>
   );
 
-  renderActiveAddressView() {
+  renderActiveAddressView(privacyMode) {
     return (
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
         <div className='d-flex gap-2'>
@@ -377,7 +407,7 @@ class MainApp extends React.Component {
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>
-          {this.state.privacyMode ? hide_sensitive_string(this.state.activeAddress) : this.state.activeAddress}
+          {privacyMode ? hide_sensitive_string(this.state.activeAddress) : this.state.activeAddress}
         </a>
       </div>
     );
@@ -517,10 +547,10 @@ class MainApp extends React.Component {
   };
 
   render() {
-    
+
     return (
       <LayoutContext.Consumer>
-        {({ enableParallelAssetsTab, enableDashboardCells, normalFontSize, enableNotableNodesTab }) => {
+        {({ enableParallelAssetsTab, enableDashboardCells, normalFontSize, enableNotableNodesTab, enablePrivacyMode }) => {
           const suffixClassName = normalFontSize ? '' : '-small';
           return (
             <>
@@ -535,7 +565,7 @@ class MainApp extends React.Component {
                   totalScoreAgainstSearchedWallet={this.state.totalScoreAgainstSearchedWallet}
                 />
               )}
-              {this.state.isWalletAvailable && this.renderActiveAddressView()}
+              {this.state.isWalletAvailable && this.renderActiveAddressView(enablePrivacyMode)}
 
               <Container fluid style={{ margin: '20px 10px' }}>
                 <Row justify='center'>

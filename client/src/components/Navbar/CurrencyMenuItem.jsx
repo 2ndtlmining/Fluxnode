@@ -3,7 +3,6 @@ import { Button, Label } from '@blueprintjs/core';
 import { MenuItem2 } from '@blueprintjs/popover2';
 
 export function CurrencyMenuItem({ currencyRates, selectedCurrency, onChange }) {
-  console.log(currencyRates)
   const currencyOptions = currencyRates === null ? ['USD'] : Object.entries(currencyRates).map(([currency, rate]) => currency);
 
   return (

@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useEffect, useMemo } from 'react';
 import { StoreKeys, appStore } from 'persistance/store';
 import { useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+import { hide_sensitive_string } from 'utils';
 
 export const LayoutContext = createContext(null);
 
@@ -11,7 +13,7 @@ export function LayoutConfigurationProvider(props) {
   const [normalFontSize, setFontSize] = useState(true);
   const [enablePrivacyMode, setPrivacyMode] = useState(false);
   const [enableDashboardCells, setDashboardCells] = useState(true);
-  
+  const location = useLocation()
 
 
 
@@ -52,6 +54,30 @@ export function LayoutConfigurationProvider(props) {
       return !prevState;
     });
   }, [setPrivacyMode]);
+
+
+  // 
+
+
+  useEffect(() => {
+    const getLocation = () => {
+      if (location.pathname !== '/nodes') return
+      const baseUrl = window.location.origin
+      const searchQuery = new URLSearchParams(location.search)
+      const wallet = searchQuery.get('wallet')
+
+      let url = !enablePrivacyMode ? `${baseUrl}/#${location.pathname}?wallet=${wallet}` : `${baseUrl}/#${location.pathname}?wallet=${hide_sensitive_string(wallet)}`
+      window.history.pushState({}, '', url);
+
+
+    }
+
+    getLocation()
+
+  }, [location, enablePrivacyMode])
+
+
+
 
 
 
