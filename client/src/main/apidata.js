@@ -703,7 +703,8 @@ export function pa_summary_full() {
       avx: single_pa_info(),
       erg: single_pa_info(),
       algo: single_pa_info(),
-      matic: single_pa_info()
+      matic: single_pa_info(),
+      bitcoin: single_pa_info()
     }
   };
 }
@@ -767,6 +768,9 @@ export async function wallet_pas_summary(walletAddress) {
           case 'matic':
             targetPAInfo = summary.assets.matic;
             break;
+            case 'bitcoin':
+            targetPAInfo = summary.assets.bitcoin ? summary.assets.bitcoin : 0;
+            break;
             
         default:
           break;
@@ -793,6 +797,7 @@ export async function wallet_pas_summary(walletAddress) {
     summary.assets.erg.fusion_fee = fees['erg'];
     summary.assets.algo.fusion_fee = fees['algo'];
     summary.assets.matic.fusion_fee = fees['matic'];
+    summary.assets.bitcoin.fusion_fee = fees['bitcoin'] ? fees['bitcoin'] : 0;
   }
 
   return summary;

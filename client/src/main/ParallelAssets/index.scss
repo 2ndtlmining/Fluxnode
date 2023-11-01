@@ -357,3 +357,23 @@ $asset-logo-banner-height: $asset-logo-top-padding + $asset-logo-circle-radius;
     ),
     #690882c3
 );
+@include def-pa-block(
+    bitcoin,
+    linear-gradient(
+        45deg,
+        hsl(240deg 33% 1%) 0%,
+        hsl(18deg 74% 17%) 7%,
+        hsl(18deg 74% 23%) 11%,
+        hsl(18deg 74% 29%) 16%,
+        hsl(18deg 75% 33%) 21%,
+        hsl(18deg 75% 37%) 26%,
+        hsl(18deg 75% 40%) 33%,
+        hsl(18deg 75% 44%) 40%,
+        hsl(18deg 75% 47%) 49%,
+        hsl(18deg 75% 49%) 59%,
+        hsl(18deg 81% 52%) 70%,
+        hsl(18deg 90% 55%) 84%,
+        hsl(18deg 99% 57%) 100%
+    ),
+    #fe6625
+);
