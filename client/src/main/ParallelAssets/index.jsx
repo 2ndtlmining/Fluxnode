@@ -162,11 +162,10 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Polygon'}
             />
             <PAssetCard
-              paInfo={summary.assets.bitcoin}
+              paInfo={summary.assets.btc}
               blockStyle='bitcoin'
               logoUrl='https://cryptologos.cc/logos/bitcoin-btc-logo.png?v=026'
               assetName={'Bitcoin'}
-              placeholder
             />
           </div>
         </Col>
