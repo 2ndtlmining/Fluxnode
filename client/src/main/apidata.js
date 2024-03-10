@@ -624,27 +624,32 @@ export async function getDemoWallet() {
   }
 }
 
+// Fetch USD Latest currency rate
+const usdCurrencyRate = async ()=> {
+  let response = await fetch('https://api.frankfurter.app/latest?to=USD');
+  const resData = await response.json();
+  return resData.rates;
+}
 
+
+// Fetch other currencies and store
 export async function lazy_load_currency_rate() {
-  let myHeaders = new Headers();
-  myHeaders.append("apikey", '6W0WO6L8V8JzLxspD9H1FHbSFfB5z1P9');
   
-  let requestOptions = {
-    method: 'GET',
-    redirect: 'follow',
-    headers: myHeaders,
-  };
   const supportedCurrencies = ['USD', 'EUR', 'AUD'];
   const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
   if (!storedFCurrencyRates) {
-    // Fixes : Changed deprecated Api route 'https://api.exchangerate.host/latest?base=USD&symbols=' to the latest 'https://api.apilayer.com/fixer/latest?base=USD&symbols='
     try {
-      const res = await fetch('https://api.apilayer.com/fixer/latest?base=USD&symbols=' + supportedCurrencies.join(','), requestOptions);
+      const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
       const json = await res.json();
       const currencyRates = json.rates;
+
+      const usd = await usdCurrencyRate();
+      const currencies = {...usd, ...currencyRates}
+      console.log('rates:', currencies);
+
       if(res.ok){
-        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
-        return currencyRates;
+        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencies);
+        return currencies;
       }else{
         return null
       }

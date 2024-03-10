@@ -83,7 +83,7 @@ $font-sizes: 'small', n, 16;
     height: 100%;
     display: flex;
     align-items: center;
-    justify-content: start;
+    justify-content: flex-start;
     flex-direction: column;
 
     * {
