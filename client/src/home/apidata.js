@@ -38,6 +38,14 @@ const CLC_NETWORK_FRACTUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_R
 
 /* ======= global stats ======= */
 
+const getFluxNodes = async () => {
+  const result = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
+  const resData = await result.json()
+  console.log(resData)
+}
+
+getFluxNodes();
+
 export function tier_global_projections() {
   return {
     pay_frequency: 0 /* in minutes, display in days and hrs */,
@@ -684,16 +692,39 @@ export async function getDemoWallet() {
   }
 }
 
+// Fetch USD Latest currency rate
+const usdCurrencyRate = async ()=> {
+  let response = await fetch('https://api.frankfurter.app/latest?to=USD');
+  const resData = await response.json();
+  return resData.rates;
+}
+
+
+// Fetch other currencies and store
 export async function lazy_load_currency_rate() {
+  
   const supportedCurrencies = ['USD', 'EUR', 'AUD'];
   const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
   if (!storedFCurrencyRates) {
-    const res = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + supportedCurrencies.join(','));
-    const json = await res.json();
-    const currencyRates = json.rates;
+    try {
+      const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
+      const json = await res.json();
+      const currencyRates = json.rates;
 
-    await appStore.setItem(StoreKeys.CURRENCY_RATES, currencyRates);
-    return currencyRates;
+      const usd = await usdCurrencyRate();
+      const currencies = {...usd, ...currencyRates}
+      console.log('rates:', currencies);
+
+      if(res.ok){
+        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencies);
+        return currencies;
+      }else{
+        return null
+      }
+      
+    } catch (error) {
+      console.log(error)
+    }
   }
   return storedFCurrencyRates;
 }

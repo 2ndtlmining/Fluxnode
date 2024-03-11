@@ -17,10 +17,13 @@ class Demo extends React.Component {
     this.showToast();
   }
   async componentDidMount() {
-    const demoWalletRes = await getDemoWallet();
+    const demoWalletRes = {
+        address: 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG',
+        success: true
+    };
     if (demoWalletRes) {
       this.setState({
-        demoWallet: demoWalletRes,
+        demoWallet: {...demoWalletRes},
         isAddressLoading: false
       });
     }
