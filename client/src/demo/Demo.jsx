@@ -18,7 +18,7 @@ class Demo extends React.Component {
   }
   async componentDidMount() {
     const demoWalletRes = {
-        address: 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG',
+        address: 't3c4EfxLoXXSRZCRnPRF3RpjPi9mBzF5yoJ',
         success: true
     };
     if (demoWalletRes) {
