@@ -306,6 +306,7 @@ export async function fetch_global_stats(walletAddress = null) {
     let presearchCount = 0;
     let watchtowerCount = 0;
 
+
     try {
       const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
       const json = await res.json();
@@ -314,10 +315,11 @@ export async function fetch_global_stats(walletAddress = null) {
         totalRunningApps += item?.apps?.runningapps?.length;
         if (JSON.stringify(item?.apps?.runningapps).includes(kadena)) kadenaCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
-        if (JSON.stringify(item?.apps?.runningapps).includes(watchtower)) watchtowerCount++;
+        if (JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower:latest') || JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower'))
+          watchtowerCount++;
       });
 
-      store.totalRunningApps = (totalRunningApps - watchtowerCount) ;
+      store.totalRunningApps = (totalRunningApps - watchtowerCount);
       store.kadenaRunningApps = kadenaCount;
       store.presearchRunningApps = presearchCount;
     } catch (error) {
