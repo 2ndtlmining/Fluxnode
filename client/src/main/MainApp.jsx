@@ -516,7 +516,7 @@ class MainApp extends React.Component {
                   intent={intent}
                   placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
                   id={WALLET_INPUT_ID}
-                  value={this.state.inputAddress}
+                  value={this.state.inputAddress || sessionStorage.getItem('wallet')}
                   onChange={this.handleAddrChange}
                   onKeyUp={this.handleAddrKeyPress}
                   inputRef={mergeRefs(ref, this.addressInputRef)}
