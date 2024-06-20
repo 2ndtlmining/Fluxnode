@@ -8,19 +8,21 @@ export const LayoutContext = createContext(null);
 
 export function LayoutConfigurationProvider(props) {
 
-  const [enableEstimatedEarningsTab, setEstimatedEarningsTab] = useState(true);
-  const [enableParallelAssetsTab, setParallelAssetsTab] = useState(true);
-  const [normalFontSize, setFontSize] = useState(true);
-  const [enablePrivacyMode, setPrivacyMode] = useState(false);
-  const [enableDashboardCells, setDashboardCells] = useState(true);
+  const getLocalStorageValue = (key, defaultValue) => {
+    const saved = localStorage.getItem(key);
+    return saved !== null ? JSON.parse(saved) : defaultValue;
+  };
+
+
+  const [enableEstimatedEarningsTab, setEstimatedEarningsTab] = useState(() => getLocalStorageValue('enableEstimatedEarningsTab', true));
+  const [enableParallelAssetsTab, setParallelAssetsTab] = useState(() => getLocalStorageValue('enableParallelAssetsTab', true));
+  const [normalFontSize, setFontSize] = useState(() => getLocalStorageValue('normalFontSize', true));
+  const [enablePrivacyMode, setPrivacyMode] = useState(() => getLocalStorageValue('enablePrivacyMode', false));
+  const [enableDashboardCells, setDashboardCells] = useState(() => getLocalStorageValue('enableDashboardCells', true));
+  const [enableNotableNodesTab, setNotableNodesTab] = useState(() => getLocalStorageValue('enableNotableNodesTab', true))
   const location = useLocation()
 
 
-
-
-
-  const savedNotableNodes = appStore.getItem(StoreKeys.NOTABLE_NODES);
-  const [enableNotableNodesTab, setNotableNodesTab] = useState(savedNotableNodes);
 
   const defaultCurrency = { currency: 'USD', rate: 1 };
   const savedSelectedCurrency = JSON.parse(localStorage.getItem('selectedCurrency'));
@@ -28,74 +30,96 @@ export function LayoutConfigurationProvider(props) {
 
   appStore.setItem(StoreKeys.PRIVACY_MODE, enablePrivacyMode);
 
-  const toggleEstimatedEarningsTab = useCallback(() => {
-    //TODO: replace with persistence/store
+  // ================================================================
+  // Toggle Functionalities & Persistence
+  // ================================================================
+  const toggleEstimatedEarningsTab = () => {
     setEstimatedEarningsTab((prevState) => !prevState);
-    localStorage.setItem('estimatedEarnings', enableEstimatedEarningsTab);
-  }, [setEstimatedEarningsTab]);
+  }
+  useEffect(() => {
+    localStorage.setItem('enableEstimatedEarningsTab', JSON.stringify(enableEstimatedEarningsTab));
+  }, [enableEstimatedEarningsTab])
 
-  const toggleParallelAssetsTab = useCallback(() => {
-    //TODO: replace with persistence/store
+
+  const toggleParallelAssetsTab = () => {
     setParallelAssetsTab((prevState) => !prevState);
-    localStorage.setItem('parallelAssets', enableParallelAssetsTab);
-  }, [setParallelAssetsTab]);
+  }
 
-  const toggleFontSize = useCallback(() => {
-    //TODO: replace with persistence/store
+  useEffect(() => {
+    localStorage.setItem('enableParallelAssetsTab', JSON.stringify(enableParallelAssetsTab));
+  }, [enableParallelAssetsTab]);
+
+
+  const toggleFontSize = () => {
     setFontSize((prevState) => !prevState);
-    localStorage.setItem('fontSize', normalFontSize);
-  }, [setFontSize]);
-
-  const togglePrivacyMode = useCallback(() => {
-    setPrivacyMode((prevState) => {
-      try {
-        appStore.setItem(StoreKeys.PRIVACY_MODE, !this.state.enablePrivacyMode);
-      } catch { }
-      return !prevState;
-    });
-  }, [setPrivacyMode]);
+  }
+  useEffect(() => {
+    localStorage.setItem('normalFontSize', JSON.stringify(normalFontSize));
+  }, [normalFontSize]);
 
 
-  // 
+
+  const togglePrivacyMode = () => {
+    setPrivacyMode((prevState) => !prevState);
+  }
+
+  useEffect(() => {
+    localStorage.setItem('enablePrivacyMode', JSON.stringify(enablePrivacyMode));
+  }, [enablePrivacyMode]);
 
 
   useEffect(() => {
+
+    const updateUrl = (wallet) => {
+      const baseUrl = window.location.origin;
+      const mainUrl = `${baseUrl}/#${location.pathname}?wallet=${wallet}`;
+      const hiddenUrl = `${baseUrl}/#${location.pathname}?wallet=${hide_sensitive_string(wallet)}`;
+
+      if (!enablePrivacyMode) {
+        window.history.replaceState({}, '', mainUrl);
+      } else {
+        window.history.replaceState({}, '', hiddenUrl);
+      }
+    };
+
     const getLocation = () => {
-      if (location.pathname !== '/nodes') return
-      const baseUrl = window.location.origin
-      const searchQuery = new URLSearchParams(location.search)
-      const wallet = searchQuery.get('wallet')
+      if (location.pathname !== '/nodes') return;
 
-      let url = !enablePrivacyMode ? `${baseUrl}/#${location.pathname}?wallet=${wallet}` : `${baseUrl}/#${location.pathname}?wallet=${hide_sensitive_string(wallet)}`
-      window.history.pushState({}, '', url);
+      const searchQuery = new URLSearchParams(location.search);
+      let wallet = searchQuery.get('wallet');
+
+      if (!wallet) {
+        wallet = sessionStorage.getItem('wallet');
+        if (wallet) {
+          updateUrl(wallet);
+        }
+      } else {
+        sessionStorage.setItem('wallet', wallet); // Store the actual wallet address in sessionStorage
+        updateUrl(wallet);
+      }
+    };
+
+    getLocation();
+  }, [location, enablePrivacyMode]);
 
 
-    }
 
-    getLocation()
-
-  }, [location, enablePrivacyMode])
-
-
-
-
-
-
-
-  const toggleDashboardCells = useCallback(() => {
+  const toggleDashboardCells = () => {
     setDashboardCells((prevState) => !prevState);
-    //TODO: replace with persistence/store
-    localStorage.setItem('header', enableDashboardCells);
-  }, [setDashboardCells]);
+  }
+  useEffect(() => {
+    localStorage.setItem('enableDashboardCells', JSON.stringify(enableDashboardCells));
+  }, [enableDashboardCells]);
 
-  const toggleNotableNodesTab = useCallback(() => {
-    setNotableNodesTab((prevState) => {
-      try {
-        appStore.setItem(StoreKeys.NOTABLE_NODES, !prevState);
-      } catch { }
-      return !prevState;
-    });
-  }, [setNotableNodesTab]);
+
+  const toggleNotableNodesTab = () => {
+    setNotableNodesTab((prevState) => !prevState);
+  }
+  useEffect(() => {
+    localStorage.setItem('enableNotableNodesTab', JSON.stringify(enableNotableNodesTab));
+  }, [enableNotableNodesTab]);
+
+
 
   const onSelectCurrency = useCallback(
     (val) => {

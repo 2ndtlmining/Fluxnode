@@ -648,7 +648,7 @@ export async function lazy_load_currency_rate() {
       console.log('rates:', currencies);
 
       if(res.ok){
-        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencies);
+       const response =   await appStore.setItem(StoreKeys.CURRENCY_RATES, currencies);
         return currencies;
       }else{
         return null
