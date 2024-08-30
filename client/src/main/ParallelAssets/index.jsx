@@ -164,7 +164,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Polygon'}
             />
             <PAssetCard
-              paInfo={summary.assets.btc}
+              paInfo={summary.assets.base}
               blockStyle='base'
               logoUrl={theme === 'light' ? BaseLogo_black : BaseLogo_white}
               assetName={'Base'}
