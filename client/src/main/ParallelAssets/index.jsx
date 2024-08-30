@@ -11,6 +11,8 @@ import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
 import { pa_summary_full } from 'main/apidata';
 import ErgoLogo from 'assets/Ergo_Orange.png'
 import ArgoLogo from 'assets/Algo_white.png'
+import BaseLogo_white from 'assets/Base_Symbol_White.png'
+import BaseLogo_black from 'assets/Base_Symbol_Black.png'
 
 function PASummary(summary) {
   return (
@@ -163,9 +165,9 @@ export function ParallelAssets({ summary, theme }) {
             />
             <PAssetCard
               paInfo={summary.assets.btc}
-              blockStyle='bitcoin'
-              logoUrl='https://cryptologos.cc/logos/bitcoin-btc-logo.png?v=026'
-              assetName={'Bitcoin'}
+              blockStyle='base'
+              logoUrl={theme === 'light' ? BaseLogo_black : BaseLogo_white}
+              assetName={'Base'}
             />
           </div>
         </Col>
