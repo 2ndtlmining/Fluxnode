@@ -709,7 +709,7 @@ export function pa_summary_full() {
       erg: single_pa_info(),
       algo: single_pa_info(),
       matic: single_pa_info(),
-      btc: single_pa_info()
+      base: single_pa_info()
     }
   };
 }
@@ -773,8 +773,8 @@ export async function wallet_pas_summary(walletAddress) {
           case 'matic':
             targetPAInfo = summary.assets.matic;
             break;
-          case 'btc':
-            targetPAInfo = summary.assets.btc;
+          case 'base':
+            targetPAInfo = summary.assets.base;
             break;
             
         default:
@@ -802,7 +802,7 @@ export async function wallet_pas_summary(walletAddress) {
     summary.assets.erg.fusion_fee = fees['erg'];
     summary.assets.algo.fusion_fee = fees['algo'];
     summary.assets.matic.fusion_fee = fees['matic'];
-    summary.assets.btc.fusion_fee = fees['btc'] ? fees['btc'] : 0;
+    summary.assets.base.fusion_fee = fees['base'] ? fees['base'] : 0;
   }
 
   return summary;
