@@ -62,7 +62,7 @@ window.gContent.CC_FLUX_REWARD_FRACTUS = 7.5;
 /**
  * Parallel Asset reward. It is also in percentage ( 50 means 50 % = 0.5 )
  **/
-window.gContent.CC_PA_REWARD = 90.0;
+window.gContent.CC_PA_REWARD = 100.0;
 
 
 /* ========================================== */
