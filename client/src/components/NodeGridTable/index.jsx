@@ -143,7 +143,6 @@ export const NodeGridTable = ({
       filter: 'agNumberColumnFilter',
       minWidth: 100
     },
-    { field: 'cores', headerName: 'Cores', cellRenderer: 'numberCell', filter: 'agNumberColumnFilter', minWidth: 100 },
     { field: 'threads', headerName: 'Threads', cellRenderer: 'numberCell', filter: 'agNumberColumnFilter' },
     {
       field: 'dws',

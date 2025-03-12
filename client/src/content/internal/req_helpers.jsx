@@ -48,13 +48,6 @@ export const getreq__fractus = (name) => getreq('fractus', name);
 /* Help Information to show on toolips  */
 
 defhelp(
-  'cores',
-  <div>
-    Number of <strong>physical cores</strong> attached to the node
-  </div>
-);
-
-defhelp(
   'threads',
   <div>
     Number of <strong>logical cores (threads)</strong> attached to the node

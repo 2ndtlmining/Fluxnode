@@ -31,7 +31,6 @@ export const NumberCell = (props) => {
         // prettier-ignore
         // eslint-disable-next-line no-lone-blocks
         {
-            failed.cores = _fs_compare(node, reqObj, 'cores');
             failed.threads = _fs_compare(node, reqObj, 'threads');
             // Allow a difference of 3 GB since RAM sizes are mosty a few gigs short when reported
             failed.ram = !node.ram || !reqObj.ram || reqObj.ram - node.ram > 3.0;

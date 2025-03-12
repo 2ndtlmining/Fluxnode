@@ -481,7 +481,6 @@ function _fillPartial_benchmarks(fluxNode, benchmarks) {
       fluxNode.benchmark_status = 'passed';
   }
 
-  fluxNode.cores = parseInt(benchmarks['real_cores'] || 0);
   fluxNode.threads = parseInt(benchmarks['cores'] || 0);
   fluxNode.eps = benchmarks['eps'] || 0;
   fluxNode.ram = benchmarks['ram'] || 0;
