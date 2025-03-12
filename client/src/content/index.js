@@ -13,7 +13,6 @@ export const ADDRESS_BTC = window.gContent.ADDRESS_BTC;
 
 {
 const _reqsObj = window.gContent.REQUIREMENTS;
-r.defreq_wrap('cores',          _reqsObj['cores']);
 r.defreq_wrap('threads',        _reqsObj['threads']);
 r.defreq_wrap('ram',            _reqsObj['ram']);
 r.defreq_wrap('size',           _reqsObj['size']);

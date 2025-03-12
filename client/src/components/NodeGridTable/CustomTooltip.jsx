@@ -35,9 +35,6 @@ export const CustomTooltip = ({ componentName, displayName, gstore }) => {
     case 'ram':
       Component = RamTooltip;
       break;
-    case 'cores':
-      Component = CoresTooltip;
-      break;
     case 'threads':
       Component = ThreadsTooltip;
       break;
@@ -184,10 +181,6 @@ export const EPSTooltip = () => {
 
 export const RamTooltip = () => {
   return <TooltipTableHeader name='RAM' tooltipContent={ColumnHelp('ram', ' GB')} />;
-};
-
-export const CoresTooltip = () => {
-  return <TooltipTableHeader name='Cores' tooltipContent={ColumnHelp('cores')} />;
 };
 
 export const ThreadsTooltip = () => {

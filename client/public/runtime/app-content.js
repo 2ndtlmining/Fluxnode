@@ -23,7 +23,6 @@ window.gContent.ADDRESS_BTC = '1MjMuVLEaAd8HJd3mh94L8qQe4cE6tH87V';
  * */
 
 window.gContent.REQUIREMENTS = {
-  'cores':          { C:   2,  N:   4,  S:    8, F:     2 },
   'threads':        { C:   4,  N:   8,  S:   16, F:     4 },
   'ram':            { C:   8,  N:  32,  S:   64, F:     8 },
   'size':           { C: 220,  N: 440,  S:  880, F:  9000 },

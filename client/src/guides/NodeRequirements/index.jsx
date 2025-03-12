@@ -38,8 +38,6 @@ export const RequirementsCumulus = (
     fluxAmount={CC_COLLATERAL_CUMULUS}
     requirementsContent={
       <>
-        {getreq__cumulus('cores')} Cores
-        <br />
         {getreq__cumulus('threads')} Threads
         <br />
         {getreq__cumulus('ram')} GB RAM
@@ -64,8 +62,6 @@ export const RequirementsNimbus = (
     fluxAmount={CC_COLLATERAL_NIMBUS}
     requirementsContent={
       <>
-        {getreq__nimbus('cores')} Cores
-        <br />
         {getreq__nimbus('threads')} Threads
         <br />
         {getreq__nimbus('ram')} GB RAM
@@ -90,8 +86,6 @@ export const RequirementsStratus = (
     fluxAmount={CC_COLLATERAL_STRATUS}
     requirementsContent={
       <>
-        {getreq__stratus('cores')} Cores
-        <br />
         {getreq__stratus('threads')} Threads
         <br />
         {getreq__stratus('ram')} GB RAM
@@ -116,8 +110,6 @@ export const RequirementsFractus = (
     fluxAmount={CC_COLLATERAL_FRACTUS}
     requirementsContent={
       <>
-        {getreq__fractus('cores')} Cores
-        <br />
         {getreq__fractus('threads')} Threads
         <br />
         {getreq__fractus('ram')} GB RAM
