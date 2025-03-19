@@ -714,17 +714,26 @@ export function pa_summary_full() {
 }
 
 async function fetch_fusion_fees() {
-  const resp = await fetch('https://fusion.runonflux.io/fees');
+  const resp = await fetch('https://fusion.runonflux.io/fees', {
+    mode: 'cors'
+  });
   const result = await resp.json();
 
   return result.data.mining;
 }
 
 async function fetch_wallet_pas(walletAddress) {
-  const resp = await fetch('https://fusion.runonflux.io/coinbase/summary?address=' + walletAddress);
-  const json = await resp.json();
+  try {
+    const resp = await fetch(`https://fusion.runonflux.io/coinbase/summary?address=${walletAddress}`, {
+      mode: 'cors'
+    });
+    const json = await resp.json();
 
-  return json['data'];
+    return json.data;
+  } catch (error) {
+    console.error('Error fetching wallet PAS:', error);
+    throw error;
+  }
 }
 
 export async function wallet_pas_summary(walletAddress) {
