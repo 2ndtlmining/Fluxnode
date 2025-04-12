@@ -10,7 +10,15 @@ import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
 
 import { pa_summary_full } from 'main/apidata';
 import ErgoLogo from 'assets/Ergo_Orange.png'
+import KDALogo from 'assets/kadena-kda-logo.png'
+import ETHLogo from 'assets/ethereum-eth-logo.png'
+import BNBLogo from 'assets/bnb-bnb-logo.png'
+import TRNLogo from 'assets/tron-trx-logo.png'
 import ArgoLogo from 'assets/Algo_white.png'
+import ArgoblackLogo from 'assets/algorand-algo-logo-black.png'
+import SOLLogo from 'assets/solana-sol-logo.png'
+import AVXLogo from 'assets/avalanche-avax-logo.png'
+import MATICLogo from 'assets/polygon-matic-logo.png'
 import BaseLogo_white from 'assets/Base_Symbol_White.png'
 import BaseLogo_black from 'assets/Base_Symbol_Black.png'
 
@@ -111,37 +119,43 @@ export function ParallelAssets({ summary, theme }) {
             <PAssetCard
               paInfo={summary.assets.kda}
               blockStyle='kda'
-              logoUrl='https://cryptologos.cc/logos/kadena-kda-logo.png?v=026'
+              logoUrl={KDALogo}
+              //logoUrl='https://cryptologos.cc/logos/kadena-kda-logo.png?v=026'
               assetName={'KDA'}
             />
             <PAssetCard
               paInfo={summary.assets.eth}
               blockStyle='eth'
-              logoUrl='https://cryptologos.cc/logos/ethereum-eth-logo.png?v=026'
+              logoUrl={ETHLogo}
+              //logoUrl='https://cryptologos.cc/logos/ethereum-eth-logo.png?v=026'
               assetName={'Ethereum'}
             />
             <PAssetCard
               paInfo={summary.assets.bsc}
               blockStyle='bsc'
-              logoUrl='https://cryptologos.cc/logos/bnb-bnb-logo.png?v=026'
+              logoUrl={BNBLogo}
+              //logoUrl='https://cryptologos.cc/logos/bnb-bnb-logo.png?v=026'
               assetName={'BSC'}
             />
             <PAssetCard
               paInfo={summary.assets.trn}
               blockStyle='trn'
-              logoUrl='https://cryptologos.cc/logos/tron-trx-logo.png?v=026'
+              logoUrl={TRNLogo}
+              //logoUrl='https://cryptologos.cc/logos/tron-trx-logo.png?v=026'
               assetName={'Tron'}
             />
             <PAssetCard
               paInfo={summary.assets.sol}
               blockStyle='sol'
-              logoUrl='https://cryptologos.cc/logos/solana-sol-logo.png?v=026'
+              logoUrl={SOLLogo}
+              //logoUrl='https://cryptologos.cc/logos/solana-sol-logo.png?v=026'
               assetName={'Solana'}
             />
             <PAssetCard
               paInfo={summary.assets.avx}
               blockStyle='avx'
-              logoUrl='https://cryptologos.cc/logos/avalanche-avax-logo.png?v=026'
+              logoUrl={AVXLogo}
+              //logoUrl='https://cryptologos.cc/logos/avalanche-avax-logo.png?v=026'
               assetName={'AVAX'}
             />
             <PAssetCard
@@ -154,13 +168,14 @@ export function ParallelAssets({ summary, theme }) {
             <PAssetCard
               paInfo={summary.assets.algo}
               blockStyle='alg'
-              logoUrl={theme === 'light' ? 'https://cryptologos.cc/logos/algorand-algo-logo.png' : ArgoLogo}
+              logoUrl={theme === 'light' ? ArgoblackLogo : ArgoLogo}
               assetName={'Algorand'}
             />
             <PAssetCard
               paInfo={summary.assets.matic}
               blockStyle='matic'
-              logoUrl='https://cryptologos.cc/logos/polygon-matic-logo.png'
+              logoUrl={MATICLogo}
+              //logoUrl='https://cryptologos.cc/logos/polygon-matic-logo.png'
               assetName={'Polygon'}
             />
             <PAssetCard
