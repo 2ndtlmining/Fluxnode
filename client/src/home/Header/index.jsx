@@ -53,6 +53,25 @@ function UtilizationView({ utilized, total, suffix = '' }) {
   );
 }
 
+function ArcaneOSView({ arcaneData }) {
+  return (
+    <div className='d-block mb-0 cell-tooltip-box'>
+      <p>
+        <span className='ct-name'>ArcaneOS Nodes: </span>
+        <span className='ct-val'>{arcaneData.arcane_nodes}</span>
+      </p>
+      <p>
+        <span className='ct-name'>Total Nodes: </span>
+        <span className='ct-val'>{arcaneData.total_nodes}</span>
+      </p>
+      <p>
+        <span className='ct-name'>Percentage: </span>
+        <span className='ct-val'>{arcaneData.percentage.toFixed(2)}%</span>
+      </p>
+    </div>
+  );
+}
+
 function Cell({ name, value, icon, iconColor, iconColorAlt, small, cellHover, elementRef, ...otherProps }) {
   return (
     <InfoCell
@@ -136,6 +155,40 @@ export function DashboardCells({ gstore: gs, total_donations }) {
               iconWrapClassName={`dash-cell__flux-usd${suffixClassName}`}
               small={!normalFontSize}
             />
+
+            <CellTooltip tooltipContent={<ArcaneOSView arcaneData={gs.arcane_os} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='ArcaneOS Adoption'
+                  value={gs.arcane_os.percentage}
+                  icon={
+                    <RadialCircularProgressbar
+                      value={gs.arcane_os.percentage}
+                      count={20}
+                      rootStyles={{
+                        pathColor: `#FF6B35`,
+                        glowColor: `drop-shadow(0 0 2px #000)
+                          drop-shadow(0 0 1px #FF6B35)
+                          drop-shadow(0 0 1px #FF4500`,
+                        textColor: `#fff`
+                      }}
+                      radialSeparatorStyles={{
+                        background: '#181a1b',
+                        width: '2px',
+                        height: `${8}%`
+                      }}
+                    />
+                  }
+                  iconWrapClassName={`dash-cell__utilization-percentage${suffixClassName}`}
+                  small={!normalFontSize}
+                  suffix={'%'}
+                  cellHover
+                />
+              )}
+            </CellTooltip>
+
             <CellTooltip
               tooltipContent={
                 <TierRewardsProjectionView

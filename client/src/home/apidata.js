@@ -24,6 +24,7 @@ const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczeln
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo?projection=benchmark';
 const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo?projection=apps.resources';
+const API_FLUX_ARCANE_VERSION = 'https://stats.runonflux.io/fluxinfo?projection=flux';
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
@@ -83,6 +84,11 @@ export function create_global_store() {
     current_block_height: 0,
     in_rich_list: false,
     total_donations: 0,
+    arcane_os: {
+      total_nodes: 0,
+      arcane_nodes: 0,
+      percentage: 0
+    },
 
     total: {
       cores: 0,
@@ -179,6 +185,82 @@ export function fetch_total_donations(walletAddress) {
   });
 }
 
+export async function fetch_arcane_os_stats(gstore) {
+  const store = gstore;
+
+  try {
+    console.log('Fetching ArcaneOS stats from:', API_FLUX_ARCANE_VERSION);
+    const res = await fetch(API_FLUX_ARCANE_VERSION);
+    const json = await res.json();
+
+    console.log('API Response status:', json.status);
+    console.log('API Response data length:', json.data ? json.data.length : 'No data');
+
+    if (json.status !== 'error' && json.data) {
+      const totalNodes = json.data.length;
+      
+      // Count nodes with arcaneHumanVersion field inside flux object (like Python code)
+      const arcaneNodes = json.data.filter(node => {
+        return node.flux && 
+               node.flux.arcaneHumanVersion !== undefined && 
+               node.flux.arcaneHumanVersion !== null && 
+               node.flux.arcaneHumanVersion !== "";
+      }).length;
+
+      // Calculate percentage
+      const percentage = totalNodes > 0 ? (arcaneNodes / totalNodes) * 100 : 0;
+
+      store.arcane_os = {
+        total_nodes: totalNodes,
+        arcane_nodes: arcaneNodes,
+        percentage: percentage
+      };
+
+      console.log('Final ArcaneOS Stats:', {
+        total: totalNodes,
+        arcane: arcaneNodes,
+        percentage: percentage.toFixed(2) + '%'
+      });
+      
+      // Log some sample arcaneHumanVersion values for verification
+      const arcaneVersions = json.data
+        .filter(node => node.flux && node.flux.arcaneHumanVersion !== undefined)
+        .map(node => node.flux.arcaneHumanVersion)
+        .slice(0, 10);
+      
+      console.log('Sample arcaneHumanVersion values:', arcaneVersions);
+      
+      // Also count different versions like Python code does
+      const versionCounts = {};
+      json.data.forEach(node => {
+        if (node.flux && node.flux.arcaneHumanVersion) {
+          const version = node.flux.arcaneHumanVersion;
+          versionCounts[version] = (versionCounts[version] || 0) + 1;
+        }
+      });
+      
+      console.log('Version counts:', versionCounts);
+      
+    } else {
+      console.log('API returned error or no data:', json);
+      store.arcane_os = {
+        total_nodes: 0,
+        arcane_nodes: 0,
+        percentage: 0
+      };
+    }
+  } catch (error) {
+    console.log('Error fetching ArcaneOS stats:', error);
+    // Set default values on error
+    store.arcane_os = {
+      total_nodes: 0,
+      arcane_nodes: 0,
+      percentage: 0
+    };
+  }
+
+  return store;
+}
 export async function fetch_total_network_utils(gstore) {
   const store = gstore;
 
@@ -233,6 +315,9 @@ export async function fetch_total_network_utils(gstore) {
       store.node_count.fractus = await lazy_load_fractus_count(json.data);
     }
   }
+
+  // Fetch ArcaneOS stats
+  await fetch_arcane_os_stats(store);
 
   window.gstore = store;
   return store;
@@ -377,6 +462,10 @@ export async function fetch_global_stats(walletAddress = null) {
   ]);
 
   fill_rewards(store);
+  
+  // Add ArcaneOS data fetching
+  await fetch_arcane_os_stats(store);
+  
   window.gstore = store;
   console.log('store', store);
   return store;
