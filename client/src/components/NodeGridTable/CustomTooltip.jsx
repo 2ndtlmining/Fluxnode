@@ -228,7 +228,7 @@ export const UptimeTooltip = () => {
       tooltipContent={
         <div style={{ maxWidth: 300 }}>
           <div>
-            Uptime is the amount of time Flux OS has been up. If Flux OS updates or restarts will reset the timer.
+            Uptime is the amount of time OS has been up. If OS reboot will reset the timer. 
           </div>
         </div>
       }
