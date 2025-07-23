@@ -27,7 +27,7 @@ const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo?projec
 
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
-const API_FLUX_UPTIME_ENDPOINT = '/flux/uptime';
+const API_FLUX_UPTIME_ENDPOINT = '/flux/systemuptime';
 
 const FLUX_PER_DAY = (24 * 60) / 2; /* 1 flux every 2 minutes */
 
