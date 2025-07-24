@@ -43,7 +43,7 @@ window.gContent.CC_COLLATERAL_FRACTUS = 1000;
 /* ========================================== */
 
 // The Flux Block Reward
-window.gContent.CC_BLOCK_REWARD = 37.5;
+window.gContent.CC_BLOCK_REWARD = 14;
 
 /* ========================================== */
 /**
@@ -52,10 +52,10 @@ window.gContent.CC_BLOCK_REWARD = 37.5;
  * All the values below are in percentages. For example, 7.5 means 7.5 %
  **/
 
-window.gContent.CC_FLUX_REWARD_CUMULUS = 7.5;
-window.gContent.CC_FLUX_REWARD_NIMBUS = 12.5;
-window.gContent.CC_FLUX_REWARD_STRATUS = 30.0;
-window.gContent.CC_FLUX_REWARD_FRACTUS = 7.5;
+window.gContent.CC_FLUX_REWARD_CUMULUS = 7.142;
+window.gContent.CC_FLUX_REWARD_NIMBUS = 25.0;
+window.gContent.CC_FLUX_REWARD_STRATUS = 64.28;
+window.gContent.CC_FLUX_REWARD_FRACTUS = 7.142;
 
 /* ========================================== */
 /**
