@@ -30,7 +30,7 @@ const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
 const API_FLUX_UPTIME_ENDPOINT = '/flux/systemuptime';
 
-const FLUX_PER_DAY = (24 * 60) / 2; /* 1 flux every 2 minutes */
+const FLUX_PER_DAY = (24 * 60) * 2; /* 1 flux every 2 minutes */
 
 const CLC_NETWORK_CUMULUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_CUMULUS) / 100.0);
 const CLC_NETWORK_NIMBUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_NIMBUS) / 100.0);
@@ -110,7 +110,7 @@ export function create_global_store() {
 
 function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDay, collateral) {
   // pay freq = node_count * 2 minutes
-  projectionTargetObj.pay_frequency = nodeCount * 2;
+  projectionTargetObj.pay_frequency = nodeCount / 2;
 
   /* ---- */
 
@@ -127,7 +127,7 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
 
 function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral) {
   // pay freq = node_count * 2 minutes
-  projectionTargetObj.pay_frequency = nodeCount * 2;
+  projectionTargetObj.pay_frequency = nodeCount / 2;
 
   /* ---- */
   const rewardPerPerson = networkFluxPerDay / nodeCount;
@@ -540,11 +540,11 @@ function empty_flux_node() {
 }
 
 function calc_next_reward(rank) {
-  return format_minutes(rank * 2);
+  return format_minutes(rank / 2);
 }
 
 export function calc_mtn_window(last_confirmed_height, current_height) {
-  const BLOCK_RATE = 120;
+  const BLOCK_RATE = 480;
 
   const win = BLOCK_RATE - (current_height - last_confirmed_height);
 

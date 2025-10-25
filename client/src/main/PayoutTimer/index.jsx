@@ -90,7 +90,7 @@ export class PayoutTimer extends React.Component {
     this.intervalID = null;
 
     let _this = this;
-    const { days, hours, minutes } = split_minutes(node.rank * 2);
+    const { days, hours, minutes } = split_minutes(node.rank / 2);
     this.setState(
       {
         restTime: { days, hours, minutes },
