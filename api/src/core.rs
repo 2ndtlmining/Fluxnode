@@ -52,7 +52,7 @@ array_constant!(
     const TARGET_API_ENDPOINTS: [NamedEndpointDesc; _] = [
         NamedEndpointDesc("node_info", "/flux/info"),
         NamedEndpointDesc("apps", "/apps/installedapps"),
-        NamedEndpointDesc("uptime", "/flux/uptime"),
+        NamedEndpointDesc("uptime", "/flux/systemuptime"),
     ]
 );
 
