@@ -15,7 +15,7 @@ import {
   getEnterpriseNodes
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
-import { setGAEvent } from 'g-analytic';
+//import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
 import ReactFullscreen from 'react-easyfullscreen';
 
@@ -164,7 +164,7 @@ export class WalletNodes extends React.Component {
 
   handleRefreshClick = () => {
     this.props.onRefreshRequest();
-    setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
+    //setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
   renderNodeOverview(loadingWalletNodes, loadingNodeList, onToggleFullScreen) {

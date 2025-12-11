@@ -4,7 +4,7 @@ import { AppToaster } from 'main/AppToaster';
 import { Intent, Spinner } from '@blueprintjs/core';
 import { getDemoWallet } from '../main/apidata';
 import FailedToLoadDemo from './FailedToLoadDemo';
-import { setGAEvent, setGAPageView } from 'g-analytic';
+//import { setGAEvent, setGAPageView } from 'g-analytic';
 
 class Demo extends React.Component {
   constructor(props) {
@@ -28,8 +28,8 @@ class Demo extends React.Component {
       });
     }
     if (window) {
-      setGAEvent({ category: 'Demo page', action: 'visit' });
-      setGAPageView(window.location.pathname);
+      //setGAEvent({ category: 'Demo page', action: 'visit' });
+      //setGAPageView(window.location.pathname);
     }
   }
 
