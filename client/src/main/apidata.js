@@ -263,12 +263,17 @@ export async function fetch_global_stats(walletAddress = null) {
   };
 
   const fetchFluxVer = async () => {
-    const res = await fetch(FLUXNODE_INFO_API_URL + '/api/v1/bench-version', { ...REQUEST_OPTIONS_API });
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/refs/heads/master/helpers/benchmarkinfo.json');
     if (res.status === 200) {
       const json = await res.json();
       store.bench_latest_version = fluxos_version_desc_parse(json.version);
     }
-  };
+  } catch (error) {
+    console.log('Failed to fetch benchmark version:', error);
+    // store.bench_latest_version will remain at default (0, 0, 0)
+  }
+};
 
   const fetchBlockHeight = async () => {
     const res = await fetch('https://api.runonflux.io/daemon/getinfo');
