@@ -10,12 +10,12 @@ import {
   CC_FLUX_REWARD_CUMULUS,
   CC_FLUX_REWARD_NIMBUS,
   CC_FLUX_REWARD_STRATUS,
-  CC_FLUX_REWARD_FRACTUS,
+  //CC_FLUX_REWARD_FRACTUS,
   CC_PA_REWARD,
   CC_COLLATERAL_CUMULUS,
   CC_COLLATERAL_NIMBUS,
   CC_COLLATERAL_STRATUS,
-  CC_COLLATERAL_FRACTUS
+  //CC_COLLATERAL_FRACTUS
 } from 'content/index';
 import { appStore, StoreKeys } from 'persistance/store';
 
@@ -34,7 +34,7 @@ const FLUX_PER_DAY = (24 * 60) * 2; /* 1 flux every 2 minutes */
 const CLC_NETWORK_CUMULUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_CUMULUS) / 100.0);
 const CLC_NETWORK_NIMBUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_NIMBUS) / 100.0);
 const CLC_NETWORK_STRATUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_STRATUS) / 100.0);
-const CLC_NETWORK_FRACTUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_FRACTUS) / 100.0);
+//const CLC_NETWORK_FRACTUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_REWARD_FRACTUS) / 100.0);
 
 /* ======= global stats ======= */
 
@@ -54,14 +54,14 @@ export function create_global_store() {
       cumulus: 0,
       nimbus: 0,
       stratus: 0,
-      fractus: 0,
+      //fractus: 0,
       total: 0
     },
     reward_projections: {
       cumulus: tier_global_projections(),
       nimbus: tier_global_projections(),
       stratus: tier_global_projections(),
-      fractus: tier_global_projections()
+      //fractus: tier_global_projections()
     },
     wallet_amount_flux: 0,
     fluxos_latest_version: fluxos_version_desc(0, 0, 0),
@@ -105,20 +105,22 @@ function fill_tier_g_projection(projectionTargetObj, nodeCount, networkFluxPerDa
   projectionTargetObj.apy = 100 * (((rewardPerPerson + pa_amount) * 365) / collateral);
 }
 
+/* Removed fractus
 function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkFluxPerDay, collateral) {
   // pay freq = node_count * 2 minutes
   projectionTargetObj.pay_frequency = nodeCount * 2;
 
-  /* ---- */
+ 
   const rewardPerPerson = networkFluxPerDay / nodeCount;
   projectionTargetObj.payment_amount = rewardPerPerson * 1.15; // 15% Native flux
 
-  /* ---- */
+  
   const pa_amount = (rewardPerPerson * CC_PA_REWARD) / 100.0;
   projectionTargetObj.pa_amount = pa_amount;
 
   projectionTargetObj.apy = 100 * (((rewardPerPerson * 1.15 + pa_amount) * 365) / collateral);
 }
+  */
 
 function fill_rewards(gstore) {
   fill_tier_g_projection(
@@ -139,12 +141,14 @@ function fill_rewards(gstore) {
     CLC_NETWORK_STRATUS_PER_DAY,
     CC_COLLATERAL_STRATUS
   );
+  /* removed fractus
   fill_tier_g_projection_fractus(
     gstore.reward_projections.fractus,
     gstore.node_count.cumulus,
     CLC_NETWORK_FRACTUS_PER_DAY,
     CC_COLLATERAL_FRACTUS
   );
+  */
 }
 
 export function fetch_total_donations(walletAddress) {
@@ -216,7 +220,7 @@ export async function fetch_total_network_utils(gstore) {
       store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
       store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
       store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
-      store.node_count.fractus = await lazy_load_fractus_count(json.data);
+      //store.node_count.fractus = await lazy_load_fractus_count(json.data);
     }
   }
 
@@ -318,7 +322,7 @@ export function wallet_health_full() {
     cumulus: wallet_health_entry(),
     nimbus: wallet_health_entry(),
     stratus: wallet_health_entry(),
-    fractus: wallet_health_entry(),
+    //fractus: wallet_health_entry(),
     total_nodes: 0
   };
 }
@@ -601,7 +605,7 @@ export function fill_health(health, gstore) {
   fill_tier_health(health.nimbus, gstore.reward_projections.nimbus, gstore.flux_price_usd);
   fill_tier_health(health.stratus, gstore.reward_projections.stratus, gstore.flux_price_usd);
   // Fractus is parts of Cumulus tier
-  fill_tier_health(health.fractus, gstore.reward_projections.fractus, gstore.flux_price_usd);
+  //fill_tier_health(health.fractus, gstore.reward_projections.fractus, gstore.flux_price_usd);
 }
 
 export async function validateAddress(address) {
@@ -669,6 +673,7 @@ export async function lazy_load_currency_rate() {
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
 
+/*
 async function lazy_load_fractus_count(benchmarks) {
   try {
     const storedFractusCount = await appStore.getItem(StoreKeys.FRACTUS_COUNT);

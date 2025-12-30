@@ -4,7 +4,7 @@ export const reqs = {
   cumulus: {},
   nimbus: {},
   stratus: {},
-  fractus: {}
+  //fractus: {}
 };
 
 export function defhelp(name, desc) {
@@ -25,7 +25,7 @@ export function defreq_wrap(name, values_obj) {
   defreq('cumulus', name, values_obj['C']);
   defreq('nimbus', name, values_obj['N']);
   defreq('stratus', name, values_obj['S']);
-  defreq('fractus', name, values_obj['F']);
+ //defreq('fractus', name, values_obj['F']);
 }
 
 export function gethelp(name) {
@@ -43,7 +43,7 @@ export function getreq(tier, name) {
 export const getreq__cumulus = (name) => getreq('cumulus', name);
 export const getreq__nimbus = (name) => getreq('nimbus', name);
 export const getreq__stratus = (name) => getreq('stratus', name);
-export const getreq__fractus = (name) => getreq('fractus', name);
+//export const getreq__fractus = (name) => getreq('fractus', name);
 
 /* Help Information to show on toolips  */
 

@@ -1,6 +1,6 @@
 import * as r from './internal/req_helpers';
 import { fluxos_version_desc_parse } from 'main/flux_version';
-export { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from './internal/req_helpers';
+export { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus} from './internal/req_helpers';
 
 export const URL_YOUTUBE = window.gContent.URL_YOUTUBE;
 export const URL_TWITTER = window.gContent.URL_TWITTER;
@@ -25,13 +25,13 @@ r.defreq_wrap('net_up_speed',   _reqsObj['net_up_speed']);
 export const CC_COLLATERAL_CUMULUS = window.gContent.CC_COLLATERAL_CUMULUS;
 export const CC_COLLATERAL_NIMBUS = window.gContent.CC_COLLATERAL_NIMBUS;
 export const CC_COLLATERAL_STRATUS = window.gContent.CC_COLLATERAL_STRATUS;
-export const CC_COLLATERAL_FRACTUS = window.gContent.CC_COLLATERAL_FRACTUS;
+//export const CC_COLLATERAL_FRACTUS = window.gContent.CC_COLLATERAL_FRACTUS;
 
 export const CC_BLOCK_REWARD = window.gContent.CC_BLOCK_REWARD;
 export const CC_FLUX_REWARD_CUMULUS = window.gContent.CC_FLUX_REWARD_CUMULUS;
 export const CC_FLUX_REWARD_NIMBUS = window.gContent.CC_FLUX_REWARD_NIMBUS;
 export const CC_FLUX_REWARD_STRATUS = window.gContent.CC_FLUX_REWARD_STRATUS;
-export const CC_FLUX_REWARD_FRACTUS = window.gContent.CC_FLUX_REWARD_FRACTUS;
+//export const CC_FLUX_REWARD_FRACTUS = window.gContent.CC_FLUX_REWARD_FRACTUS;
 export const CC_PA_REWARD = window.gContent.CC_PA_REWARD;
 
 // export const LATEST_FLUX_VERSION_DESC = fluxos_version_desc_parse(window.gContent.LATEST_FLUX_VERSION);

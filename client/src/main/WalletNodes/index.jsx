@@ -135,7 +135,8 @@ export class WalletNodes extends React.Component {
       switch (tier) {
         case 'CUMULUS':
           // Fractus - Thunder: True | Cumulus - Thunder: False
-          thunder ? health.fractus.node_count++ : health.cumulus.node_count++;
+          //thunder ? health.fractus.node_count++ : health.cumulus.node_count++;
+          health.cumulus.node_count++;
           break;
         case 'NIMBUS':
           health.nimbus.node_count++;
@@ -154,8 +155,8 @@ export class WalletNodes extends React.Component {
     }
 
     health.total_nodes =
-      health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
-
+      //health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
+        health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
 

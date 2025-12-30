@@ -28,11 +28,14 @@ const tierMapping = {
     name: 'Stratus',
     logo: FiPackage
   },
+
+  /*
   FRACTUS: {
     styleSet: 'fractus',
     name: 'Fractus',
     logo: FiHardDrive
   }
+  */
 };
 
 export class PayoutTimer extends React.Component {
@@ -99,7 +102,7 @@ export class PayoutTimer extends React.Component {
         dataLoading: false,
         nodeIpDef: node.ip_full,
         nodeIp: node.ip_display,
-        nodeTier: node.thunder ? 'FRACTUS' : node.tier
+        //nodeTier: node.thunder ? 'FRACTUS' : node.tier
       },
       () => {
         _this.resumeAndShow();

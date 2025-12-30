@@ -1,6 +1,6 @@
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { fluxos_version_string } from 'main/flux_version';
-import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from 'content/index';
+import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
 
 export const CustomTooltip = ({ componentName, displayName, gstore }) => {
   let Component;
@@ -305,13 +305,6 @@ const InlineRequirementsView = (name, suffix) => (
       <th className='rq-name'>Stratus</th>
       <td>
         {getreq__stratus(name)}
-        {suffix}
-      </td>
-    </tr>
-    <tr>
-      <th className='rq-name'>Fractus</th>
-      <td>
-        {getreq__fractus(name)}
         {suffix}
       </td>
     </tr>
