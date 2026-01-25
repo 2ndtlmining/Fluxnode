@@ -438,12 +438,34 @@ export async function fetch_global_stats(walletAddress = null) {
 
   const fetchWordpressInstancesCount = async () => {
     try {
-      const res = await fetch('https://jetpackbridge.runonflux.io/api/v1/wordpress.php?action=COUNT');
+      const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
       const json = await res.json();
-      json.count ? json.count : json ? json : 0;
-      store.wordpressCount = json;
+      
+      let wordpressCount = 0;
+
+      if (json.status !== 'error' && json?.data) {
+        json.data.forEach((item) => {
+          if (item?.apps?.runningapps) {
+            // Check each running app for WordPress images
+            item.apps.runningapps.forEach((app) => {
+              if (app.Image) {
+                const imageName = app.Image.toLowerCase();
+                // Match runonflux/wp-nginx with any tag variation or no tag
+                if (imageName === 'runonflux/wp-nginx' || imageName.startsWith('runonflux/wp-nginx:')) {
+                  wordpressCount++;
+                }
+              }
+            });
+          }
+        });
+      }
+
+      store.wordpressCount = wordpressCount;
+      console.log('WordPress instances count:', wordpressCount);
     } catch (error) {
-      console.log('error', error);
+      console.log('Error fetching WordPress instances:', error);
+      // Set to 0 on error to prevent breaking the frontend
+      store.wordpressCount = 0;
     }
   };
 
