@@ -27,11 +27,13 @@ const tierMapping = {
     name: 'Stratus',
     logo: FiPackage
   },
+  /*
   FRACTUS: {
     styleSet: 'fractus',
     name: 'Fractus',
     logo: FiHardDrive
   }
+  */  
 };
 
 export class MostHosted extends React.Component {
@@ -68,7 +70,7 @@ export class MostHosted extends React.Component {
       dataLoading: false,
       nodeIpDef: node.ip_full,
       nodeIp: node.ip_display,
-      nodeTier: node.thunder ? 'FRACTUS' : node.tier
+      //nodeTier: node.thunder ? 'FRACTUS' : node.tier
     });
   }
 

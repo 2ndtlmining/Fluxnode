@@ -3,8 +3,8 @@ import './index.scss';
 
 import { Card, Divider, Icon } from '@blueprintjs/core';
 
-import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus, getreq__fractus } from 'content/index';
-import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS, CC_COLLATERAL_FRACTUS } from 'content/index';
+import { gethelp, getreq__cumulus, getreq__nimbus, getreq__stratus } from 'content/index';
+import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content/index';
 
 /* https://stackoverflow.com/a/2901298 */
 function numberWithCommas(x) {
@@ -104,6 +104,7 @@ export const RequirementsStratus = (
   />
 );
 
+/*
 export const RequirementsFractus = (
   <NodeRequirementsBlock
     tierName='FRACTUS'
@@ -127,3 +128,4 @@ export const RequirementsFractus = (
     blockReward='0'
   />
 );
+*/

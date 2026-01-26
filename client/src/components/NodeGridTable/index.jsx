@@ -181,7 +181,7 @@ export const NodeGridTable = ({
       headerName: 'Uptime',
       filter: 'agNumberColumnFilter',
       cellRenderer: 'uptimeCell',
-      width: '150px',
+      width: 150,
       minWidth: 100
     },
     { field: 'score', headerName: 'Score', filter: 'agTextColumnFilter' },
@@ -246,7 +246,7 @@ export const NodeGridTable = ({
           onFirstDataRendered={autoSizeAll}
           maintainColumnOrder={true}
           overlayNoRowsTemplate={'<span>No Nodes</span>'}
-          frameworkComponents={{
+          components={{
             ipCell: IpCell,
             tierCell: TierCell,
             benchmarkCell: BenchmarkCell,

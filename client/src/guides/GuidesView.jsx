@@ -11,16 +11,16 @@ import Accordion from 'react-bootstrap/Accordion';
 
 import { FooterRendered } from 'components/Footer';
 
-import { RequirementsCumulus, RequirementsNimbus, RequirementsStratus, RequirementsFractus } from './NodeRequirements';
+import { RequirementsCumulus, RequirementsNimbus, RequirementsStratus } from './NodeRequirements';
 
 import { Container, Row, Col } from 'react-grid-system';
-import { setGAEvent, setGAPageView } from 'g-analytic';
+//import { setGAEvent, setGAPageView } from 'g-analytic';
 
 class AppGuidesView extends React.Component {
   componentDidMount() {
     if (window) {
-      setGAPageView(window.location.pathname);
-      setGAEvent({ category: 'GuidesPage', action: 'visit' })
+      //setGAPageView(window.location.pathname);
+      //setGAEvent({ category: 'GuidesPage', action: 'visit' })
     }
   }
 

@@ -6,14 +6,13 @@ import './index.scss';
 
 import { FluxIcon } from 'components/FluxIcon.jsx';
 import { InfoCell } from 'main/InfoCell';
-// import { LATEST_FLUX_VERSION_DESC } from 'content/index';
 
 import { FiCpu, FiDollarSign, FiHardDrive, FiHash, FiPackage, FiZap } from 'react-icons/fi';
 import { FaCrown, FaWallet, FaEuroSign } from 'react-icons/fa';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 
 import { CircularProgressbar } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
@@ -140,7 +139,6 @@ function CellTooltip({ children, tooltipContent }) {
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
 export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstSearchedWallet }) {
-  const [enableFractusNodesCell, setToggleFractusNodesCell] = useState(false);
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
@@ -149,8 +147,6 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
   const walletType = gs.in_rich_list ? 'richlist' : total_donations > 0 ? 'donate' : 'default';
 
   const walletCellStyles = WALLET_CELL_ATTRIBUTES[walletType];
-
-  // console.log("totalScoreAgainstSearchedWallet", totalScoreAgainstSearchedWallet)
   
   return (
     <div className='dashboard bp4-dark'>
@@ -181,40 +177,23 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
-            <CellTooltip
-              tooltipContent={
-                <TierRewardsProjectionView
-                  rewards={enableFractusNodesCell ? gs.reward_projections.fractus : gs.reward_projections.cumulus}
-                />
-              }
-            >
-              {(ref, tooltipProps) => {
-                const cellProps = enableFractusNodesCell
-                  ? {
-                      name: 'Fractus Nodes',
-                      value: gs.node_count.fractus,
-                      icon: <FiHardDrive size={iconSize} />,
-                      iconWrapClassName: `dash-cell__nodes-fractus${suffixClassName}`
-                    }
-                  : {
-                      name: 'Cumulus Nodes',
-                      value: gs.node_count.cumulus,
-                      icon: <FiZap size={iconSize} />,
-                      iconWrapClassName: `dash-cell__nodes-cumulus${suffixClassName}`
-                    };
 
-                return (
-                  <Cell
-                    elementRef={ref}
-                    {...tooltipProps}
-                    {...cellProps}
-                    small={!normalFontSize}
-                    cellHover
-                    toggleBtn={() => setToggleFractusNodesCell((prev) => !prev)}
-                  />
-                );
-              }}
+            {/* Cumulus Node Cell - No longer toggleable */}
+            <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.cumulus} />}>
+              {(ref, tooltipProps) => (
+                <Cell
+                  elementRef={ref}
+                  {...tooltipProps}
+                  name='Cumulus Nodes'
+                  value={gs.node_count.cumulus}
+                  icon={<FiZap size={iconSize} />}
+                  iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}
+                  small={!normalFontSize}
+                  cellHover
+                />
+              )}
             </CellTooltip>
+
             <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.nimbus} />}>
               {(ref, tooltipProps) => (
                 <Cell
@@ -229,6 +208,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip tooltipContent={<TierRewardsProjectionView rewards={gs.reward_projections.stratus} />}>
               {(ref, tooltipProps) => (
                 <Cell
@@ -259,6 +239,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip tooltipContent={<WalletTopPercentage topPercentage={0} />}>
               {(ref, tooltipProps) => (
                 <Cell
@@ -274,6 +255,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip tooltipContent={<UtilizationView utilized={gs.utilized.nodes} total={gs.node_count.total} />}>
               {(ref, tooltipProps) => (
                 <Cell
@@ -295,7 +277,6 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                       radialSeparatorStyles={{
                         background: '#181a1b',
                         width: '2px',
-                        // This needs to be equal to props.strokeWidth
                         height: `${8}%`
                       }}
                     />
@@ -306,6 +287,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip
               tooltipContent={<UtilizationView utilized={gs.utilized.cores} total={gs.total.cores} suffix='vCores' />}
             >
@@ -329,7 +311,6 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                       radialSeparatorStyles={{
                         background: '#181a1b',
                         width: '2px',
-                        // This needs to be equal to props.strokeWidth
                         height: `${8}%`
                       }}
                     />
@@ -340,6 +321,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip
               tooltipContent={<UtilizationView utilized={gs.utilized.ram} total={gs.total.ram} suffix='TB' />}
             >
@@ -363,7 +345,6 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                       radialSeparatorStyles={{
                         background: '#181a1b',
                         width: '2px',
-                        // This needs to be equal to props.strokeWidth
                         height: `${8}%`
                       }}
                     />
@@ -374,6 +355,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                 />
               )}
             </CellTooltip>
+
             <CellTooltip
               tooltipContent={<UtilizationView utilized={gs.utilized.ssd} total={gs.total.ssd} suffix='TB' />}
             >
@@ -397,7 +379,6 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
                       radialSeparatorStyles={{
                         background: '#181a1b',
                         width: '2px',
-                        // This needs to be equal to props.strokeWidth
                         height: `${8}%`
                       }}
                     />

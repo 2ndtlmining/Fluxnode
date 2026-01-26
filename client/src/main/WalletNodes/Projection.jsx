@@ -128,10 +128,10 @@ export class Projection extends React.Component {
     let earningCumulus = this.projectionValue(this.props.health.cumulus);
     let earningNimbus = this.projectionValue(this.props.health.nimbus);
     let earningStratus = this.projectionValue(this.props.health.stratus);
-    let earningFractus = this.projectionValue(this.props.health.fractus);
+    //let earningFractus = this.projectionValue(this.props.health.fractus);
 
-    let earningTotal = earningCumulus + earningNimbus + earningStratus + earningFractus;
-
+    //let earningTotal = earningCumulus + earningNimbus + earningStratus + earningFractus;
+    let earningTotal = earningCumulus + earningNimbus + earningStratus;
     return (
       <LayoutContext.Consumer>
         {({ selectedCurrency }) => (
@@ -199,28 +199,6 @@ export class Projection extends React.Component {
                   </div>
                   <span className='mt-1 adp-text-muted'>
                     Node Count: <span className='fw-bold fs-6'>{this.props.health.stratus.node_count}</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className='tier-proj'>
-                <div className='tp-icon'>
-                  <div className='tp-i-wrap dash-cell__nodes-fractus'>
-                    <FiHardDrive />
-                  </div>
-                </div>
-                <span className='tp-name adp-text-normal'>Fractus</span>
-                <div className='flex-fill align-self-stretch d-flex flex-column justify-content-center align-items-end'>
-                  <div className='center-text-flow'>
-                    <span className='tp-value adp-text-normal'>
-                      {this.formatEarningValue(earningFractus, selectedCurrency)}
-                    </span>
-                    <span className='adp-text-muted currency-name'>
-                      {this.viewToggleStatusCurrency(selectedCurrency)}
-                    </span>
-                  </div>
-                  <span className='mt-1 adp-text-muted'>
-                    Node Count: <span className='fw-bold fs-6'>{this.props.health.fractus.node_count}</span>
                   </span>
                 </div>
               </div>

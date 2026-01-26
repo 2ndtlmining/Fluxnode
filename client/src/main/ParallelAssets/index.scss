@@ -192,18 +192,18 @@ $asset-logo-banner-height: $asset-logo-top-padding + $asset-logo-circle-radius;
     kda,
     linear-gradient(
         30deg,
-        hsl(325deg 90% 44%) 0%,
-        hsl(323deg 68% 51%) 14%,
-        hsl(319deg 64% 55%) 29%,
-        hsl(314deg 59% 57%) 45%,
-        hsl(306deg 54% 60%) 62%,
-        hsl(296deg 52% 63%) 75%,
-        hsl(285deg 60% 68%) 84%,
-        hsl(275deg 69% 73%) 91%,
-        hsl(264deg 80% 77%) 96%,
-        hsl(254deg 94% 81%) 100%
+        hsl(110deg 90% 44%) 0%,    /* Deep green */
+        hsl(112deg 68% 51%) 14%,   /* Rich green */
+        hsl(115deg 64% 55%) 29%,   /* Mid green */
+        hsl(118deg 59% 57%) 45%,   /* Bright green */
+        hsl(105deg 54% 60%) 62%,   /* Yellow-green */
+        hsl(95deg 52% 63%) 75%,    /* Light yellow-green */
+        hsl(88deg 60% 68%) 84%,    /* Pale yellow-green */
+        hsl(82deg 69% 73%) 91%,    /* Very light green */
+        hsl(75deg 80% 77%) 96%,    /* Near white-green */
+        hsl(70deg 94% 81%) 100%    /* Lightest green */
     ),
-    #ed098f
+    #98ed09
 );
 
 @include def-pa-block(

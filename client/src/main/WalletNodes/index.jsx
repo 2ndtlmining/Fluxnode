@@ -15,7 +15,7 @@ import {
   getEnterpriseNodes
 } from 'main/apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
-import { setGAEvent } from 'g-analytic';
+//import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
 import ReactFullscreen from 'react-easyfullscreen';
 
@@ -135,7 +135,8 @@ export class WalletNodes extends React.Component {
       switch (tier) {
         case 'CUMULUS':
           // Fractus - Thunder: True | Cumulus - Thunder: False
-          thunder ? health.fractus.node_count++ : health.cumulus.node_count++;
+          //thunder ? health.fractus.node_count++ : health.cumulus.node_count++;
+          health.cumulus.node_count++;
           break;
         case 'NIMBUS':
           health.nimbus.node_count++;
@@ -154,8 +155,8 @@ export class WalletNodes extends React.Component {
     }
 
     health.total_nodes =
-      health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
-
+      //health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count + health.fractus.node_count;
+        health.cumulus.node_count + health.nimbus.node_count + health.stratus.node_count;
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
 
@@ -164,7 +165,7 @@ export class WalletNodes extends React.Component {
 
   handleRefreshClick = () => {
     this.props.onRefreshRequest();
-    setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
+    //setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
   renderNodeOverview(loadingWalletNodes, loadingNodeList, onToggleFullScreen) {
