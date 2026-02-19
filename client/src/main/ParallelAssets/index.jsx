@@ -5,7 +5,7 @@ import { Button, Card, Icon, Tag } from '@blueprintjs/core';
 
 import { Container, Row, Col } from 'react-grid-system';
 
-import { InfoCell } from 'main/InfoCell';
+import { InfoCell } from 'components/InfoCell';
 import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
 
 import { pa_summary_full } from 'main/apidata';

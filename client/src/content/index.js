@@ -1,5 +1,6 @@
 import * as r from './internal/req_helpers';
 import { fluxos_version_desc_parse } from 'main/flux_version';
+import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 export { gethelp, getreq, getreq__cumulus, getreq__nimbus, getreq__stratus} from './internal/req_helpers';
 
 export const URL_YOUTUBE = window.gContent.URL_YOUTUBE;
@@ -38,3 +39,28 @@ export const CC_PA_REWARD = window.gContent.CC_PA_REWARD;
 
 export const setupVideos = window.gContent.SETUP_VIDEOS;
 export const guideVideos = window.gContent.GUIDE_VIDEOS;
+
+export const tierMapping = {
+  CUMULUS: {
+    styleSet: 'cumulus',
+    name: 'Cumulus',
+    logo: FiZap
+  },
+  NIMBUS: {
+    styleSet: 'nimbus',
+    name: 'Nimbus',
+    logo: FiCpu
+  },
+  STRATUS: {
+    styleSet: 'stratus',
+    name: 'Stratus',
+    logo: FiPackage
+  }
+  /*
+  FRACTUS: {
+    styleSet: 'fractus',
+    name: 'Fractus',
+    logo: FiHardDrive
+  }
+  */
+};

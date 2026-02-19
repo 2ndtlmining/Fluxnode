@@ -9,7 +9,7 @@ import { Col, Container, Row } from 'react-grid-system';
 
 import { getEnterpriseNodes } from 'main/apidata';
 
-import { AppToaster } from 'main/AppToaster';
+import { AppToaster } from 'components/AppToaster';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';

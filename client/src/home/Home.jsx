@@ -7,7 +7,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 
 import { Col, Container, Row } from 'react-grid-system';
 
-import { AppToaster } from 'home/AppToaster';
+import { AppToaster } from 'components/AppToaster';
 import { DashboardCells } from 'home/Header';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
