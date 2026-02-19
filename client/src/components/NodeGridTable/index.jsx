@@ -24,7 +24,8 @@ export const NodeGridTable = ({
   noAddress,
   isMaximize,
   isFullScreen,
-  onToggleFullScreen
+  onToggleFullScreen,
+  onToggleMaximize
 }) => {
   const gridRef = useRef();
   const [rowData, setRowData] = useState(data);
@@ -223,7 +224,7 @@ export const NodeGridTable = ({
             <>
               <Button
                 rightIcon={isMaximize ? 'minimize' : 'maximize'}
-                onClick={() => this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }))}
+                onClick={() => onToggleMaximize()}
                 disabled={isFullScreen}
               />
               <Button

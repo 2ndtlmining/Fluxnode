@@ -39,14 +39,6 @@ const CLC_NETWORK_STRATUS_PER_DAY = FLUX_PER_DAY * ((CC_BLOCK_REWARD * CC_FLUX_R
 
 /* ======= global stats ======= */
 
-const getFluxNodes = async () => {
-  const result = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
-  const resData = await result.json()
-  console.log(resData)
-}
-
-getFluxNodes();
-
 export function tier_global_projections() {
   return {
     pay_frequency: 0 /* in minutes, display in days and hrs */,
@@ -577,12 +569,13 @@ function calc_next_reward(rank) {
 
 export function calc_mtn_window(last_confirmed_height, current_height) {
   const BLOCK_RATE = 480;
+  //480 blocks at 30second blocks 240 minutes
 
   const win = BLOCK_RATE - (current_height - last_confirmed_height);
 
   if (win <= 0) return 'Closed';
 
-  return format_minutes(win * 2);
+  return format_minutes(win / 2);
 }
 
 const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
