@@ -59,6 +59,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
             enablePrivacyMode,
             enableDashboardCells,
             enableNotableNodesTab,
+            autoRefresh,
             selectedCurrency,
             onToggleEstimatedEarningsTab,
             onToggleParallelAssetsTab,
@@ -66,6 +67,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
             onTogglePrivacyMode,
             onToggleDashboardCells,
             onToggleNotableNodesTab,
+            onToggleAutoRefresh,
             onSelectCurrency
           }) => (
             <Popover2
@@ -137,6 +139,18 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
                         checked={enableNotableNodesTab}
                         label='Notable Nodes'
                         onChange={onToggleNotableNodesTab}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={autoRefresh}
+                        label='Auto Refresh (5 min)'
+                        onChange={onToggleAutoRefresh}
                       />
                     }
                   />

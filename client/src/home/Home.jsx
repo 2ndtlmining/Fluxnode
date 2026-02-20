@@ -7,7 +7,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 
 import { Col, Container, Row } from 'react-grid-system';
 
-import { AppToaster } from 'home/AppToaster';
+import { AppToaster } from 'components/AppToaster';
 import { DashboardCells } from 'home/Header';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
@@ -38,6 +38,8 @@ const WALLET_INPUT_ID = '_WALLET_INPUT_';
 const SEARCH_HISTORY_BOX_CLASS = '_SEARCH_HISTORY_BOX_';
 
 class Home extends React.Component {
+  static contextType = LayoutContext;
+
   constructor(props) {
     super(props);
     window.HomeApp = this;
@@ -62,6 +64,9 @@ class Home extends React.Component {
 
       totalDonations: 0
     };
+
+    this._refreshInterval = null;
+    this._autoRefreshActive = false;
     
     this.walletNodes = React.createRef();
     window.addressInputRef = this.addressInputRef = React.createRef();
@@ -136,7 +141,7 @@ class Home extends React.Component {
         changeDetection: false
       });
 
-      var methodCallSubscription = methodCallObservable.subscribe({
+      _this.methodCallSubscription = methodCallObservable.subscribe({
         next: function (args) {
           hideSensitiveData(args.newValue);
         }
@@ -144,6 +149,37 @@ class Home extends React.Component {
     });
 
     this._setDefaultAddress(this.props.defaultAddress);
+    if (this.context.autoRefresh) this._startAutoRefresh();
+  }
+
+  componentDidUpdate() {
+    const shouldRefresh = this.context.autoRefresh;
+    if (shouldRefresh && !this._autoRefreshActive) {
+      this._startAutoRefresh();
+    } else if (!shouldRefresh && this._autoRefreshActive) {
+      this._stopAutoRefresh();
+    }
+  }
+
+  componentWillUnmount() {
+    this._stopAutoRefresh();
+    if (this.methodCallSubscription) this.methodCallSubscription.unsubscribe();
+  }
+
+  _startAutoRefresh() {
+    this._stopAutoRefresh();
+    this._autoRefreshActive = true;
+    this._refreshInterval = setInterval(() => {
+      if (this.state.activeAddress) this.onRefreshRequest();
+    }, 5 * 60 * 1000);
+  }
+
+  _stopAutoRefresh() {
+    if (this._refreshInterval) {
+      clearInterval(this._refreshInterval);
+      this._refreshInterval = null;
+    }
+    this._autoRefreshActive = false;
   }
 
   _setDefaultAddress(defaultAddress) {
@@ -192,6 +228,7 @@ class Home extends React.Component {
         })
         .then((gstore) => {
           this.setState({ gstore });
+          this.context.setLastUpdated(new Date());
         });
     }
   }
@@ -284,6 +321,7 @@ class Home extends React.Component {
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
+    this.context.setLastUpdated(new Date());
   }
 
   handleAddrChange = (e) => {

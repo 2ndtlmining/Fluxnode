@@ -4,38 +4,14 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 
-import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
+import { tierMapping } from 'content/index';
 
 import { format_seconds, hide_sensitive_number } from 'utils';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { LayoutContext } from 'contexts/LayoutContext';
 import CountUp from 'components/CountUp';
 
-const tierMapping = {
-  CUMULUS: {
-    styleSet: 'cumulus',
-    name: 'Cumulus',
-    logo: FiZap
-  },
-  NIMBUS: {
-    styleSet: 'nimbus',
-    name: 'Nimbus',
-    logo: FiCpu
-  },
-  STRATUS: {
-    styleSet: 'stratus',
-    name: 'Stratus',
-    logo: FiPackage
-  },
-  /*
-  FRACTUS: {
-    styleSet: 'fractus',
-    name: 'Fractus',
-    logo: FiHardDrive
-  }
-  */  
-};
 
 export class BestUptime extends React.Component {
   constructor(props) {

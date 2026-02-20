@@ -19,7 +19,9 @@ export function LayoutConfigurationProvider(props) {
   const [normalFontSize, setFontSize] = useState(() => getLocalStorageValue('normalFontSize', true));
   const [enablePrivacyMode, setPrivacyMode] = useState(() => getLocalStorageValue('enablePrivacyMode', false));
   const [enableDashboardCells, setDashboardCells] = useState(() => getLocalStorageValue('enableDashboardCells', true));
-  const [enableNotableNodesTab, setNotableNodesTab] = useState(() => getLocalStorageValue('enableNotableNodesTab', true))
+  const [enableNotableNodesTab, setNotableNodesTab] = useState(() => getLocalStorageValue('enableNotableNodesTab', true));
+  const [autoRefresh, setAutoRefresh] = useState(() => getLocalStorageValue('autoRefresh', true));
+  const [lastUpdated, setLastUpdated] = useState(null);
   const location = useLocation()
 
 
@@ -119,6 +121,13 @@ export function LayoutConfigurationProvider(props) {
     localStorage.setItem('enableNotableNodesTab', JSON.stringify(enableNotableNodesTab));
   }, [enableNotableNodesTab]);
 
+  const toggleAutoRefresh = () => {
+    setAutoRefresh((prevState) => !prevState);
+  }
+  useEffect(() => {
+    localStorage.setItem('autoRefresh', JSON.stringify(autoRefresh));
+  }, [autoRefresh]);
+
 
 
   const onSelectCurrency = useCallback(
@@ -139,6 +148,9 @@ export function LayoutConfigurationProvider(props) {
           enablePrivacyMode,
           enableDashboardCells,
           enableNotableNodesTab,
+          autoRefresh,
+          lastUpdated,
+          setLastUpdated,
           selectedCurrency,
           onToggleEstimatedEarningsTab: toggleEstimatedEarningsTab,
           onToggleParallelAssetsTab: toggleParallelAssetsTab,
@@ -146,6 +158,7 @@ export function LayoutConfigurationProvider(props) {
           onTogglePrivacyMode: togglePrivacyMode,
           onToggleDashboardCells: toggleDashboardCells,
           onToggleNotableNodesTab: toggleNotableNodesTab,
+          onToggleAutoRefresh: toggleAutoRefresh,
           onSelectCurrency: onSelectCurrency
         }),
         [
@@ -155,6 +168,9 @@ export function LayoutConfigurationProvider(props) {
           enablePrivacyMode,
           enableDashboardCells,
           enableNotableNodesTab,
+          autoRefresh,
+          lastUpdated,
+          setLastUpdated,
           selectedCurrency,
           toggleEstimatedEarningsTab,
           toggleParallelAssetsTab,
@@ -162,6 +178,7 @@ export function LayoutConfigurationProvider(props) {
           togglePrivacyMode,
           toggleDashboardCells,
           toggleNotableNodesTab,
+          toggleAutoRefresh,
           onSelectCurrency
         ]
       )}

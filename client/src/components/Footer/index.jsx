@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import './index.scss';
 
 import { IconContext } from 'react-icons';
+import { LayoutContext } from 'contexts/LayoutContext';
 
 import { IoLogoTwitter, IoMailUnread, IoLogoYoutube, IoLogoGithub } from 'react-icons/io5';
 import { BsGithub } from 'react-icons/bs';
@@ -19,6 +20,8 @@ function _RenderAppVersion() {
 }
 
 export function Footer() {
+  const { lastUpdated } = useContext(LayoutContext);
+
   return (
     <footer className='v-footer'>
       <div className='container-fluid px-5'>
@@ -79,6 +82,11 @@ export function Footer() {
         <div className='row pt-3 pb-5'>
           <div className='col-12'>
             <p>Copyright ©&nbsp;2023 All rights reserved</p>
+            {lastUpdated && (
+              <p style={{ color: '#5c7080', fontSize: '0.75rem', margin: '0' }}>
+                Last updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
+            )}
           </div>
         </div>
       </div>

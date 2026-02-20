@@ -2,8 +2,8 @@ import React from 'react';
 
 import './index.scss';
 
-import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
+import { tierMapping } from 'content/index';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
@@ -11,30 +11,6 @@ import { hide_sensitive_number } from 'utils';
 import { LayoutContext } from 'contexts/LayoutContext';
 import CountUp from 'components/CountUp';
 
-const tierMapping = {
-  CUMULUS: {
-    styleSet: 'cumulus',
-    name: 'Cumulus',
-    logo: FiZap
-  },
-  NIMBUS: {
-    styleSet: 'nimbus',
-    name: 'Nimbus',
-    logo: FiCpu
-  },
-  STRATUS: {
-    styleSet: 'stratus',
-    name: 'Stratus',
-    logo: FiPackage
-  },
-  /*
-  FRACTUS: {
-    styleSet: 'fractus',
-    name: 'Fractus',
-    logo: FiHardDrive
-  }
-  */  
-};
 
 export class MostHosted extends React.Component {
   constructor(props) {

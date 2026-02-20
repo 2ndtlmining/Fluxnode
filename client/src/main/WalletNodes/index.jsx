@@ -168,6 +168,10 @@ export class WalletNodes extends React.Component {
     //setGAEvent({ category: 'Refresh Button', action: 'Click refresh button' });
   };
 
+  handleToggleMaximize = () => {
+    this.setState((prev) => ({ isFullScreen: false, isMaximize: !prev.isMaximize }));
+  };
+
   renderNodeOverview(loadingWalletNodes, loadingNodeList, onToggleFullScreen) {
     const activeAddress = this.props.activeAddress;
     const noAddress = activeAddress == null;
@@ -194,6 +198,7 @@ export class WalletNodes extends React.Component {
           noAddress={noAddress}
           isMaximize={isMaximize}
           onToggleFullScreen={onToggleFullScreen}
+          onToggleMaximize={this.handleToggleMaximize}
           isFullScreen={isFullScreen}
           data={this.state.nodes}
           gstore={this.state.gstore || this.props.initGStore}

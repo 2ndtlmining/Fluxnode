@@ -2,8 +2,8 @@ import React from 'react';
 
 import './index.scss';
 
-import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';
 import { IconContext } from 'react-icons';
+import { tierMapping } from 'content/index';
 
 import * as utils from 'utils';
 import { pad_start, hide_sensitive_number } from 'utils';
@@ -12,31 +12,6 @@ import { LayoutContext } from 'contexts/LayoutContext';
 
 const split_minutes = (asMinutes) => utils.split_duration(utils.ds.duration({ minutes: asMinutes }));
 
-const tierMapping = {
-  CUMULUS: {
-    styleSet: 'cumulus',
-    name: 'Cumulus',
-    logo: FiZap
-  },
-  NIMBUS: {
-    styleSet: 'nimbus',
-    name: 'Nimbus',
-    logo: FiCpu
-  },
-  STRATUS: {
-    styleSet: 'stratus',
-    name: 'Stratus',
-    logo: FiPackage
-  },
-
-  /*
-  FRACTUS: {
-    styleSet: 'fractus',
-    name: 'Fractus',
-    logo: FiHardDrive
-  }
-  */
-};
 
 export class PayoutTimer extends React.Component {
   constructor(props) {
