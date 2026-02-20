@@ -72,6 +72,9 @@ class MainApp extends React.Component {
       totalDonations: 0
     };
 
+    this._refreshInterval = null;
+    this._autoRefreshActive = false;
+
     this.walletNodes = React.createRef();
     window.addressInputRef = this.addressInputRef = React.createRef();
 
@@ -163,6 +166,28 @@ class MainApp extends React.Component {
 
 
     this._setDefaultAddress(this.props.defaultAddress);
+    if (this.context.autoRefresh) this._startAutoRefresh();
+  }
+
+  componentWillUnmount() {
+    this._stopAutoRefresh();
+    if (this.methodCallSubscription) this.methodCallSubscription.unsubscribe();
+  }
+
+  _startAutoRefresh() {
+    this._stopAutoRefresh();
+    this._autoRefreshActive = true;
+    this._refreshInterval = setInterval(() => {
+      if (this.state.activeAddress) this.onRefreshRequest();
+    }, 5 * 60 * 1000);
+  }
+
+  _stopAutoRefresh() {
+    if (this._refreshInterval) {
+      clearInterval(this._refreshInterval);
+      this._refreshInterval = null;
+    }
+    this._autoRefreshActive = false;
   }
 
   _setDefaultAddress(defaultAddress) {
@@ -175,12 +200,19 @@ class MainApp extends React.Component {
   componentDidUpdate(prevProps, prevState) {
 
     let inputField = this.addressInputRef.current.value
-    
+
     if (prevState.privacyMode !== this.context.enablePrivacyMode) {
       prevState.privacyMode = this.context.enablePrivacyMode
 
       this.setState({ inputAddress: !this.state.privacyMode ? this.state.activeAddress : hide_sensitive_string(inputField) });
 
+    }
+
+    const shouldRefresh = this.context.autoRefresh;
+    if (shouldRefresh && !this._autoRefreshActive) {
+      this._startAutoRefresh();
+    } else if (!shouldRefresh && this._autoRefreshActive) {
+      this._stopAutoRefresh();
     }
 
     
@@ -250,6 +282,7 @@ class MainApp extends React.Component {
         })
         .then((gstore) => {
           this.setState({ gstore });
+          this.context.setLastUpdated(new Date());
         });
     }
   }
@@ -342,6 +375,7 @@ class MainApp extends React.Component {
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
+    this.context.setLastUpdated(new Date());
   }
 
 

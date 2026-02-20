@@ -12,14 +12,15 @@ import { Helmet } from 'react-helmet';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
-import AppGuidesView from 'guides/GuidesView';
-import MainApp from 'main/MainApp';
-import Home from 'home/Home';
-import Demo from 'demo/Demo';
-import NotFoundView from 'notfound/index';
 import { FocusStyleManager } from '@blueprintjs/core';
 import { lazy_load_currency_rate } from 'main/apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
+
+const AppGuidesView = React.lazy(() => import('guides/GuidesView'));
+const MainApp = React.lazy(() => import('main/MainApp'));
+const Home = React.lazy(() => import('home/Home'));
+const Demo = React.lazy(() => import('demo/Demo'));
+const NotFoundView = React.lazy(() => import('notfound/index'));
 
 // Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
 FocusStyleManager.onlyShowFocusOnTabs();
