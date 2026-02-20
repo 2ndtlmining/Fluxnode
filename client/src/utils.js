@@ -1,5 +1,4 @@
 import * as dayjs from 'dayjs';
-import millify from "millify";
 import * as duration from 'dayjs/plugin/duration';
 dayjs.extend(duration);
 

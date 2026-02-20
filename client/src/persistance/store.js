@@ -10,7 +10,7 @@ window.appStore = appStore = localforage.createInstance({
 
 export function initStore() {
   //appStore.removeItem(StoreKeys.FRACTUS_COUNT);
-  appStore.removeItem(StoreKeys.CURRENCY_RATES);
+  // Currency rates are now TTL-cached (1 hour) in lazy_load_currency_rate()
 }
 
 let StoreKeys = {};

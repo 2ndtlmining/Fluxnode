@@ -52,7 +52,7 @@ export function create_global_store() {
   return {
     flux_price_usd: 0,
     totalRunningApps: 0,
-    kadenaRunningApps: 0,
+    streamrRunningApps: 0,
     presearchRunningApps: 0,
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
@@ -384,12 +384,12 @@ export async function fetch_global_stats(walletAddress = null) {
   };
 
   const fetchTotalDeployedApps = async () => {
-    const kadena = process.env.REACT_APP_KADENA;
+    const streamr = process.env.REACT_APP_STREAMR;
     const presearch = process.env.REACT_APP_PRE_SEARCH;
     const watchtower = 'containrrr/watchtower:latest'
 
     let totalRunningApps = 0;
-    let kadenaCount = 0;
+    let streamrCount = 0;
     let presearchCount = 0;
     let watchtowerCount = 0;
 
@@ -400,14 +400,14 @@ export async function fetch_global_stats(walletAddress = null) {
 
       json?.data?.forEach((item) => {
         totalRunningApps += item?.apps?.runningapps?.length;
-        if (JSON.stringify(item?.apps?.runningapps).includes(kadena)) kadenaCount++;
+        if (JSON.stringify(item?.apps?.runningapps).includes(streamr)) streamrCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower:latest') || JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower'))
           watchtowerCount++;
       });
 
       store.totalRunningApps = (totalRunningApps - watchtowerCount);
-      store.kadenaRunningApps = kadenaCount;
+      store.streamrRunningApps = streamrCount;
       store.presearchRunningApps = presearchCount;
     } catch (error) {
       console.log('error', error);
@@ -829,33 +829,40 @@ const usdCurrencyRate = async ()=> {
 }
 
 
+const CURRENCY_RATE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 // Fetch other currencies and store
 export async function lazy_load_currency_rate() {
-  
+
   const supportedCurrencies = ['USD', 'EUR', 'AUD'];
-  const storedFCurrencyRates = await appStore.getItem(StoreKeys.CURRENCY_RATES);
-  if (!storedFCurrencyRates) {
-    try {
-      const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
-      const json = await res.json();
-      const currencyRates = json.rates;
-
-      const usd = await usdCurrencyRate();
-      const currencies = {...usd, ...currencyRates}
-      console.log('rates:', currencies);
-
-      if(res.ok){
-        await appStore.setItem(StoreKeys.CURRENCY_RATES, currencies);
-        return currencies;
-      }else{
-        return null
-      }
-      
-    } catch (error) {
-      console.log(error)
-    }
+  const cached = await appStore.getItem(StoreKeys.CURRENCY_RATES);
+  const isFresh = cached && cached.timestamp && (Date.now() - cached.timestamp < CURRENCY_RATE_TTL_MS);
+  if (isFresh) {
+    return cached.rates;
   }
-  return storedFCurrencyRates;
+
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
+    const json = await res.json();
+    const currencyRates = json.rates;
+
+    const usd = await usdCurrencyRate();
+    const currencies = {...usd, ...currencyRates}
+    console.log('rates:', currencies);
+
+    if(res.ok){
+      await appStore.setItem(StoreKeys.CURRENCY_RATES, { rates: currencies, timestamp: Date.now() });
+      return currencies;
+    }else{
+      return null
+    }
+
+  } catch (error) {
+    console.log(error);
+    // Return stale data if available rather than nothing
+    if (cached && cached.rates) return cached.rates;
+  }
+  return null;
 }
 /* ======================================================================= */
 /* ======================================================================= */

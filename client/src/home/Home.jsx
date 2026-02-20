@@ -136,7 +136,7 @@ class Home extends React.Component {
         changeDetection: false
       });
 
-      var methodCallSubscription = methodCallObservable.subscribe({
+      _this.methodCallSubscription = methodCallObservable.subscribe({
         next: function (args) {
           hideSensitiveData(args.newValue);
         }
@@ -144,6 +144,10 @@ class Home extends React.Component {
     });
 
     this._setDefaultAddress(this.props.defaultAddress);
+  }
+
+  componentWillUnmount() {
+    if (this.methodCallSubscription) this.methodCallSubscription.unsubscribe();
   }
 
   _setDefaultAddress(defaultAddress) {

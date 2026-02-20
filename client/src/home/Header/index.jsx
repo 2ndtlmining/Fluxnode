@@ -124,7 +124,7 @@ export function DashboardCells({ gstore: gs, total_donations }) {
 
             <Cell
               name={`Streamr Running Apps`}
-              value={gs.kadenaRunningApps}
+              value={gs.streamrRunningApps}
               icon={<FaRocket size={iconSize} />}
               iconWrapClassName={`dash-cell__nodes-cumulus${suffixClassName}`}
               small={!normalFontSize}
