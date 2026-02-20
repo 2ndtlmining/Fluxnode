@@ -3,3 +3,11 @@
 
 /data
 
+# Dependencies and build output
+node_modules/
+client/build/
+
+# Claude Code local files
+.claude/
+CLAUDE.md
+
