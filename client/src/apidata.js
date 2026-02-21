@@ -23,6 +23,7 @@ const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFl
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo?projection=benchmark';
+const API_NODE_GEOLOCATION = 'https://stats.runonflux.io/fluxinfo?projection=geolocation';
 const API_FLUX_NETWORK_UTILISATION = 'https://stats.runonflux.io/fluxinfo?projection=apps.resources';
 const API_FLUX_ARCANE_VERSION = 'https://stats.runonflux.io/fluxinfo?projection=flux';
 
@@ -1025,6 +1026,197 @@ export async function wallet_pas_summary(walletAddress) {
 /* ===================================================== */
 /* ======================== DOS ======================== */
 /* ===================================================== */
+
+/* ================================================================ */
+/* ================ GLOBAL PERFORMANCE RANKINGS ================== */
+/* ================================================================ */
+
+function _flagFromCountryCode(cc) {
+  if (!cc || cc.length !== 2) return '';
+  const base = 0x1f1e6 - 65;
+  return (
+    String.fromCodePoint(cc.charCodeAt(0) + base) +
+    String.fromCodePoint(cc.charCodeAt(1) + base)
+  );
+}
+
+const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v3';
+const GLOBAL_RANKINGS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Fetches and joins node list (tier), benchmark data, and geolocation for all
+ * ~8000 Flux nodes. Builds per-tier and per-country performance rankings.
+ * Results are cached in sessionStorage for 10 minutes.
+ *
+ * Returns: { tierRankings, countryRankings, nodeGeoMap } or null on failure.
+ */
+export async function fetch_global_performance_rankings() {
+  // Return cached data if fresh
+  try {
+    const raw = sessionStorage.getItem(GLOBAL_RANKINGS_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && Date.now() - cached.timestamp < GLOBAL_RANKINGS_CACHE_TTL) {
+        return cached.data;
+      }
+    }
+  } catch {}
+
+  try {
+    const [nodesRes, benchRes, geoRes, countRes] = await Promise.all([
+      fetch(API_FLUX_NODES_ALL_URL),
+      fetch(API_NODE_BENCHMARKS),
+      fetch(API_NODE_GEOLOCATION),
+      fetch('https://api.runonflux.io/daemon/getzelnodecount'),
+    ]);
+
+    const nodesJson = await nodesRes.json();
+    const benchJson = await benchRes.json();
+    const geoJson = await geoRes.json();
+    const countJson = await countRes.json();
+
+    // Official enabled node counts — same source as the dashboard header
+    const officialNodeCounts = {
+      CUMULUS: countJson.data?.['cumulus-enabled'] || 0,
+      NIMBUS:  countJson.data?.['nimbus-enabled']  || 0,
+      STRATUS: countJson.data?.['stratus-enabled'] || 0,
+    };
+
+    // IP host → tier
+    const ipTierMap = {};
+    for (const node of nodesJson.fluxNodes || []) {
+      const host = (node.ip || '').split(':')[0];
+      if (host) ipTierMap[host] = (node.tier || '').toUpperCase();
+    }
+
+    // IP host → geo
+    // API shape: { data: [ { geolocation: { ip, country, countryCode, continent, ... } } ] }
+    const nodeGeoMap = {};
+    for (const entry of geoJson.data || []) {
+      const geo = entry.geolocation;
+      if (!geo) continue;
+      const host = (geo.ip || '').split(':')[0];
+      if (!host) continue;
+      const cc = geo.countryCode || geo.country_code;
+      if (!cc) continue;
+      nodeGeoMap[host] = {
+        country: geo.country || cc,
+        countryCode: cc,
+        continent: geo.continent || '',
+        flag: _flagFromCountryCode(cc),
+      };
+    }
+
+    // Country dominance: count all nodes per wallet per country to find the leader in each country.
+    // Uses payment_address from the tier endpoint (same source as wallet node lookup).
+    const countryDominance = {};
+    {
+      const countryWalletCounts = {}; // cc → { country, counts: { addr → count } }
+      for (const node of nodesJson.fluxNodes || []) {
+        const host = (node.ip || '').split(':')[0];
+        if (!host || !node.payment_address) continue;
+        const geo = nodeGeoMap[host];
+        if (!geo?.countryCode) continue;
+        const cc = geo.countryCode;
+        if (!countryWalletCounts[cc]) {
+          countryWalletCounts[cc] = { country: geo.country, counts: {} };
+        }
+        const addr = node.payment_address;
+        countryWalletCounts[cc].counts[addr] = (countryWalletCounts[cc].counts[addr] || 0) + 1;
+      }
+      for (const [cc, data] of Object.entries(countryWalletCounts)) {
+        const leaderCount = Math.max(0, ...Object.values(data.counts));
+        countryDominance[cc] = { leaderCount, country: data.country };
+      }
+    }
+
+    // Build unified node list from benchmark data
+    // API shape: { data: [ { benchmark: { bench: { ipaddress, eps, ddwrite, download_speed, upload_speed, ... } } } ] }
+    const VALID_TIERS = new Set(['CUMULUS', 'NIMBUS', 'STRATUS']);
+    const nodeData = [];
+    for (const entry of benchJson.data || []) {
+      const bench = entry.benchmark?.bench;
+      if (!bench) continue;
+      const host = (bench.ipaddress || '').split(':')[0];
+      if (!host) continue;
+      const tier = ipTierMap[host];
+      if (!tier || !VALID_TIERS.has(tier)) continue;
+      nodeData.push({
+        ip: host,
+        tier,
+        eps: bench.eps || 0,
+        dws: bench.ddwrite || 0,
+        down_speed: bench.download_speed || 0,
+        up_speed: bench.upload_speed || 0,
+        geo: nodeGeoMap[host] || null,
+      });
+    }
+
+    const METRICS = ['eps', 'dws', 'down_speed', 'up_speed'];
+    const TIERS = ['CUMULUS', 'NIMBUS', 'STRATUS'];
+
+    // Per-tier rankings
+    const tierRankings = {};
+    for (const tier of TIERS) {
+      tierRankings[tier] = {};
+      const tierNodes = nodeData.filter((n) => n.tier === tier);
+      for (const metric of METRICS) {
+        tierRankings[tier][metric] = [...tierNodes]
+          .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
+          .map((n, i) => ({ ip: n.ip, rank: i + 1, value: n[metric] }));
+      }
+    }
+
+    // Per-country, per-tier rankings — nodes compete only within their own tier per country.
+    // Structure: countryRankings[cc].tiers[TIER].metrics[metric] = [{ip, rank, value}]
+    const countryRankings = {};
+    for (const node of nodeData) {
+      if (!node.geo?.countryCode) continue;
+      const cc = node.geo.countryCode;
+      if (!countryRankings[cc]) {
+        countryRankings[cc] = {
+          country: node.geo.country,
+          countryCode: cc,
+          flag: node.geo.flag,
+          tiers: {},
+        };
+      }
+      const tier = node.tier;
+      if (!countryRankings[cc].tiers[tier]) {
+        countryRankings[cc].tiers[tier] = {
+          metrics: { eps: [], dws: [], down_speed: [], up_speed: [] },
+        };
+      }
+      for (const metric of METRICS) {
+        countryRankings[cc].tiers[tier].metrics[metric].push({ ip: node.ip, value: node[metric] || 0 });
+      }
+    }
+    // Sort and assign ranks within each country+tier+metric
+    for (const cc of Object.keys(countryRankings)) {
+      for (const tier of Object.keys(countryRankings[cc].tiers)) {
+        for (const metric of METRICS) {
+          countryRankings[cc].tiers[tier].metrics[metric]
+            .sort((a, b) => b.value - a.value)
+            .forEach((entry, i) => { entry.rank = i + 1; });
+        }
+      }
+    }
+
+    const data = { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts, countryDominance };
+
+    try {
+      sessionStorage.setItem(
+        GLOBAL_RANKINGS_CACHE_KEY,
+        JSON.stringify({ data, timestamp: Date.now() })
+      );
+    } catch {}
+
+    return data;
+  } catch (e) {
+    console.warn('[GlobalRankings] Failed to fetch:', e);
+    return null;
+  }
+}
 
 export async function isWalletDOSState(address) {
   // Note: DOS list is updated very frequently, so there is no point in caching the response for

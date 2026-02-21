@@ -104,3 +104,41 @@
     padding-right: 6px;
     width:max-content;
 }
+
+// ── Node view tab switcher ────────────────────────────────────────────────────
+
+.node-view-tabs {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    padding: 2px;
+
+    @include rule-mode-dark() {
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+// ── Achievement toggle button glow ────────────────────────────────────────────
+
+@keyframes gami-glow-pulse {
+    0%, 100% {
+        box-shadow: 0 0 4px 1px rgba(221, 146, 66, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 10px 3px rgba(221, 146, 66, 0.8);
+    }
+}
+
+.achievement-btn-glow {
+    animation: gami-glow-pulse 2s ease-in-out infinite;
+}
+
+// ── Achievement panel scroll container ────────────────────────────────────────
+
+.gami-panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
