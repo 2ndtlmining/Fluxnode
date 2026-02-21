@@ -30,7 +30,8 @@ import {
   validateAddress,
   wallet_pas_summary,
   fetch_total_donations,
-  fetch_total_network_utils
+  fetch_total_network_utils,
+  fetch_global_performance_rankings,
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -69,7 +70,8 @@ class MainApp extends React.Component {
       privacyMode: false,
       isZelId: false,
 
-      totalDonations: 0
+      totalDonations: 0,
+      globalRankings: null,
     };
 
     this._refreshInterval = null;
@@ -347,10 +349,17 @@ class MainApp extends React.Component {
     let isDOS = await isWalletDOSState(address);
     this.setState({ isDOS });
 
+    // Fire global rankings in parallel with global stats (uses 10-min sessionStorage cache)
+    const rankingsPromise = fetch_global_performance_rankings();
+
     const gstore = await fetch_global_stats(address);
 
     fetch_total_donations(address).then((res) => {
       this.setState({ totalDonations: res });
+    });
+
+    rankingsPromise.then((rankings) => {
+      if (this.mounted) this.setState({ globalRankings: rankings });
     });
 
     fetch_total_network_utils(gstore).then((store) => {
@@ -367,7 +376,7 @@ class MainApp extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes }) => {
       highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
       bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
       mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
@@ -639,6 +648,9 @@ class MainApp extends React.Component {
                 activeAddress={this.state.activeAddress}
                 initGStore={this.state.gstore}
                 theme={this.props.theme}
+                walletPASummary={this.state.walletPASummary}
+                totalDonations={this.state.totalDonations}
+                globalRankings={this.state.globalRankings}
               />
 
               {enableParallelAssetsTab && this.state.isWalletAvailable ? (
@@ -659,6 +671,7 @@ class MainApp extends React.Component {
               ) : (
                 <div style={{ paddingBottom: '100px' }}>&nbsp;</div>
               )}
+
             </>
           );
         }}

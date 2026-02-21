@@ -20,7 +20,8 @@ export function LayoutConfigurationProvider(props) {
   const [enablePrivacyMode, setPrivacyMode] = useState(() => getLocalStorageValue('enablePrivacyMode', false));
   const [enableDashboardCells, setDashboardCells] = useState(() => getLocalStorageValue('enableDashboardCells', true));
   const [enableNotableNodesTab, setNotableNodesTab] = useState(() => getLocalStorageValue('enableNotableNodesTab', true));
-  const [autoRefresh, setAutoRefresh] = useState(() => getLocalStorageValue('autoRefresh', true));
+  const [autoRefresh, setAutoRefresh] = useState(() => getLocalStorageValue('autoRefresh', false));
+  const [enableGamification, setGamification] = useState(() => getLocalStorageValue('enableGamification', true));
   const [lastUpdated, setLastUpdated] = useState(null);
   const location = useLocation()
 
@@ -128,6 +129,13 @@ export function LayoutConfigurationProvider(props) {
     localStorage.setItem('autoRefresh', JSON.stringify(autoRefresh));
   }, [autoRefresh]);
 
+  const toggleGamification = () => {
+    setGamification((prevState) => !prevState);
+  }
+  useEffect(() => {
+    localStorage.setItem('enableGamification', JSON.stringify(enableGamification));
+  }, [enableGamification]);
+
 
 
   const onSelectCurrency = useCallback(
@@ -149,6 +157,7 @@ export function LayoutConfigurationProvider(props) {
           enableDashboardCells,
           enableNotableNodesTab,
           autoRefresh,
+          enableGamification,
           lastUpdated,
           setLastUpdated,
           selectedCurrency,
@@ -159,6 +168,7 @@ export function LayoutConfigurationProvider(props) {
           onToggleDashboardCells: toggleDashboardCells,
           onToggleNotableNodesTab: toggleNotableNodesTab,
           onToggleAutoRefresh: toggleAutoRefresh,
+          onToggleGamification: toggleGamification,
           onSelectCurrency: onSelectCurrency
         }),
         [
@@ -169,6 +179,7 @@ export function LayoutConfigurationProvider(props) {
           enableDashboardCells,
           enableNotableNodesTab,
           autoRefresh,
+          enableGamification,
           lastUpdated,
           setLastUpdated,
           selectedCurrency,
@@ -179,6 +190,7 @@ export function LayoutConfigurationProvider(props) {
           toggleDashboardCells,
           toggleNotableNodesTab,
           toggleAutoRefresh,
+          toggleGamification,
           onSelectCurrency
         ]
       )}

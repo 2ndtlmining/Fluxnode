@@ -160,7 +160,7 @@ export class WalletNodes extends React.Component {
     fill_health(health, gstore);
     this.setState({ loadingHealth: false, health });
 
-    onCalculateNotableNodes({ highestRankedNode, bestUptimeNode, mostHostedNode });
+    onCalculateNotableNodes({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes });
   }
 
   handleRefreshClick = () => {
@@ -203,6 +203,9 @@ export class WalletNodes extends React.Component {
           data={this.state.nodes}
           gstore={this.state.gstore || this.props.initGStore}
           theme={this.props.theme}
+          walletPASummary={this.props.walletPASummary}
+          totalDonations={this.props.totalDonations}
+          globalRankings={this.props.globalRankings}
         />
       </>
     );

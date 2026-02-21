@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useContext, useMemo } from 'react';
 import './index.scss';
 import { AgGridReact } from 'ag-grid-react';
 import { IpCell } from './CustomisedCells/IpCell';
@@ -14,6 +14,11 @@ import CustomHeader from './CustomHeader';
 import { fluxos_version_string } from 'main/flux_version';
 import { dateComparator, nextRewardComparator, isIOS } from 'utils';
 import { Button } from '@blueprintjs/core';
+import { FaTrophy } from 'react-icons/fa';
+import { FiServer } from 'react-icons/fi';
+import { LayoutContext } from 'contexts/LayoutContext';
+import { GamificationSection } from 'main/Gamification';
+import { computeAchievements } from 'main/Gamification/achievements';
 
 export const NodeGridTable = ({
   data,
@@ -25,12 +30,23 @@ export const NodeGridTable = ({
   isMaximize,
   isFullScreen,
   onToggleFullScreen,
-  onToggleMaximize
+  onToggleMaximize,
+  walletPASummary,
+  totalDonations,
+  globalRankings,
 }) => {
+  const { enableGamification } = useContext(LayoutContext);
   const gridRef = useRef();
   const [rowData, setRowData] = useState(data);
   const [appTheme, setAppTheme] = useState(theme);
   const [ipFilter, setIpFilter] = useState('');
+  const [showAchievements, setShowAchievements] = useState(false);
+
+  const { earnedCount, totalCount } = useMemo(() => {
+    if (!enableGamification || !data || data.length === 0 || !gstore) return { earnedCount: 0, totalCount: 0 };
+    const achievements = computeAchievements(gstore, data, walletPASummary, totalDonations, globalRankings);
+    return { earnedCount: achievements.filter((a) => a.earned).length, totalCount: achievements.length };
+  }, [enableGamification, data, gstore, walletPASummary, totalDonations, globalRankings]);
 
   useEffect(() => {
     setRowDataBasedUponFilter(ipFilter, setRowData, data, gstore);
@@ -200,66 +216,122 @@ export const NodeGridTable = ({
     <>
       <div className='table-header'>
         <span className='title adp-text-normal'>
-          Nodes Overview
-          <br />
-          <span className='adp-text-muted overview-info-subtitle'>
-            Hover mouse over a column header to see more information.
-          </span>
+          {showAchievements ? (
+            <>
+              Achievements
+              <br />
+              <span className='adp-text-muted overview-info-subtitle'>
+                {earnedCount} of {totalCount} earned
+              </span>
+            </>
+          ) : (
+            <>
+              Nodes Overview
+              <br />
+              <span className='adp-text-muted overview-info-subtitle'>
+                Hover mouse over a column header to see more information.
+              </span>
+            </>
+          )}
         </span>
         <div className='cta-button-wrapper'>
-          <div>Filter (IP):&nbsp;
-            <input type='text' value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} size={16} />&nbsp;
-            <Button text='Clear' intent='primary' rightIcon={"filter"} onClick={() => setIpFilter('')} />
-          </div>&nbsp;
-          <Button text='Reset' rightIcon='reset' intent='danger' onClick={handleResetColumnState} />
-          <Button
-            text='Refresh'
-            rightIcon='refresh'
-            intent='success'
-            onClick={handleRefreshClick}
-            disabled={loadingNodeList || noAddress}
-            outlined={true}
-          />
-          {!isIOS() ? (
+          {enableGamification && (
+            <div className='node-view-tabs'>
+              <Button
+                small
+                minimal={showAchievements}
+                active={!showAchievements}
+                intent={!showAchievements ? 'primary' : 'none'}
+                title='Node Overview'
+                onClick={() => setShowAchievements(false)}
+              >
+                <FiServer style={{ marginRight: data && data.length > 0 ? 5 : 0, verticalAlign: 'middle' }} />
+                {data && data.length > 0 ? data.length : ''}
+              </Button>
+              <Button
+                small
+                minimal={!showAchievements}
+                active={showAchievements}
+                intent={showAchievements ? 'warning' : 'none'}
+                className={earnedCount > 0 && !showAchievements ? 'achievement-btn-glow' : ''}
+                title={earnedCount > 0 ? `Achievements — ${earnedCount} earned` : 'Achievements'}
+                onClick={() => setShowAchievements(true)}
+              >
+                <FaTrophy style={{ marginRight: earnedCount > 0 ? 5 : 0, verticalAlign: 'middle' }} />
+                {earnedCount > 0 ? earnedCount : ''}
+              </Button>
+            </div>
+          )}
+          {!showAchievements && (
             <>
+              <div>Filter (IP):&nbsp;
+                <input type='text' value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} size={16} />&nbsp;
+                <Button text='Clear' intent='primary' rightIcon={"filter"} onClick={() => setIpFilter('')} />
+              </div>&nbsp;
+              <Button text='Reset' rightIcon='reset' intent='danger' onClick={handleResetColumnState} />
               <Button
-                rightIcon={isMaximize ? 'minimize' : 'maximize'}
-                onClick={() => onToggleMaximize()}
-                disabled={isFullScreen}
+                text='Refresh'
+                rightIcon='refresh'
+                intent='success'
+                onClick={handleRefreshClick}
+                disabled={loadingNodeList || noAddress}
+                outlined={true}
               />
-              <Button
-                rightIcon={isFullScreen ? 'arrow-bottom-right' : 'fullscreen'}
-                onClick={() => onToggleFullScreen()}
-              />
+              {!isIOS() ? (
+                <>
+                  <Button
+                    rightIcon={isMaximize ? 'minimize' : 'maximize'}
+                    onClick={() => onToggleMaximize()}
+                    disabled={isFullScreen}
+                  />
+                  <Button
+                    rightIcon={isFullScreen ? 'arrow-bottom-right' : 'fullscreen'}
+                    onClick={() => onToggleFullScreen()}
+                  />
+                </>
+              ) : undefined}
             </>
-          ) : undefined}
+          )}
         </div>
       </div>
-      <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>
-        <AgGridReact
-          autoSizeAllColumns={true}
-          rowData={rowData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          ref={gridRef}
-          onDragStopped={onColumnMoved}
-          onGridReady={onGridReady}
-          onFirstDataRendered={autoSizeAll}
-          maintainColumnOrder={true}
-          overlayNoRowsTemplate={'<span>No Nodes</span>'}
-          components={{
-            ipCell: IpCell,
-            tierCell: TierCell,
-            benchmarkCell: BenchmarkCell,
-            maintenanceCell: MaintenanceCell,
-            fluxOSCell: FluxOSCell,
-            benchVersionCell: BenchVersionCell,
-            numberCell: NumberCell,
-            uptimeCell: UptimeCell,
-            appCountCell: AppCountCell
-          }}
-        />
-      </div>
+
+      {showAchievements ? (
+        <div className='gami-panel-scroll'>
+          <GamificationSection
+            gstore={gstore}
+            walletNodes={data}
+            walletPASummary={walletPASummary}
+            totalDonations={totalDonations}
+            globalRankings={globalRankings}
+          />
+        </div>
+      ) : (
+        <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>
+          <AgGridReact
+            autoSizeAllColumns={true}
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            ref={gridRef}
+            onDragStopped={onColumnMoved}
+            onGridReady={onGridReady}
+            onFirstDataRendered={autoSizeAll}
+            maintainColumnOrder={true}
+            overlayNoRowsTemplate={'<span>No Nodes</span>'}
+            components={{
+              ipCell: IpCell,
+              tierCell: TierCell,
+              benchmarkCell: BenchmarkCell,
+              maintenanceCell: MaintenanceCell,
+              fluxOSCell: FluxOSCell,
+              benchVersionCell: BenchVersionCell,
+              numberCell: NumberCell,
+              uptimeCell: UptimeCell,
+              appCountCell: AppCountCell
+            }}
+          />
+        </div>
+      )}
     </>
   );
 };
