@@ -60,6 +60,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
             enableDashboardCells,
             enableNotableNodesTab,
             autoRefresh,
+            enableGamification,
             selectedCurrency,
             onToggleEstimatedEarningsTab,
             onToggleParallelAssetsTab,
@@ -68,6 +69,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
             onToggleDashboardCells,
             onToggleNotableNodesTab,
             onToggleAutoRefresh,
+            onToggleGamification,
             onSelectCurrency
           }) => (
             <Popover2
@@ -151,6 +153,18 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
                         checked={autoRefresh}
                         label='Auto Refresh (5 min)'
                         onChange={onToggleAutoRefresh}
+                      />
+                    }
+                  />
+                  <MenuItem2
+                    shouldDismissPopover={false}
+                    text={
+                      <Switch
+                        shouldDismissPopover={false}
+                        alignIndicator='right'
+                        checked={enableGamification}
+                        label='Achievements'
+                        onChange={onToggleGamification}
                       />
                     }
                   />

@@ -1,0 +1,274 @@
+@import 'styles/functional';
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+
+.gami-area {
+  padding: 0;
+}
+
+.gami-header {
+  padding: 16px 24px 12px;
+}
+
+// ── Header row ────────────────────────────────────────────────────────────────
+
+.gami-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gami-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d07e26;
+
+  @include rule-mode-dark() {
+    color: rgb(221, 146, 66);
+  }
+}
+
+.gami-summary {
+  font-size: 0.88rem;
+}
+
+// ── Top row: app categories ───────────────────────────────────────────────────
+
+.gami-top-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+// ── Filter buttons ────────────────────────────────────────────────────────────
+
+.gami-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.gami-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+// ── Achievement grid ──────────────────────────────────────────────────────────
+
+.gami-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  padding: 14px 24px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.gami-empty {
+  grid-column: 1 / -1;
+  padding: 16px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+// ── Achievement card ──────────────────────────────────────────────────────────
+
+.gami-card {
+  border-radius: 8px;
+  padding: 8px 6px 7px;
+  text-align: center;
+  cursor: default;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+
+  @include rule-mode-dark() {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+    @include rule-mode-dark() {
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+  }
+}
+
+.gami-card--earned {
+  @extend .gami-card;
+  background-color: rgba(0, 0, 0, 0.04);
+
+  @include rule-mode-dark() {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.gami-card--locked {
+  @extend .gami-card;
+  opacity: 0.42;
+  filter: grayscale(1);
+}
+
+.gami-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gami-card-name {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.3;
+  padding: 0 2px;
+}
+
+// ── Tier pill ─────────────────────────────────────────────────────────────────
+
+.gami-tier-pill {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.gami-tier-bronze {
+  background: rgba(205, 127, 50, 0.18);
+  color: #a05e10;
+
+  @include rule-mode-dark() {
+    color: #cd7f32;
+  }
+}
+
+.gami-tier-silver {
+  background: rgba(192, 192, 192, 0.18);
+  color: #777;
+
+  @include rule-mode-dark() {
+    color: #c0c0c0;
+  }
+}
+
+.gami-tier-gold {
+  background: rgba(255, 215, 0, 0.18);
+  color: #9a7a00;
+
+  @include rule-mode-dark() {
+    color: #ffd700;
+  }
+}
+
+.gami-tier-platinum {
+  background: rgba(229, 228, 226, 0.18);
+  color: #888;
+
+  @include rule-mode-dark() {
+    color: #d8d8d8;
+  }
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+
+.gami-card-progress {
+  width: 100%;
+  padding: 0 4px;
+}
+
+.gami-progress-bar {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.gami-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+// ── Sub-sections (app categories / geo footprint) ─────────────────────────────
+
+.gami-section {
+  padding: 12px 24px 14px;
+}
+
+.gami-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gami-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.gami-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.gami-flag {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.gami-chip--compact {
+  padding: 3px 8px;
+  gap: 4px;
+  cursor: default;
+}
