@@ -3,8 +3,8 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
-import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity } from 'react-icons/fi';
-import { FaGamepad } from 'react-icons/fa';
+import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
+import { FaGamepad, FaTrophy } from 'react-icons/fa';
 import ReactCountryFlag from 'react-country-flag';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
@@ -508,9 +508,93 @@ function GeoDistributionPanel({ gstore, countryCounts }) {
   );
 }
 
+// ── Top Dogs Panel ─────────────────────────────────────────────────────────────
+
+const TIER_CONFIG = {
+  CUMULUS: { label: 'Cumulus', color: '#2686d0' },
+  NIMBUS:  { label: 'Nimbus',  color: '#d07e26' },
+  STRATUS: { label: 'Stratus', color: '#c92641' },
+};
+
+const METRIC_CONFIG = [
+  { key: 'eps',        label: 'EPS',  Icon: FiCpu,       format: (v) => fmtNum(v, 0) },
+  { key: 'dws',        label: 'DWS',  Icon: FiHardDrive, format: (v) => fmtNum(v, 0) },
+  { key: 'down_speed', label: 'Down', Icon: FiDownload,  format: (v) => v != null ? v.toFixed(1) + ' Mb/s' : '—' },
+  { key: 'up_speed',   label: 'Up',   Icon: FiUpload,    format: (v) => v != null ? v.toFixed(1) + ' Mb/s' : '—' },
+];
+
+const TIERS_ORDER = ['CUMULUS', 'NIMBUS', 'STRATUS'];
+
+function MetricCard({ metric, winner, nodeGeoMap }) {
+  const { label, Icon, format } = metric;
+  if (!winner) return (
+    <div className="td-metric-card td-metric-card--empty">
+      <div className="td-metric-header"><Icon size={11} /><span className="td-metric-label">{label}</span></div>
+      <span className="td-metric-ip">—</span>
+      <div className="td-metric-footer"><span className="td-metric-score">—</span></div>
+    </div>
+  );
+  const { ip, value } = winner;
+  const geo = nodeGeoMap?.[ip];
+  return (
+    <div className="td-metric-card">
+      <div className="td-metric-header"><Icon size={11} className="td-metric-icon" /><span className="td-metric-label">{label}</span></div>
+      <span className="td-metric-ip" title={ip}>{ip}</span>
+      <div className="td-metric-footer">
+        <span className="td-metric-score">{format(value)}</span>
+        {geo?.countryCode && (
+          <ReactCountryFlag
+            countryCode={geo.countryCode}
+            svg
+            title={geo.country}
+            style={{ width: '1.1em', height: '1.1em', borderRadius: '2px', flexShrink: 0 }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TierRow({ tier, tierRankings, nodeGeoMap }) {
+  const { label, color } = TIER_CONFIG[tier];
+  const rankings = tierRankings?.[tier];
+  return (
+    <div className="td-tier-row" style={{ borderLeftColor: color }}>
+      <div className="td-tier-label-col">
+        <span className="td-tier-dot" style={{ background: color }} />
+        <span className="td-tier-name" style={{ color }}>{label}</span>
+      </div>
+      <div className="td-metric-cards">
+        {METRIC_CONFIG.map((m) => (
+          <MetricCard key={m.key} metric={m} winner={rankings?.[m.key]?.[0] ?? null} nodeGeoMap={nodeGeoMap} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopDogsPanel({ globalRankings }) {
+  if (!globalRankings) return (
+    <div className="hov-panel hov-panel-center hov-panel--top-dogs">
+      <Spinner size={20} />
+    </div>
+  );
+  const { tierRankings, nodeGeoMap } = globalRankings;
+  return (
+    <div className="hov-panel hov-panel--top-dogs">
+      <PanelHeader title="TOP DOGS" right={<FaTrophy size={14} className="td-header-icon" />} />
+      <div className="td-body">
+        {TIERS_ORDER.map((tier) => (
+          <TierRow key={tier} tier={tier} tierRankings={tierRankings} nodeGeoMap={nodeGeoMap} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function HomeOverview({ gstore, appSpecs, countryCounts }) {
+export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings }) {
   return (
     <div className="home-overview">
       <div className="home-overview-row">
@@ -523,6 +607,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts }) {
         <ExpiringTodayPanel appSpecs={appSpecs} />
         <DeployedTodayPanel appSpecs={appSpecs} />
       </div>
+      <TopDogsPanel globalRankings={globalRankings} />
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />
     </div>
   );
