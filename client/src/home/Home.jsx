@@ -8,7 +8,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { Col, Container, Row } from 'react-grid-system';
 
 import { AppToaster } from 'components/AppToaster';
-import { DashboardCells } from 'home/Header';
+import { HomeOverview } from 'home/HomeOverview';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
@@ -19,6 +19,8 @@ import { Observable }  from 'rxjs';
 import {
   create_global_store,
   fetch_global_stats,
+  fetch_global_app_specs,
+  fetch_country_node_counts,
   isWalletDOSState,
   pa_summary_full,
   validateAddress,
@@ -62,7 +64,11 @@ class Home extends React.Component {
       privacyMode: false,
       isZelId: false,
 
-      totalDonations: 0
+      totalDonations: 0,
+
+      appSpecs: null,
+      appSpecsError: false,
+      countryCounts: []
     };
 
     this._refreshInterval = null;
@@ -224,6 +230,12 @@ class Home extends React.Component {
       fetch_global_stats(null)
         .then((gstore) => {
           this.setState({ gstore });
+          fetch_global_app_specs(gstore)
+            .then((specs) => this.setState({ appSpecs: specs }))
+            .catch(() => this.setState({ appSpecs: {}, appSpecsError: true }));
+          fetch_country_node_counts()
+            .then((counts) => this.setState({ countryCounts: counts }))
+            .catch(() => {});
           return fetch_total_network_utils(gstore);
         })
         .then((gstore) => {
@@ -559,14 +571,11 @@ class Home extends React.Component {
                 </Row>
               </Container>
 
-              {enableDashboardCells && (
-                <DashboardCells gstore={this.state.gstore} total_donations={this.state.totalDonations} />
-              )}
-              <br />
-              <br />
-              <br />
-              <br />
-              <br />
+              <HomeOverview
+                gstore={this.state.gstore}
+                appSpecs={this.state.appSpecs}
+                countryCounts={this.state.countryCounts}
+              />
             </>
           );
         }}

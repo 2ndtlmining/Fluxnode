@@ -4,6 +4,7 @@ import { GiToaster, GiTortoise, GiCastle, GiOilPump, GiSpermWhale, GiPlasticDuck
 import { TbBuildingSkyscraper, TbActivityHeartbeat, TbBrowser } from 'react-icons/tb';
 import { categorizeApp } from './appCategories';
 import { fv_compare } from 'main/flux_version';
+import { hide_sensitive_number } from '../../utils';
 
 export const TIER = {
   BRONZE: 'bronze',
@@ -153,7 +154,7 @@ function _bestRankInCountry(walletCountryNodes, metricRankings) {
  * Only generated for tiers where the wallet has nodes.
  * officialNodeCounts comes from getzelnodecount (same source as dashboard header).
  */
-function computeTierPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts) {
+function computeTierPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
 
@@ -185,7 +186,7 @@ function computeTierPerformanceAchievements(walletNodes, tierRankings, officialN
           id: `global_${tier}_${metric.key}_${medalTier}`,
           name: `${tierLabel} ${metric.label} ${medalTier.charAt(0).toUpperCase() + medalTier.slice(1)}`,
           description: earned
-            ? `Your node (${bestNodeDisplay}) is ranked #${medalRank} globally for ${metric.label} among all ${totalInTier.toLocaleString()} ${tierLabel} nodes! (${valueStr})`
+            ? `Your node (${enablePrivacyMode ? hide_sensitive_number(bestNodeDisplay) : bestNodeDisplay}) is ranked #${medalRank} globally for ${metric.label} among all ${totalInTier.toLocaleString()} ${tierLabel} nodes! (${valueStr})`
             : bestRank !== null
             ? `Your best ${tierLabel} node ranks #${bestRank.toLocaleString()} of ${totalInTier.toLocaleString()} globally for ${metric.label} (${valueStr})`
             : `No ${tierLabel} nodes with benchmark data found`,
@@ -214,7 +215,7 @@ function computeTierPerformanceAchievements(walletNodes, tierRankings, officialN
  * Compute global per-country performance achievements.
  * ONLY generated for countries where the wallet has at least one node.
  */
-function computeCountryPerformanceAchievements(walletNodes, countryRankings, nodeGeoMap) {
+function computeCountryPerformanceAchievements(walletNodes, countryRankings, nodeGeoMap, enablePrivacyMode = false) {
   if (!countryRankings || !nodeGeoMap) return [];
   const results = [];
 
@@ -266,7 +267,7 @@ function computeCountryPerformanceAchievements(walletNodes, countryRankings, nod
           name: `${country} ${nodeTierLabel} ${metric.label} ${medalLabel}`,
           countryCode: cc,
           description: earned
-            ? `Your ${nodeTierLabel} node (${bestNodeDisplay}) has the #${medalRank} ${metric.label} score among all ${totalInGroup} ${nodeTierLabel} nodes in ${country}! (${valueStr})`
+            ? `Your ${nodeTierLabel} node (${enablePrivacyMode ? hide_sensitive_number(bestNodeDisplay) : bestNodeDisplay}) has the #${medalRank} ${metric.label} score among all ${totalInGroup} ${nodeTierLabel} nodes in ${country}! (${valueStr})`
             : `Your best ${nodeTierLabel} node in ${country} ranks #${bestRank} of ${totalInGroup} ${nodeTierLabel} nodes for ${metric.label} (${valueStr})`,
           hint: `Be ranked #${medalRank} for ${metric.label} among all ${nodeTierLabel} nodes in ${country}`,
           Icon: metric.Icon,
@@ -290,7 +291,7 @@ function computeCountryPerformanceAchievements(walletNodes, countryRankings, nod
 // One set of 3 difficulty levels per tier — based on the wallet's WORST node
 // across any metric. Thresholds use metricRankings.length (benchmarked nodes).
 
-function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts) {
+function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
 
@@ -369,8 +370,8 @@ function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, offi
         id: level.id,
         name: level.name,
         description: level.earned
-          ? `Your ${tierLabel} node (${nodeDisplay}) is in the bottom ${pctFromBottom}% for ${metricLabel} across all ${displayTotal} ${tierLabel} nodes! ${level.emoji} (${valueStr})`
-          : `Your worst ${tierLabel} node is in the bottom ${pctFromBottom}% for ${metricLabel} (${nodeDisplay}, ${valueStr})`,
+          ? `Your ${tierLabel} node (${enablePrivacyMode ? hide_sensitive_number(nodeDisplay) : nodeDisplay}) is in the bottom ${pctFromBottom}% for ${metricLabel} across all ${displayTotal} ${tierLabel} nodes! ${level.emoji} (${valueStr})`
+          : `Your worst ${tierLabel} node is in the bottom ${pctFromBottom}% for ${metricLabel} (${enablePrivacyMode ? hide_sensitive_number(nodeDisplay) : nodeDisplay}, ${valueStr})`,
         hint: level.hint,
         Icon: level.Icon,
         tier: level.achievementTier,
@@ -389,7 +390,7 @@ function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, offi
 // One per tier × metric — awarded when the wallet's worst node in that tier is
 // ranked dead last for that specific metric (more granular than Potato).
 
-function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeCounts) {
+function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
@@ -410,7 +411,7 @@ function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeC
         id: `wooden_spoon_${tier}_${metric.key}`,
         name: `${tierLabel} ${metric.label} Wooden Spoon`,
         description: earned
-          ? `Your ${tierLabel} node (${worstNodeDisplay}) is ranked dead last for ${metric.label} among all ${totalInTier.toLocaleString()} ${tierLabel} nodes! 🥄 (${valueStr})`
+          ? `Your ${tierLabel} node (${enablePrivacyMode ? hide_sensitive_number(worstNodeDisplay) : worstNodeDisplay}) is ranked dead last for ${metric.label} among all ${totalInTier.toLocaleString()} ${tierLabel} nodes! 🥄 (${valueStr})`
           : `Your worst ${tierLabel} node for ${metric.label} is ranked #${worstRank.toLocaleString()} of ${totalInTier.toLocaleString()} ${tierLabel} nodes (${valueStr})`,
         hint: `Have a node ranked dead last for ${metric.label} among all ${tierLabel} nodes`,
         Icon: FaUtensilSpoon,
@@ -429,7 +430,7 @@ function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeC
 // One per tier × metric — awarded when the wallet's best node in that tier
 // ranks in the top 5% for that metric (stacks with medal achievements).
 
-function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCounts) {
+function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
@@ -453,7 +454,7 @@ function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCount
         id: `try_hard_${tier}_${metric.key}`,
         name: `${tierLabel} ${metric.label} Try Hard`,
         description: earned
-          ? `Your ${tierLabel} node (${bestNodeDisplay}) is in the top ${topPct}% globally for ${metric.label} among ${totalInTier.toLocaleString()} ${tierLabel} nodes! 💪 (${valueStr})`
+          ? `Your ${tierLabel} node (${enablePrivacyMode ? hide_sensitive_number(bestNodeDisplay) : bestNodeDisplay}) is in the top ${topPct}% globally for ${metric.label} among ${totalInTier.toLocaleString()} ${tierLabel} nodes! 💪 (${valueStr})`
           : `Your best ${tierLabel} node ranks #${bestRank.toLocaleString()} of ${totalInTier.toLocaleString()} for ${metric.label} — top 5% is rank #${topFivePctThreshold} (${valueStr})`,
         hint: `Have a ${tierLabel} node in the top 5% for ${metric.label} (but not top 3)`,
         Icon: FaDumbbell,
@@ -689,7 +690,7 @@ function computeStaticAchievements(gstore, walletNodes, walletPASummary, totalDo
  * Compute all achievements (static + global performance medals).
  * globalRankings may be null while loading — performance medals are omitted until available.
  */
-export function computeAchievements(gstore, walletNodes, walletPASummary, totalDonations, globalRankings) {
+export function computeAchievements(gstore, walletNodes, walletPASummary, totalDonations, globalRankings, enablePrivacyMode = false) {
   if (!gstore || !walletNodes || walletNodes.length === 0) {
     return ACHIEVEMENT_DEFS.map((d) => ({
       ...d,
@@ -712,21 +713,24 @@ export function computeAchievements(gstore, walletNodes, walletPASummary, totalD
   const tierPerf = computeTierPerformanceAchievements(
     walletNodes,
     globalRankings.tierRankings,
-    globalRankings.officialNodeCounts
+    globalRankings.officialNodeCounts,
+    enablePrivacyMode
   );
   const countryPerf = computeCountryPerformanceAchievements(
     walletNodes,
     globalRankings.countryRankings,
-    globalRankings.nodeGeoMap
+    globalRankings.nodeGeoMap,
+    enablePrivacyMode
   );
   const worstTierPerf = computeTierWorstPerformanceAchievements(
     walletNodes,
     globalRankings.tierRankings,
-    globalRankings.officialNodeCounts
+    globalRankings.officialNodeCounts,
+    enablePrivacyMode
   );
   const dictator = computeDictatorAchievements(walletNodes, globalRankings);
-  const woodenSpoon = computeWoodenSpoonAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts);
-  const tryHard = computeTryHardAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts);
+  const woodenSpoon = computeWoodenSpoonAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts, enablePrivacyMode);
+  const tryHard = computeTryHardAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts, enablePrivacyMode);
 
   return [...staticAchievements, ...tierPerf, ...countryPerf, ...worstTierPerf, ...dictator, ...woodenSpoon, ...tryHard];
 }

@@ -23,7 +23,7 @@ const CATEGORIES = {
     name: 'Communication',
     keywords: [
       'conduit', 'teamspeak', 'matrix', 'synapse', 'mumble',
-      'coturn', 'jitsi', 'rocket.chat', 'mattermost',
+      'coturn', 'jitsi', 'rocket.chat', 'mattermost', 'streamr',
     ],
   },
   web: {
@@ -40,6 +40,7 @@ const CATEGORIES = {
       'bitcoin', 'ethereum', 'kaspa', 'kadena', 'ergo',
       'monero', 'litecoin', 'dogecoin', 'solana', 'avalanche',
       'alephium', 'blockbook', 'flux-dns', 'flux-foundation',
+      'firoorg', 'firod', 'zcash', 'ravencoin', 'dash-node',
     ],
   },
   database: {
@@ -58,8 +59,9 @@ const CATEGORIES = {
   },
   media: {
     name: 'Media',
+    // 'plex' alone matches 'simplexchat' — use '/plex' and 'plexinc' instead
     keywords: [
-      'jellyfin', 'plex', 'emby', 'navidrome', 'airsonic',
+      'jellyfin', '/plex', 'plexinc', 'emby', 'navidrome', 'airsonic',
       'kodi', 'subsonic', 'funkwhale',
     ],
   },
@@ -68,6 +70,21 @@ const CATEGORIES = {
     keywords: [
       'ollama', 'stable-diffusion', 'localai', 'whisper', 'comfyui',
       'open-webui', 'text-generation', 'llm', 'tensorflow', 'pytorch',
+    ],
+  },
+  vpn: {
+    name: 'VPN / Privacy',
+    // 'presearch' is a decentralised search node with 300+ running instances
+    keywords: [
+      'presearch', 'wireguard', 'wg-easy', 'openvpn',
+      'tailscale', 'shadowsocks', 'v2ray', 'xray', 'sing-box', 'i2p',
+    ],
+  },
+  monitoring: {
+    name: 'Monitoring',
+    keywords: [
+      'grafana', 'prometheus', 'uptime-kuma', 'netdata',
+      'portainer', '/loki', 'zabbix', 'checkmk', 'glances',
     ],
   },
 };

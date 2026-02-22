@@ -148,8 +148,8 @@ export function GamificationSection({ gstore, walletNodes, walletPASummary, tota
   const [categoryFilter, setCategoryFilter] = React.useState('all');
 
   const achievements = useMemo(
-    () => computeAchievements(gstore, walletNodes, walletPASummary, totalDonations, globalRankings),
-    [gstore, walletNodes, walletPASummary, totalDonations, globalRankings]
+    () => computeAchievements(gstore, walletNodes, walletPASummary, totalDonations, globalRankings, enablePrivacyMode),
+    [gstore, walletNodes, walletPASummary, totalDonations, globalRankings, enablePrivacyMode]
   );
 
   const appCategories = useMemo(() => analyzeAppCategories(walletNodes), [walletNodes]);

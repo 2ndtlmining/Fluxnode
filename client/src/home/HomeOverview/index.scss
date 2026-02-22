@@ -1,0 +1,586 @@
+@import 'styles/functional';
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+
+.home-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px 28px;
+}
+
+.home-overview-row {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Panel card ────────────────────────────────────────────────────────────────
+
+.hov-panel {
+  border-radius: 10px;
+  padding: 14px 16px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+
+  @include rule-mode-dark() {
+    background: #1f2123;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+
+  // Per-panel accent strip on left edge
+  &--stats      { border-left: 3px solid #2686d0; }
+  &--resources  { border-left: 3px solid #6366f1; }
+  &--ecosystem  { border-left: 3px solid #f59e0b; }
+  &--top-apps   { border-left: 3px solid #10b981; }
+  &--expiring   { border-left: 3px solid #ef4444; }
+  &--deployed   { border-left: 3px solid #22c55e; }
+  &--geo        { border-left: 3px solid #8b5cf6; }
+}
+
+.hov-panel-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+}
+
+// ── Panel header ──────────────────────────────────────────────────────────────
+
+.hov-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.hov-header-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9ca3af;
+
+  @include rule-mode-dark() {
+    color: #6b7280;
+  }
+}
+
+.hov-header-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(100, 100, 100, 0.1);
+  color: #6b7280;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+    color: #9ca3af;
+  }
+}
+
+// ── Thin progress bar ─────────────────────────────────────────────────────────
+
+.hov-thin-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.15);
+  overflow: hidden;
+  flex: 1;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.hov-thin-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
+
+.hov-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.07);
+  margin: 10px 0;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
+
+// ── KV rows (simple label / value) ────────────────────────────────────────────
+
+.hov-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hov-kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.hov-kv-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+
+  @include rule-mode-dark() {
+    color: #9ca3af;
+  }
+}
+
+.hov-kv-value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+// ── Tier rows (network stats panel) ──────────────────────────────────────────
+
+.hov-tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 2px;
+}
+
+.hov-tier-row {
+  display: grid;
+  align-items: center;
+  gap: 6px;
+  grid-template-columns: 8px 52px 1fr 44px 40px;
+}
+
+.hov-tier-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hov-tier-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.hov-tier-count {
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hov-tier-pct {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-align: right;
+}
+
+// ── Resource rows (network resources panel) ───────────────────────────────────
+
+.hov-res-row {
+  margin-bottom: 10px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.hov-res-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.hov-res-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #374151;
+
+  @include rule-mode-dark() {
+    color: #d1d5db;
+  }
+}
+
+.hov-res-pct {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #374151;
+
+  @include rule-mode-dark() {
+    color: #d1d5db;
+  }
+}
+
+.hov-res-numbers {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+// ── App Ecosystem panel ────────────────────────────────────────────────────────
+
+.hov-eco-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hov-eco-row {
+  display: grid;
+  align-items: center;
+  gap: 5px;
+  grid-template-columns: 14px 80px 1fr 40px 30px;
+}
+
+.hov-eco-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.hov-eco-label {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.35);
+}
+
+.hov-eco-bar-wrap {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.12);
+  overflow: hidden;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
+
+.hov-eco-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  opacity: 0.85;
+}
+
+.hov-eco-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hov-eco-pct {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  text-align: right;
+}
+
+// ── Ranked list (top hosted apps) ─────────────────────────────────────────────
+
+.hov-ranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hov-ranked-row {
+  display: grid;
+  align-items: center;
+  gap: 6px;
+  grid-template-columns: 20px 1fr 60px 36px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.07);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hov-rank {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hov-ranked-name {
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.hov-ranked-bar-wrap {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(38, 134, 208, 0.12);
+  overflow: hidden;
+}
+
+.hov-ranked-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #2686d0, #5eb8ff);
+  transition: width 0.5s ease;
+}
+
+// ── Bottom row: fixed 10-row height panels ────────────────────────────────────
+
+.hov-panel--top-apps,
+.hov-panel--expiring,
+.hov-panel--deployed {
+  display: flex;
+  flex-direction: column;
+
+  .hov-ranked-list,
+  .hov-list {
+    height: 380px;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+// ── Scrollable list ────────────────────────────────────────────────────────────
+
+.hov-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.hov-list-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+  font-size: 0.79rem;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hov-list-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+// ── Badges ─────────────────────────────────────────────────────────────────────
+
+.hov-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(38, 134, 208, 0.12);
+  color: #2686d0;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  @include rule-mode-dark() {
+    background: rgba(38, 134, 208, 0.22);
+    color: #5eb8ff;
+  }
+
+  &--warn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+
+    @include rule-mode-dark() {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+  }
+
+  &--green {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+
+    @include rule-mode-dark() {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+  }
+}
+
+// ── Spec row (Expiring / Deployed Today) ─────────────────────────────────────
+
+.hov-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+  font-size: 0.79rem;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hov-spec-val {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+}
+
+// ── Category tooltip ──────────────────────────────────────────────────────────
+
+.hov-cat-tooltip {
+  .bp4-tooltip2 {
+    max-width: 220px;
+    font-size: 0.75rem;
+  }
+}
+
+// ── Time text ─────────────────────────────────────────────────────────────────
+
+.hov-time {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &--warn {
+    color: #ef4444;
+
+    @include rule-mode-dark() {
+      color: #f87171;
+    }
+  }
+
+  &--green {
+    color: #16a34a;
+
+    @include rule-mode-dark() {
+      color: #4ade80;
+    }
+  }
+}
+
+.hov-empty {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  padding: 12px 0;
+  text-align: center;
+}
+
+// ── KV value stack (value + sub-text aligned right) ───────────────────────────
+
+.hov-kv-value-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+// ── CPU Demand indicator dot ───────────────────────────────────────────────────
+
+.hov-demand-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+// ── Accent colors for KV values ────────────────────────────────────────────────
+
+.hov-locked {
+  color: #7c5cbf;
+}
+
+.hov-green {
+  color: #16a34a;
+
+  @include rule-mode-dark() {
+    color: #4ade80;
+  }
+}
+
+// ── Geo Distribution Panel ─────────────────────────────────────────────────────
+
+.hov-geo-subtitle {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+
+.hov-geo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hov-geo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 5px;
+  border-radius: 20px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  cursor: default;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.15);
+  }
+
+  @include rule-mode-dark() {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.25);
+
+    &:hover {
+      background: rgba(139, 92, 246, 0.22);
+    }
+  }
+}
+
+.hov-geo-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #6d28d9;
+
+  @include rule-mode-dark() {
+    color: #a78bfa;
+  }
+}
