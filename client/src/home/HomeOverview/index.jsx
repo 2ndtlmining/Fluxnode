@@ -415,9 +415,9 @@ function ExpiringTodayPanel({ appSpecs }) {
             <div key={spec.name + i} className="hov-spec-row">
               <span className="hov-list-name">{spec.name}</span>
               <span className="hov-badge hov-badge--warn">{spec.instances}×</span>
-              <span className="hov-spec-val">{spec.totalCpu.toFixed(2)}c</span>
-              <span className="hov-spec-val">{spec.totalRamGB.toFixed(2)}GB</span>
-              <span className="hov-spec-val">{(spec.totalSsdGB || 0).toFixed(2)}GB</span>
+              <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
+              <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
+              <span className="hov-spec-val">{(spec.ssdGBPerInst || 0).toFixed(2)}GB</span>
               <span className="hov-time hov-time--warn">in {blocksToHuman(spec.expiresInBlocks)}</span>
             </div>
           ))
@@ -451,9 +451,9 @@ function DeployedTodayPanel({ appSpecs }) {
             <div key={spec.name + i} className="hov-spec-row">
               <span className="hov-list-name">{spec.name}</span>
               <span className="hov-badge hov-badge--green">{spec.instances}×</span>
-              <span className="hov-spec-val">{spec.totalCpu.toFixed(2)}c</span>
-              <span className="hov-spec-val">{spec.totalRamGB.toFixed(2)}GB</span>
-              <span className="hov-spec-val">{(spec.totalSsdGB || 0).toFixed(2)}GB</span>
+              <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
+              <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
+              <span className="hov-spec-val">{(spec.ssdGBPerInst || 0).toFixed(2)}GB</span>
               <span className="hov-time hov-time--green">{blocksToHuman(spec.deployedAgeBlocks)} ago</span>
             </div>
           ))

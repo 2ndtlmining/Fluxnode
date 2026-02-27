@@ -1276,16 +1276,16 @@ export async function fetch_global_app_specs(gstore) {
       const isCompose = Array.isArray(spec.compose);
       const instances = spec.instances || 1;
 
-      // Resource totals — compose specs store per-component, flat specs store directly
-      let totalCpu, totalRamGB, totalSsdGB;
+      // Resource per instance — compose specs sum across components, flat specs read directly
+      let cpuPerInst, ramGBPerInst, ssdGBPerInst;
       if (isCompose) {
-        totalCpu = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0) * instances;
-        totalRamGB = (spec.compose.reduce((s, c) => s + (c.ram || 0), 0) * instances) / 1024;
-        totalSsdGB = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0) * instances;
+        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
+        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
+        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
       } else {
-        totalCpu = (spec.cpu || 0) * instances;
-        totalRamGB = ((spec.ram || 0) * instances) / 1024;
-        totalSsdGB = (spec.hdd || 0) * instances;
+        cpuPerInst = spec.cpu || 0;
+        ramGBPerInst = (spec.ram || 0) / 1024;
+        ssdGBPerInst = spec.hdd || 0;
       }
 
       // Categorize by compose image names first (more accurate than app name)
@@ -1303,7 +1303,7 @@ export async function fetch_global_app_specs(gstore) {
       const specHeight = spec.height || 0;
       const deployedAgeBlocks = currentBlock - specHeight;
 
-      const enriched = { ...spec, instances, totalCpu, totalRamGB, totalSsdGB };
+      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst };
 
       if (currentBlock > 0 && deployedAgeBlocks >= 0 && deployedAgeBlocks < BLOCKS_PER_DAY) {
         deployedToday.push({ ...enriched, deployedAgeBlocks });
