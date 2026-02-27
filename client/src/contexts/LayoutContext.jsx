@@ -23,6 +23,7 @@ export function LayoutConfigurationProvider(props) {
   const [autoRefresh, setAutoRefresh] = useState(() => getLocalStorageValue('autoRefresh', false));
   const [enableGamification, setGamification] = useState(() => getLocalStorageValue('enableGamification', true));
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [arcaneHumanVersion, setArcaneHumanVersion] = useState(null);
   const location = useLocation()
 
 
@@ -160,6 +161,8 @@ export function LayoutConfigurationProvider(props) {
           enableGamification,
           lastUpdated,
           setLastUpdated,
+          arcaneHumanVersion,
+          setArcaneHumanVersion,
           selectedCurrency,
           onToggleEstimatedEarningsTab: toggleEstimatedEarningsTab,
           onToggleParallelAssetsTab: toggleParallelAssetsTab,
@@ -182,6 +185,8 @@ export function LayoutConfigurationProvider(props) {
           enableGamification,
           lastUpdated,
           setLastUpdated,
+          arcaneHumanVersion,
+          setArcaneHumanVersion,
           selectedCurrency,
           toggleEstimatedEarningsTab,
           toggleParallelAssetsTab,

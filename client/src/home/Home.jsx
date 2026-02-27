@@ -246,6 +246,7 @@ class Home extends React.Component {
         .then((gstore) => {
           this.setState({ gstore });
           this.context.setLastUpdated(new Date());
+          this.context.setArcaneHumanVersion(gstore.arcane_os?.humanVersion ?? null);
         });
     }
   }
@@ -339,6 +340,7 @@ class Home extends React.Component {
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
     this.context.setLastUpdated(new Date());
+    this.context.setArcaneHumanVersion(this.state.gstore?.arcane_os?.humanVersion ?? null);
   }
 
   handleAddrChange = (e) => {

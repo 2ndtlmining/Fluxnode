@@ -211,10 +211,16 @@ export async function fetch_arcane_os_stats(gstore) {
       // Calculate percentage
       const percentage = totalNodes > 0 ? (arcaneNodes / totalNodes) * 100 : 0;
 
+      const firstArcaneNode = json.data.find(
+        node => node.flux && node.flux.arcaneHumanVersion
+      );
+      const humanVersion = firstArcaneNode?.flux?.arcaneHumanVersion ?? null;
+
       store.arcane_os = {
         total_nodes: totalNodes,
         arcane_nodes: arcaneNodes,
-        percentage: percentage
+        percentage: percentage,
+        humanVersion: humanVersion
       };
 
       console.log('Final ArcaneOS Stats:', {
@@ -247,7 +253,8 @@ export async function fetch_arcane_os_stats(gstore) {
       store.arcane_os = {
         total_nodes: 0,
         arcane_nodes: 0,
-        percentage: 0
+        percentage: 0,
+        humanVersion: null
       };
     }
   } catch (error) {
@@ -256,7 +263,8 @@ export async function fetch_arcane_os_stats(gstore) {
     store.arcane_os = {
       total_nodes: 0,
       arcane_nodes: 0,
-      percentage: 0
+      percentage: 0,
+      humanVersion: null
     };
   }
 
