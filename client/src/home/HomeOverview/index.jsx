@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
@@ -6,6 +6,7 @@ import { Tooltip2 } from '@blueprintjs/popover2';
 import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaGamepad, FaTrophy } from 'react-icons/fa';
 import ReactCountryFlag from 'react-country-flag';
+import CountUp from 'react-countup';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { fluxos_version_string } from 'main/flux_version';
@@ -73,12 +74,16 @@ function shortImageName(image) {
 
 // ── Shared sub-components ──────────────────────────────────────────────────────
 
-function PanelHeader({ title, badge, right }) {
+function PanelHeader({ title, badge, badgeClassName, badgeContent, right }) {
   return (
     <div className="hov-header">
       <span className="hov-header-title">{title}</span>
       {right}
-      {badge != null && <span className="hov-header-badge">{fmtNum(badge)}</span>}
+      {badgeContent ?? (badge != null && (
+        <span className={`hov-header-badge${badgeClassName ? ' ' + badgeClassName : ''}`}>
+          {fmtNum(badge)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -103,10 +108,11 @@ function DemandIndicator({ pct }) {
       hoverOpenDelay={150}
     >
       <span
-        className="hov-demand-dot"
+        className={`hov-demand-dot${!level.border ? ' hov-demand-dot--pulse' : ''}`}
         style={{
           background: level.color,
-          boxShadow: level.border ? '0 0 0 1.5px #9ca3af' : 'none',
+          color: level.color,
+          ...(level.border ? { outline: '1.5px solid #9ca3af' } : {}),
         }}
       />
     </Tooltip2>
@@ -114,10 +120,17 @@ function DemandIndicator({ pct }) {
 }
 
 function ThinBar({ pct, color }) {
+  const [mounted, setMounted] = useState(false);
   const clamped = Math.min(100, Math.max(0, pct || 0));
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
     <div className="hov-thin-bar-track">
-      <div className="hov-thin-bar-fill" style={{ width: `${clamped}%`, background: color }} />
+      <div className="hov-thin-bar-fill" style={{ width: `${mounted ? clamped : 0}%`, background: color }} />
     </div>
   );
 }
@@ -141,7 +154,16 @@ function NetworkStatsPanel({ gstore }) {
 
   return (
     <div className="hov-panel hov-panel--stats">
-      <PanelHeader title="FLUX NETWORK" badge={total} />
+      <PanelHeader
+        title="FLUX NETWORK"
+        badgeContent={
+          total > 0 ? (
+            <span className="hov-header-badge hov-header-badge--hero">
+              <CountUp end={total} separator="," duration={1.5} />
+            </span>
+          ) : null
+        }
+      />
 
       <div className="hov-tier-list">
         {tiers.map(({ label, count, pct, color }) => (
@@ -168,8 +190,10 @@ function NetworkStatsPanel({ gstore }) {
         </div>
         <div className="hov-kv-row">
           <span className="hov-kv-label">FLUX Price</span>
-          <span className="hov-kv-value hov-green">
-            {gstore.flux_price_usd > 0 ? `$${gstore.flux_price_usd.toFixed(3)}` : '—'}
+          <span className="hov-kv-value hov-green" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+            {gstore.flux_price_usd > 0
+              ? <CountUp end={gstore.flux_price_usd} decimals={3} prefix="$" duration={1.5} />
+              : '—'}
           </span>
         </div>
         <div className="hov-kv-row">
@@ -374,7 +398,7 @@ function TopHostedAppsPanel({ gstore }) {
         ) : (
           images.map(({ image, nodeCount }, i) => (
             <div key={image} className="hov-ranked-row">
-              <span className="hov-rank">#{i + 1}</span>
+              <span className={`hov-rank${i === 0 ? ' hov-rank--gold' : i === 1 ? ' hov-rank--silver' : i === 2 ? ' hov-rank--bronze' : ''}`}>#{i + 1}</span>
               <span className="hov-ranked-name">{shortImageName(image)}</span>
               <div className="hov-ranked-bar-wrap">
                 <div
@@ -492,7 +516,7 @@ function GeoDistributionPanel({ gstore, countryCounts }) {
             <ReactCountryFlag
               countryCode={countryCode}
               svg
-              style={{ width: '1.3em', height: '1.3em', borderRadius: '2px' }}
+              style={{ width: '1.8em', height: '1.8em', borderRadius: '2px' }}
             />
             <span className="hov-geo-count">{fmtCompact(nodeCount)}</span>
           </div>

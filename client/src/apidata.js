@@ -403,7 +403,7 @@ export async function fetch_global_stats(walletAddress = null) {
       const json = await res.json();
 
       const imageCounts = new Map();
-      json?.data?.forEach((item) => {
+      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
         totalRunningApps += item?.apps?.runningapps?.length;
         if (JSON.stringify(item?.apps?.runningapps).includes(streamr)) streamrCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
@@ -441,7 +441,7 @@ export async function fetch_global_stats(walletAddress = null) {
       const res = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
       const json = await res.json();
       const uniquePaymentAddresses = new Set();
-      json?.data?.forEach((item) => {
+      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
         uniquePaymentAddresses.add(item.payment_address);
       });
       store.uniqueWalletAddressesCount = Array.from(uniquePaymentAddresses).length;
@@ -457,7 +457,7 @@ export async function fetch_global_stats(walletAddress = null) {
       
       let wordpressCount = 0;
 
-      if (json.status !== 'error' && json?.data) {
+      if (json.status !== 'error' && Array.isArray(json?.data)) {
         json.data.forEach((item) => {
           if (item?.apps?.runningapps) {
             // Check each running app for WordPress images
@@ -947,7 +947,7 @@ async function fetch_fusion_fees() {
   });
   const result = await resp.json();
 
-  return result.data.mining;
+  return result?.data?.mining;
 }
 
 async function fetch_wallet_pas(walletAddress) {
@@ -1026,7 +1026,7 @@ export async function wallet_pas_summary(walletAddress) {
     }
   }
 
-  if (resultFees.status == 'fulfilled') {
+  if (resultFees.status == 'fulfilled' && resultFees.value) {
     const fees = resultFees.value;
 
     summary.assets.kda.fusion_fee = fees['kda'];
@@ -1105,7 +1105,7 @@ export async function fetch_global_performance_rankings() {
 
     // IP host → tier
     const ipTierMap = {};
-    for (const node of nodesJson.fluxNodes || []) {
+    for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
       const host = (node.ip || '').split(':')[0];
       if (host) ipTierMap[host] = (node.tier || '').toUpperCase();
     }
@@ -1113,7 +1113,7 @@ export async function fetch_global_performance_rankings() {
     // IP host → geo
     // API shape: { data: [ { geolocation: { ip, country, countryCode, continent, ... } } ] }
     const nodeGeoMap = {};
-    for (const entry of geoJson.data || []) {
+    for (const entry of (Array.isArray(geoJson.data) ? geoJson.data : [])) {
       const geo = entry.geolocation;
       if (!geo) continue;
       const host = (geo.ip || '').split(':')[0];
@@ -1133,7 +1133,7 @@ export async function fetch_global_performance_rankings() {
     const countryDominance = {};
     {
       const countryWalletCounts = {}; // cc → { country, counts: { addr → count } }
-      for (const node of nodesJson.fluxNodes || []) {
+      for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
         const host = (node.ip || '').split(':')[0];
         if (!host || !node.payment_address) continue;
         const geo = nodeGeoMap[host];
@@ -1155,7 +1155,7 @@ export async function fetch_global_performance_rankings() {
     // API shape: { data: [ { benchmark: { bench: { ipaddress, eps, ddwrite, download_speed, upload_speed, ... } } } ] }
     const VALID_TIERS = new Set(['CUMULUS', 'NIMBUS', 'STRATUS']);
     const nodeData = [];
-    for (const entry of benchJson.data || []) {
+    for (const entry of (Array.isArray(benchJson.data) ? benchJson.data : [])) {
       const bench = entry.benchmark?.bench;
       if (!bench) continue;
       const host = (bench.ipaddress || '').split(':')[0];
