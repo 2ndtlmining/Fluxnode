@@ -21,6 +21,7 @@ import {
   fetch_global_stats,
   fetch_global_app_specs,
   fetch_country_node_counts,
+  fetch_global_performance_rankings,
   isWalletDOSState,
   pa_summary_full,
   validateAddress,
@@ -68,7 +69,8 @@ class Home extends React.Component {
 
       appSpecs: null,
       appSpecsError: false,
-      countryCounts: []
+      countryCounts: [],
+      globalRankings: null
     };
 
     this._refreshInterval = null;
@@ -235,6 +237,9 @@ class Home extends React.Component {
             .catch(() => this.setState({ appSpecs: {}, appSpecsError: true }));
           fetch_country_node_counts()
             .then((counts) => this.setState({ countryCounts: counts }))
+            .catch(() => {});
+          fetch_global_performance_rankings()
+            .then((rankings) => this.setState({ globalRankings: rankings }))
             .catch(() => {});
           return fetch_total_network_utils(gstore);
         })
@@ -575,6 +580,7 @@ class Home extends React.Component {
                 gstore={this.state.gstore}
                 appSpecs={this.state.appSpecs}
                 countryCounts={this.state.countryCounts}
+                globalRankings={this.state.globalRankings}
               />
             </>
           );

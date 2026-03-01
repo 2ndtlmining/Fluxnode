@@ -14,9 +14,10 @@ const CATEGORIES = {
     name: 'Gaming',
     keywords: [
       // Game servers — intentionally specific to avoid false positives with Rust-language apps
-      'minecraft', 'valheim', 'terraria', 'ark-server', 'ark-survival',
+      'minecraft', 'valheim', 'terraria', 'ark-server', 'ark-survival', 'arkserver',
       'satisfactory', 'quake', 'minetest', 'csgo', 'palworld',
-      'vintage-story', 'factorio',
+      'vintage-story', 'factorio', 'enshrouded', 'teeworlds', 'wotlk',
+      'pacman', 'tetris', 'snake-server', 'supermario',
     ],
   },
   communication: {
@@ -24,6 +25,7 @@ const CATEGORIES = {
     keywords: [
       'conduit', 'teamspeak', 'matrix', 'synapse', 'mumble',
       'coturn', 'jitsi', 'rocket.chat', 'mattermost', 'streamr',
+      'element-web', 'simplexchat', 'standardnotes',
     ],
   },
   web: {
@@ -32,6 +34,11 @@ const CATEGORIES = {
       'wordpress', 'wp-nginx', 'ghost', 'joomla', 'drupal',
       'nextcloud', 'wiki', 'nginx', 'apache', 'strapi',
       'chaincade', 'webserver', 'whoogle', 'searxng',
+      'owncloud', 'onlyoffice', 'nitter', 'etherpad',
+      'cors-anywhere', 'yacy', 'drawio', 'flame',
+      'collabora', 'writefreely', 'lingva',
+      'flux-calculator', 'flux-api', 'libreddit', 'redlib', 'rimgo', 'quetre', 'grocy',
+      'wbo',
     ],
   },
   blockchain: {
@@ -41,6 +48,11 @@ const CATEGORIES = {
       'monero', 'litecoin', 'dogecoin', 'solana', 'avalanche',
       'alephium', 'blockbook', 'flux-dns', 'flux-foundation',
       'firoorg', 'firod', 'zcash', 'ravencoin', 'dash-node',
+      'explorer', 'wanchain', 'timpi',
+      'osmosis', 'polkadot', 'fluxcloud', 'ipfs',
+      'nostr', 'beldex', 'bitgert', 'fusenet', 'themok',
+      'fluxos', 'fusionbalances', 'ironfish', 'sushiswap', 'liquity', 'gmx',
+      'aave', 'pangolin', 'factornode', 'zelcash', 'titan',
     ],
   },
   database: {
@@ -48,13 +60,17 @@ const CATEGORIES = {
     keywords: [
       'mysql', 'postgres', 'mongo', 'redis', 'mariadb',
       'sqlite', 'influxdb', 'cassandra', 'couchdb', 'shared-db',
+      'rabbitmq',
     ],
   },
   devops: {
     name: 'DevOps / CI',
     keywords: [
       'github-runner', 'gitea', 'drone', 'jenkins', 'act-runner',
-      'gitlab', 'woodpecker', 'concourse', 'watchtower',
+      'gitlab', 'woodpecker', 'concourse', 'watchtower', 'orbit',
+      'budibase', 'webtop', 'vaultwarden',
+      'rustdesk', 'n8n', 'keycloak', 'code-server', 'kanboard',
+      'wekan', 'meshcentral', 'jira',
     ],
   },
   media: {
@@ -62,7 +78,7 @@ const CATEGORIES = {
     // 'plex' alone matches 'simplexchat' — use '/plex' and 'plexinc' instead
     keywords: [
       'jellyfin', '/plex', 'plexinc', 'emby', 'navidrome', 'airsonic',
-      'kodi', 'subsonic', 'funkwhale',
+      'kodi', 'subsonic', 'funkwhale', 'owncast', 'viewtube', 'yt-dl',
     ],
   },
   ai: {
@@ -78,6 +94,8 @@ const CATEGORIES = {
     keywords: [
       'presearch', 'wireguard', 'wg-easy', 'openvpn',
       'tailscale', 'shadowsocks', 'v2ray', 'xray', 'sing-box', 'i2p',
+      'socks5', 'softether', 'hiddenonion', 'vless', 'trojan', 'outline',
+      'tor-socks', 'x-ui', '3x-ui', 'http-proxy', 'eifa-proxy',
     ],
   },
   monitoring: {
