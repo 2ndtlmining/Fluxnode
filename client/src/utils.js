@@ -137,12 +137,12 @@ export function nextRewardComparator(data1, data2) {
   if (val2[1] === 'seconds') return -1;
 }
 
-export function format_amount(amount, enablePrivacyMode) {
+export function format_amount(amount, enablePrivacyMode, decimals) {
   if (enablePrivacyMode) {
     return hide_sensitive_number(amount);
   }
   // return millify(amount);
-  return format_thousands_separator(amount);
+  return format_thousands_separator(amount, decimals);
 }
 
 export function isIOS() {
@@ -158,11 +158,11 @@ export function isIOS() {
     || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
 }
 
-function format_thousands_separator(amount) {
+function format_thousands_separator(amount, decimals) {
   if (Number.isNaN(amount)) {
     throw new Error('Invalid amount type');
   }
-  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return amount.toLocaleString('en-US', { maximumFractionDigits: decimals != null ? decimals : 2 });
 }
 
 export function calculate_float_number(amount) {

@@ -192,7 +192,7 @@ function NetworkStatsPanel({ gstore }) {
           <span className="hov-kv-label">FLUX Price</span>
           <span className="hov-kv-value hov-green" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
             {gstore.flux_price_usd > 0
-              ? <CountUp end={gstore.flux_price_usd} decimals={3} prefix="$" duration={1.5} />
+              ? <CountUp end={gstore.flux_price_usd} decimals={4} prefix="$" duration={1.5} />
               : '—'}
           </span>
         </div>

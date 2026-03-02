@@ -142,6 +142,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
               iconWrapClassName={`dash-cell__flux-usd${suffixClassName}`}
               small={!normalFontSize}
               prefix={selectedCurrency?.currency === 'EUR' ? '€' : '$'}
+              decimals={4}
             />
             <CellTooltip tooltipContent={<FluxOSVersionView versionDesc={gs.fluxos_latest_version} />}>
               {(ref, tooltipProps) => (
