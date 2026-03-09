@@ -214,54 +214,41 @@ export const NodeGridTable = ({
 
   return (
     <>
-      <div className='table-header'>
-        <span className='title adp-text-normal'>
-          {showAchievements ? (
-            <>
-              Achievements
-              <br />
-              <span className='adp-text-muted overview-info-subtitle'>
-                {earnedCount} of {totalCount} earned
-              </span>
-            </>
-          ) : (
-            <>
-              Nodes Overview
-              <br />
-              <span className='adp-text-muted overview-info-subtitle'>
-                Hover mouse over a column header to see more information.
-              </span>
-            </>
-          )}
-        </span>
+      <div className={`table-header${enableGamification ? ' table-header--tabbed' : ''}`}>
+        {enableGamification ? (
+          <div className='chrome-tabs'>
+            <button
+              className={`chrome-tab${!showAchievements ? ' chrome-tab--active' : ''}`}
+              onClick={() => setShowAchievements(false)}
+            >
+              <FiServer className='chrome-tab__icon' />
+              <span className='chrome-tab__label'>Nodes Overview</span>
+              {data?.length > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--blue'>{data.length}</span>
+              )}
+            </button>
+            <button
+              className={`chrome-tab${showAchievements ? ' chrome-tab--active' : ''}`}
+              onClick={() => setShowAchievements(true)}
+              title='Achievements'
+            >
+              <FaTrophy className='chrome-tab__icon' />
+              <span className='chrome-tab__label'>Achievements</span>
+              {earnedCount > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--orange'>{earnedCount}</span>
+              )}
+            </button>
+          </div>
+        ) : (
+          <span className='title adp-text-normal'>
+            Nodes Overview
+            <br />
+            <span className='adp-text-muted overview-info-subtitle'>
+              Hover mouse over a column header to see more information.
+            </span>
+          </span>
+        )}
         <div className='cta-button-wrapper'>
-          {enableGamification && (
-            <div className='node-view-tabs'>
-              <Button
-                small
-                minimal={showAchievements}
-                active={!showAchievements}
-                intent={!showAchievements ? 'primary' : 'none'}
-                title='Node Overview'
-                onClick={() => setShowAchievements(false)}
-              >
-                <FiServer style={{ marginRight: data && data.length > 0 ? 5 : 0, verticalAlign: 'middle' }} />
-                {data && data.length > 0 ? data.length : ''}
-              </Button>
-              <Button
-                small
-                minimal={!showAchievements}
-                active={showAchievements}
-                intent={showAchievements ? 'warning' : 'none'}
-                className={earnedCount > 0 && !showAchievements ? 'achievement-btn-glow' : ''}
-                title={earnedCount > 0 ? `Achievements — ${earnedCount} earned` : 'Achievements'}
-                onClick={() => setShowAchievements(true)}
-              >
-                <FaTrophy style={{ marginRight: earnedCount > 0 ? 5 : 0, verticalAlign: 'middle' }} />
-                {earnedCount > 0 ? earnedCount : ''}
-              </Button>
-            </div>
-          )}
           {!showAchievements && (
             <>
               <div>Filter (IP):&nbsp;
