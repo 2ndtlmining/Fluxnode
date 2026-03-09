@@ -1311,7 +1311,7 @@ export async function fetch_global_app_specs(gstore) {
       const specHeight = spec.height || 0;
       const deployedAgeBlocks = currentBlock - specHeight;
 
-      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst };
+      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst, category: cat };
 
       if (currentBlock > 0 && deployedAgeBlocks >= 0 && deployedAgeBlocks < BLOCKS_PER_DAY) {
         deployedToday.push({ ...enriched, deployedAgeBlocks });
@@ -1405,6 +1405,44 @@ function _extract_country_counts(countryRankings) {
       ),
     }))
     .sort((a, b) => b.nodeCount - a.nodeCount);
+}
+
+// ── GPU Prices (FluxAI) ──────────────────────────────────────────────────────
+
+const API_GPU_PRICES_URL = 'https://service.fluxcore.ai/api/getGPUPrices';
+const GPU_PRICES_CACHE_KEY = 'gpuPrices_v1';
+const GPU_PRICES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function fetch_gpu_prices() {
+  try {
+    const raw = sessionStorage.getItem(GPU_PRICES_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && Date.now() - cached.timestamp < GPU_PRICES_CACHE_TTL) {
+        return cached.data;
+      }
+    }
+  } catch {}
+
+  try {
+    const res = await fetch(API_GPU_PRICES_URL, { ...REQUEST_OPTIONS_API });
+    const json = await res.json();
+    if (!Array.isArray(json)) return null;
+
+    const totalGPUs = json.reduce((s, g) => s + (g.number_of_gpus || 0), 0);
+    const totalComputers = json.reduce((s, g) => s + (g.number_of_computers || 0), 0);
+    const models = json
+      .filter((g) => g.number_of_gpus > 0)
+      .sort((a, b) => b.number_of_gpus - a.number_of_gpus);
+
+    const data = { models, totalGPUs, totalComputers };
+    try {
+      sessionStorage.setItem(GPU_PRICES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {}
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function isWalletDOSState(address) {

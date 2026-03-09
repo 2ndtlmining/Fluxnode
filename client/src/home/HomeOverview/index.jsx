@@ -5,6 +5,8 @@ import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaGamepad, FaTrophy } from 'react-icons/fa';
+import { LuBrainCircuit } from 'react-icons/lu';
+import { Gpu } from 'lucide-react';
 import ReactCountryFlag from 'react-country-flag';
 import CountUp from 'react-countup';
 
@@ -37,7 +39,7 @@ const APP_CATEGORY_META = {
   database:      { label: 'Database',      Icon: FiDatabase, color: '#06b6d4' },
   devops:        { label: 'DevOps / CI',   Icon: FiBox,      color: '#84cc16' },
   media:         { label: 'Media',         Icon: FiZap,      color: '#f43f5e' },
-  ai:            { label: 'AI / ML',       Icon: FiCpu,      color: '#a78bfa' },
+  ai:            { label: 'AI / ML',       Icon: LuBrainCircuit, color: '#a78bfa' },
   vpn:           { label: 'VPN / Privacy', Icon: FiShield,   color: '#0ea5e9' },
   monitoring:    { label: 'Monitoring',    Icon: FiActivity, color: '#f97316' },
   other:         { label: 'Other',         Icon: FiBox,      color: '#94a3b8' },
@@ -137,7 +139,7 @@ function ThinBar({ pct, color }) {
 
 // ── Panel 1: Flux Network Stats ───────────────────────────────────────────────
 
-function NetworkStatsPanel({ gstore }) {
+function NetworkStatsPanel({ gstore, gpuPrices }) {
   const { cumulus, nimbus, stratus, total } = gstore.node_count;
   const safeTotal = total || 1;
 
@@ -218,6 +220,18 @@ function NetworkStatsPanel({ gstore }) {
               : '—'}
           </span>
         </div>
+        {gpuPrices && (
+          <>
+            <div className="hov-kv-row">
+              <span className="hov-kv-label">FluxAI GPUs</span>
+              <span className="hov-kv-value hov-green">{fmtNum(gpuPrices.totalGPUs)}</span>
+            </div>
+            <div className="hov-kv-row">
+              <span className="hov-kv-label">FluxAI Machines</span>
+              <span className="hov-kv-value">{fmtNum(gpuPrices.totalComputers)}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -415,6 +429,35 @@ function TopHostedAppsPanel({ gstore }) {
   );
 }
 
+// ── Spec Header (shared by Expiring / Deployed panels) ──────────────────────
+
+function SpecHeader() {
+  return (
+    <div className="hov-spec-header">
+      <span className="hov-spec-header__name">Name</span>
+      <span className="hov-spec-header__cat">Cat</span>
+      <span className="hov-spec-header__inst">Inst</span>
+      <span className="hov-spec-header__val">CPU</span>
+      <span className="hov-spec-header__val">RAM</span>
+      <span className="hov-spec-header__val">SSD</span>
+      <span className="hov-spec-header__time">Time</span>
+    </div>
+  );
+}
+
+function SpecCategoryIcon({ category }) {
+  const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
+  const { Icon, color } = meta;
+  const tooltip = CATEGORY_TOOLTIPS[category] || CATEGORY_TOOLTIPS.other;
+  return (
+    <Tooltip2 content={tooltip} placement="top" hoverOpenDelay={200} popoverClassName="hov-cat-tooltip">
+      <span className="hov-spec-cat" style={{ color }}>
+        <Icon size={11} />
+      </span>
+    </Tooltip2>
+  );
+}
+
 // ── Panel 5: Apps Expiring Today ──────────────────────────────────────────────
 
 function ExpiringTodayPanel({ appSpecs }) {
@@ -431,6 +474,7 @@ function ExpiringTodayPanel({ appSpecs }) {
   return (
     <div className="hov-panel hov-panel--expiring">
       <PanelHeader title="EXPIRING TODAY" badge={items.length || null} />
+      {items.length > 0 && <SpecHeader />}
       <div className="hov-list">
         {items.length === 0 ? (
           <div className="hov-empty">None expiring today</div>
@@ -438,6 +482,7 @@ function ExpiringTodayPanel({ appSpecs }) {
           items.map((spec, i) => (
             <div key={spec.name + i} className="hov-spec-row">
               <span className="hov-list-name">{spec.name}</span>
+              <SpecCategoryIcon category={spec.category} />
               <span className="hov-badge hov-badge--warn">{spec.instances}×</span>
               <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
               <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
@@ -467,6 +512,7 @@ function DeployedTodayPanel({ appSpecs }) {
   return (
     <div className="hov-panel hov-panel--deployed">
       <PanelHeader title="DEPLOYED TODAY" badge={items.length || null} />
+      {items.length > 0 && <SpecHeader />}
       <div className="hov-list">
         {items.length === 0 ? (
           <div className="hov-empty">None deployed today</div>
@@ -474,6 +520,7 @@ function DeployedTodayPanel({ appSpecs }) {
           items.map((spec, i) => (
             <div key={spec.name + i} className="hov-spec-row">
               <span className="hov-list-name">{spec.name}</span>
+              <SpecCategoryIcon category={spec.category} />
               <span className="hov-badge hov-badge--green">{spec.instances}×</span>
               <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
               <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
@@ -616,13 +663,110 @@ function TopDogsPanel({ globalRankings }) {
   );
 }
 
+// ── FluxAI GPU Panel ──────────────────────────────────────────────────────────
+
+function FluxAIPanel({ gpuPrices }) {
+  const [sortKey, setSortKey] = useState('number_of_gpus');
+  const [sortDir, setSortDir] = useState('desc');
+
+  if (gpuPrices === null) return null;
+
+  const models = gpuPrices.models || [];
+
+  if (models.length === 0) {
+    return (
+      <div className="hov-panel hov-panel--fluxai">
+        <PanelHeader
+          title="FLUX AI"
+          right={<Gpu size={14} className="fluxai-header-icon" />}
+        />
+        <div className="hov-empty">No GPU data available</div>
+      </div>
+    );
+  }
+
+  const sorted = [...models].sort((a, b) => {
+    const av = a[sortKey] ?? 0;
+    const bv = b[sortKey] ?? 0;
+    return sortDir === 'desc' ? bv - av : av - bv;
+  });
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
+  const arrow = (key) => (sortKey === key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : '');
+
+  const columns = [
+    { key: 'short_name',           label: 'GPU Model',  align: 'left',  sortable: false },
+    { key: 'premium',              label: 'Tier',        align: 'center', sortable: false },
+    { key: 'number_of_computers',  label: 'Machines',    align: 'right', sortable: true },
+    { key: 'number_of_gpus',       label: 'GPUs',        align: 'right', sortable: true },
+    { key: 'min_price',            label: 'Min',         align: 'right', sortable: true },
+    { key: 'avg_price',            label: 'Avg',         align: 'right', sortable: true },
+    { key: 'median_price',         label: 'Median',      align: 'right', sortable: true },
+    { key: 'max_price',            label: 'Max',         align: 'right', sortable: true },
+  ];
+
+  return (
+    <div className="hov-panel hov-panel--fluxai">
+      <PanelHeader
+        title="FLUX AI"
+        right={<Gpu size={14} className="fluxai-header-icon" />}
+        badge={models.length}
+      />
+      <div className="fluxai-table-wrap">
+        <table className="fluxai-table">
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={col.sortable ? 'fluxai-th--sortable' : ''}
+                  style={{ textAlign: col.align }}
+                  onClick={col.sortable ? () => toggleSort(col.key) : undefined}
+                >
+                  {col.label}{col.sortable ? arrow(col.key) : ''}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((gpu) => (
+              <tr key={gpu.short_name}>
+                <td className="fluxai-td--name">{gpu.short_name}</td>
+                <td style={{ textAlign: 'center' }}>
+                  <span className={`fluxai-badge--${gpu.premium ? 'premium' : 'consumer'}`}>
+                    {gpu.premium ? 'Premium' : 'Consumer'}
+                  </span>
+                </td>
+                <td className="fluxai-td--num fluxai-td--machines">{fmtNum(gpu.number_of_computers)}</td>
+                <td className="fluxai-td--num">{fmtNum(gpu.number_of_gpus)}</td>
+                <td className="fluxai-td--num">${gpu.min_price?.toFixed(2) ?? '—'}</td>
+                <td className="fluxai-td--num">${gpu.avg_price?.toFixed(2) ?? '—'}</td>
+                <td className="fluxai-td--num">${gpu.median_price?.toFixed(2) ?? '—'}</td>
+                <td className="fluxai-td--num">${gpu.max_price?.toFixed(2) ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings }) {
+export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, gpuPrices }) {
   return (
     <div className="home-overview">
       <div className="home-overview-row">
-        <NetworkStatsPanel gstore={gstore} />
+        <NetworkStatsPanel gstore={gstore} gpuPrices={gpuPrices} />
         <NetworkResourcesPanel gstore={gstore} />
         <AppEcosystemPanel gstore={gstore} appSpecs={appSpecs} />
       </div>
@@ -632,6 +776,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings }
         <DeployedTodayPanel appSpecs={appSpecs} />
       </div>
       <TopDogsPanel globalRankings={globalRankings} />
+      <FluxAIPanel gpuPrices={gpuPrices} />
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />
     </div>
   );
