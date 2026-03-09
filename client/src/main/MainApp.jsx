@@ -276,6 +276,7 @@ class MainApp extends React.Component {
 
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
+      this.setState({ inputAddress: address });
     } else {
       fetch_global_stats(null)
         .then((gstore) => {
@@ -374,7 +375,8 @@ class MainApp extends React.Component {
       isPALoading: true, // Now start to fetch PA's (below)
 
       gstore,
-      activeAddress: address
+      activeAddress: address,
+      inputAddress: address
     });
 
     walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes }) => {
@@ -390,6 +392,10 @@ class MainApp extends React.Component {
   }
 
 
+
+  handleAddrChange = (e) => {
+    this.setState({ inputAddress: e.target.value });
+  };
 
   handleButtonClick = () => {
     this.onProcessAddress();
@@ -465,7 +471,7 @@ class MainApp extends React.Component {
 
   _selectAddr = (addr) => {
     this.addressInputRef.current.value = addr;
-    this.setState({ showSearchHistory: false });
+    this.setState({ showSearchHistory: false, inputAddress: addr });
   };
 
   _renderSearchHistory() {
@@ -561,7 +567,7 @@ class MainApp extends React.Component {
                   intent={intent}
                   placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
                   id={WALLET_INPUT_ID}
-                  value={this.state.inputAddress || sessionStorage.getItem('wallet')}
+                  value={this.state.inputAddress}
                   onChange={this.handleAddrChange}
                   onKeyUp={this.handleAddrKeyPress}
                   inputRef={mergeRefs(ref, this.addressInputRef)}
