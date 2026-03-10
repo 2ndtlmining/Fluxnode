@@ -190,6 +190,15 @@
     }
 }
 
+.chrome-tab__badge--green {
+    background: #d1fae5;
+    color: #047857;
+    @include rule-mode-dark() {
+        background: rgba(16, 185, 129, 0.25);
+        color: #6ee7b7;
+    }
+}
+
 @media (max-width: 768px) {
     .chrome-tab__label {
         display: none;

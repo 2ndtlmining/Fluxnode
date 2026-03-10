@@ -11,39 +11,8 @@ import ReactCountryFlag from 'react-country-flag';
 import CountUp from 'react-countup';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
+import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
 import { fluxos_version_string } from 'main/flux_version';
-
-// ── Category metadata ─────────────────────────────────────────────────────────
-
-const CATEGORY_TOOLTIPS = {
-  computing:     'Volunteer & distributed computing (Folding@Home, BOINC, Gridcoin)',
-  gaming:        'Game servers (Minecraft, Valheim, Factorio, CS:GO)',
-  communication: 'Chat & messaging servers (Matrix, Conduit, Mattermost, Jitsi)',
-  web:           'Web apps & CMS (WordPress, Nextcloud, Ghost, Nginx)',
-  blockchain:    'Blockchain nodes & explorers (Bitcoin, Ethereum, Kaspa, Kadena, Firo)',
-  database:      'Database servers (MySQL, PostgreSQL, Redis, MongoDB)',
-  devops:        'CI/CD & DevOps tools (Gitea, Jenkins, Woodpecker, Act)',
-  media:         'Media servers (Jellyfin, Plex, Navidrome, Emby)',
-  ai:            'AI & machine learning workloads (Ollama, LocalAI, ComfyUI)',
-  vpn:           'VPN, privacy & decentralised search (Presearch, WireGuard, Shadowsocks)',
-  monitoring:    'Observability & monitoring (Grafana, Prometheus, Uptime-Kuma, Netdata)',
-  other:         'Other / uncategorized applications',
-};
-
-const APP_CATEGORY_META = {
-  computing:     { label: 'Computing',     Icon: FiCpu,      color: '#6366f1' },
-  gaming:        { label: 'Gaming',         Icon: FaGamepad,  color: '#10b981' },
-  communication: { label: 'Communication', Icon: FiLink,     color: '#3b82f6' },
-  web:           { label: 'Web / CMS',     Icon: FiBox,      color: '#f59e0b' },
-  blockchain:    { label: 'Blockchain',    Icon: FiLink,     color: '#8b5cf6' },
-  database:      { label: 'Database',      Icon: FiDatabase, color: '#06b6d4' },
-  devops:        { label: 'DevOps / CI',   Icon: FiBox,      color: '#84cc16' },
-  media:         { label: 'Media',         Icon: FiZap,      color: '#f43f5e' },
-  ai:            { label: 'AI / ML',       Icon: LuBrainCircuit, color: '#a78bfa' },
-  vpn:           { label: 'VPN / Privacy', Icon: FiShield,   color: '#0ea5e9' },
-  monitoring:    { label: 'Monitoring',    Icon: FiActivity, color: '#f97316' },
-  other:         { label: 'Other',         Icon: FiBox,      color: '#94a3b8' },
-};
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
 
