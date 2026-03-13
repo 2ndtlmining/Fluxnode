@@ -8,17 +8,13 @@
 
     padding: 7px 80px;
 
-    color: #495057;
-    @include rule-mode-dark() {
-        color: rgb(181, 175, 166);
-    }
+    color: var(--text-secondary);
 }
 
 .App {
-    background-color: #f8f9fa;
-    @include qualify('.app-mode-dark') {
-        background-color: #1b1e1f;
-    }
+    background-color: var(--surface-secondary);
+    background-image: radial-gradient(var(--border-secondary) 1px, transparent 1px);
+    background-size: 24px 24px;
 }
 
 .pa-heading {
@@ -43,20 +39,35 @@
 }
 
 .form-group {
+    max-width: 640px;
+    margin: 0 auto;
+
     input {
-        padding: 0.4rem 0.4rem 0.4rem 1.3rem;
+        padding: 0.5rem 0.5rem 0.5rem 1.3rem;
         font-size: 0.9rem;
-        border-radius: 2rem 0 0 2rem;
+        border-radius: var(--radius-md) 0 0 var(--radius-md);
         height: auto;
         outline: none;
+        border: 1px solid var(--border-primary);
+        background: var(--surface-primary);
+        transition: border-color var(--transition-base), box-shadow var(--transition-base);
 
         &:focus {
-            box-shadow: none !important;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
         }
     }
 
     .bp4-button {
         padding-inline: 1.7rem;
-        border-radius: 0 2rem 2rem 0;
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        background: var(--accent-blue) !important;
+        color: #ffffff !important;
+        border: none;
+        transition: opacity var(--transition-fast);
+
+        &:hover {
+            opacity: 0.9;
+        }
     }
 }

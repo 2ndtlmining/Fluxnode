@@ -326,7 +326,16 @@ function AppEcosystemPanel({ gstore, appSpecs }) {
 
   return (
     <div className="hov-panel hov-panel--ecosystem">
-      <PanelHeader title="APP ECOSYSTEM" badge={grandTotal} />
+      <PanelHeader
+        title="APP ECOSYSTEM"
+        badgeContent={
+          grandTotal > 1 ? (
+            <span className="hov-header-badge hov-header-badge--hero">
+              <CountUp end={grandTotal} separator="," duration={1.5} />
+            </span>
+          ) : null
+        }
+      />
 
       <div className="hov-eco-list">
         {cats.map(({ category, totalInstances }) => {
