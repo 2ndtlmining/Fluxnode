@@ -192,7 +192,7 @@ function NetworkStatsPanel({ gstore, gpuPrices }) {
         {gpuPrices && (
           <>
             <div className="hov-kv-row">
-              <span className="hov-kv-label">FluxAI GPUs</span>
+              <span className="hov-kv-label">Flux Edge GPUs</span>
               <span className="hov-kv-value hov-green">{fmtNum(gpuPrices.totalGPUs)}</span>
             </div>
             <div className="hov-kv-row">
