@@ -72,6 +72,7 @@ class MainApp extends React.Component {
 
       totalDonations: 0,
       globalRankings: null,
+      walletHealth: null,
     };
 
     this._refreshInterval = null;
@@ -379,10 +380,11 @@ class MainApp extends React.Component {
       inputAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes }) => {
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes, health }) => {
       highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
       bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
       mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+      this.setState({ walletHealth: health });
     });
 
     const summary = await wallet_pas_summary(address);
@@ -614,6 +616,7 @@ class MainApp extends React.Component {
                   gstore={this.state.gstore}
                   total_donations={this.state.totalDonations}
                   totalScoreAgainstSearchedWallet={this.state.totalScoreAgainstSearchedWallet}
+                  walletHealth={this.state.walletHealth}
                 />
               )}
               {this.state.isWalletAvailable && this.renderActiveAddressView(enablePrivacyMode)}

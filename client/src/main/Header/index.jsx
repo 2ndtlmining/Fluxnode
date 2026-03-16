@@ -13,6 +13,7 @@ import { FaCrown, FaWallet, FaEuroSign } from 'react-icons/fa';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { fluxos_version_string } from 'main/flux_version';
 import { useContext } from 'react';
+import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 
 import { UtilizationBars } from 'components/UtilizationBars';
 
@@ -84,6 +85,32 @@ function DisplayTotalScore({ value }) {
   );
 }
 
+function WalletFluxBreakdown({ walletHealth, walletAmountFlux, totalScore }) {
+  const locked = walletHealth
+    ? (walletHealth.cumulus.node_count * CC_COLLATERAL_CUMULUS) +
+      (walletHealth.nimbus.node_count * CC_COLLATERAL_NIMBUS) +
+      (walletHealth.stratus.node_count * CC_COLLATERAL_STRATUS)
+    : 0;
+  const available = walletAmountFlux - locked;
+
+  return (
+    <div className='d-block mb-0 cell-tooltip-box'>
+      <p>
+        <span className='ct-name'>Locked: </span>
+        <span className='ct-val'>{locked.toLocaleString()} FLUX</span>
+      </p>
+      <p>
+        <span className='ct-name'>Available: </span>
+        <span className='ct-val'>{available.toLocaleString()} FLUX</span>
+      </p>
+      <p>
+        <span className='ct-name'>Total Score: </span>
+        <span className='ct-val'>{totalScore}</span>
+      </p>
+    </div>
+  );
+}
+
 function Cell({ name, value, icon, iconColor, iconColorAlt, small, cellHover, elementRef, ...otherProps }) {
   return (
     <InfoCell
@@ -118,7 +145,7 @@ function CellTooltip({ children, tooltipContent }) {
 
 const RenderedFluxIcon = ({ width, height }) => <FluxIcon width={32} height={32} viewBox='6 6 18.71 18.71' />;
 
-export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstSearchedWallet }) {
+export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstSearchedWallet, walletHealth }) {
   const { normalFontSize, enablePrivacyMode } = useContext(LayoutContext);
 
   const iconSize = normalFontSize ? '28px' : '22px';
@@ -205,7 +232,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
               )}
             </CellTooltip>
 
-            <CellTooltip tooltipContent={<DisplayTotalScore value={totalScoreAgainstSearchedWallet} />}>
+            <CellTooltip tooltipContent={<WalletFluxBreakdown walletHealth={walletHealth} walletAmountFlux={gs.wallet_amount_flux} totalScore={totalScoreAgainstSearchedWallet} />}>
               {(ref, tooltipProps) => (
                 <Cell
                   elementRef={ref}
