@@ -1,4 +1,5 @@
 import { useContext } from 'react';
+import 'react-circular-progressbar/dist/styles.css';
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 import { calculate_float_number } from 'utils';
 import { InfoCell } from 'components/InfoCell';

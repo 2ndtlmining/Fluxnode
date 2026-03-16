@@ -1,5 +1,6 @@
 import { FaStar, FaGamepad, FaTrophy, FaGlobe, FaMedal, FaFire, FaSnowflake, FaLeaf, FaCrown, FaRocket, FaSeedling, FaNetworkWired, FaFlag, FaFeather, FaCouch, FaCoffee, FaPizzaSlice, FaSyncAlt, FaHourglassHalf, FaUtensilSpoon, FaDumbbell, FaBaby, FaMoneyBillWave, FaLayerGroup, FaHeartbeat } from 'react-icons/fa';
 import { FiServer, FiZap, FiCpu, FiDatabase, FiAward, FiLink, FiBox, FiShield, FiActivity, FiLayers } from 'react-icons/fi';
+import { LuBoxes, LuWarehouse } from 'react-icons/lu';
 import { GiToaster, GiTortoise, GiCastle, GiOilPump, GiSpermWhale, GiPlasticDuck, GiSwan, GiPotato, GiHeartBeats, GiSloth, GiRetroController, GiNestBirds } from 'react-icons/gi';
 import { TbBuildingSkyscraper, TbActivityHeartbeat, TbBrowser } from 'react-icons/tb';
 import { categorizeApp } from './appCategories';
@@ -51,9 +52,9 @@ export const ACHIEVEMENT_DEFS = [
   def('hosts_multiple_gaming', 'LAN Party', 'Host 3 or more different gaming apps', 'Host 3 different gaming apps', GiRetroController, TIER.SILVER, 'apps'),
   def('hosts_web', 'Web Host', 'Host a web or CMS application', 'Host a web app', TbBrowser, TIER.BRONZE, 'apps'),
   def('hosts_blockchain', 'Chain Validator', 'Host a blockchain node application', 'Host a blockchain app', FiLink, TIER.SILVER, 'apps'),
-  def('app_diversity', 'Diverse Host', 'Host applications in 4 or more categories', 'Host apps in 4+ categories', FiBox, TIER.GOLD, 'apps'),
+  def('app_diversity', 'Diverse Host', 'Host applications in 4 or more categories', 'Host apps in 4+ categories', LuBoxes, TIER.GOLD, 'apps'),
   def('most_apps', 'App Champion', 'Have a node hosting 10 or more apps', 'Get a node to 10+ apps', FiBox, TIER.SILVER, 'apps'),
-  def('most_apps_mega', 'Mega Host', 'Have a node hosting 25 or more apps', 'Get a node to 25+ apps', FiBox, TIER.GOLD, 'apps'),
+  def('most_apps_mega', 'Mega Host', 'Have a node hosting 25 or more apps', 'Get a node to 25+ apps', LuWarehouse, TIER.GOLD, 'apps'),
   // Fleet-wide total apps
   def('fleet_apps_10', 'App Farmer', 'Your fleet is collectively running 10 or more apps total', 'Run 10 apps across your fleet', FaSeedling, TIER.BRONZE, 'apps'),
   def('fleet_apps_50', 'App Mogul', 'Your fleet is collectively running 50 or more apps total', 'Run 50 apps across your fleet', FaFire, TIER.SILVER, 'apps'),

@@ -19,6 +19,7 @@ export function InfoCell({
   isPrivacy,
   prefix = '',
   suffix = '',
+  decimals,
   toggleBtn,
   children,
   ...otherProps
@@ -31,7 +32,7 @@ export function InfoCell({
 
   const isDecimal = !Number.isInteger(value);
 
-  const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal prefix={prefix} suffix={suffix} />);
+  const countupValue = (<CountUp end={value} separator=',' duration={2} isDecimal decimals={decimals} prefix={prefix} suffix={suffix} />);
 
   return (
     <div {...otherProps} className={'information-cell-layout' + (!!className ? ' ' + className : '')} ref={elementRef}>

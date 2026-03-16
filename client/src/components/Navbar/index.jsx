@@ -36,7 +36,12 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
   return (
     <Navbar className='adp-bg-normal'>
       <Navbar.Group align={Alignment.LEFT}>
-        <img className='ms-3' src={theme == 'dark' ? APP_LOGO_THEME_DARK : APP_LOGO_THEME_LIGHT} />
+        <img
+          className='ms-3'
+          src={theme == 'dark' ? APP_LOGO_THEME_DARK : APP_LOGO_THEME_LIGHT}
+          onClick={() => navigate('/home')}
+          style={{ cursor: 'pointer' }}
+        />
       </Navbar.Group>
       <Navbar.Group align={Alignment.RIGHT} className='me-3'>
         <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/home')} />

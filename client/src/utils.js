@@ -137,12 +137,12 @@ export function nextRewardComparator(data1, data2) {
   if (val2[1] === 'seconds') return -1;
 }
 
-export function format_amount(amount, enablePrivacyMode) {
+export function format_amount(amount, enablePrivacyMode, decimals) {
   if (enablePrivacyMode) {
     return hide_sensitive_number(amount);
   }
   // return millify(amount);
-  return format_thousands_separator(amount);
+  return format_thousands_separator(amount, decimals);
 }
 
 export function isIOS() {
@@ -158,11 +158,24 @@ export function isIOS() {
     || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
 }
 
-function format_thousands_separator(amount) {
+function format_thousands_separator(amount, decimals) {
   if (Number.isNaN(amount)) {
     throw new Error('Invalid amount type');
   }
-  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return amount.toLocaleString('en-US', { maximumFractionDigits: decimals != null ? decimals : 2 });
+}
+
+export function blocksToHumanLong(blocks) {
+  const totalMinutes = Math.round(blocks * 0.5);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const months = Math.floor(days / 30);
+  const remainDays = days % 30;
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  if (months > 0 && remainDays > 0) return `${months} Month${months !== 1 ? 's' : ''} ${remainDays} Day${remainDays !== 1 ? 's' : ''}`;
+  if (months > 0) return `${months} Month${months !== 1 ? 's' : ''}`;
+  if (days > 0) return `${days} Day${days !== 1 ? 's' : ''} ${hours}h`;
+  if (hours > 0) return `${hours}h`;
+  return `${totalMinutes}m`;
 }
 
 export function calculate_float_number(amount) {

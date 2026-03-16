@@ -32,6 +32,15 @@ $table-row-background: #ffffff;
         font-weight: 500;
         font-size: 21px;
     }
+
+    &.table-header--tabbed {
+        padding: 6px 20px 0 0;
+        border-bottom: 1px solid #d9dcde;
+        align-items: flex-end;
+        @include rule-mode-dark() {
+            border-bottom-color: rgb(56, 61, 63);
+        }
+    }
 }
 
 .table-responsive {

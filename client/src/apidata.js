@@ -211,10 +211,16 @@ export async function fetch_arcane_os_stats(gstore) {
       // Calculate percentage
       const percentage = totalNodes > 0 ? (arcaneNodes / totalNodes) * 100 : 0;
 
+      const firstArcaneNode = json.data.find(
+        node => node.flux && node.flux.arcaneHumanVersion
+      );
+      const humanVersion = firstArcaneNode?.flux?.arcaneHumanVersion ?? null;
+
       store.arcane_os = {
         total_nodes: totalNodes,
         arcane_nodes: arcaneNodes,
-        percentage: percentage
+        percentage: percentage,
+        humanVersion: humanVersion
       };
 
       console.log('Final ArcaneOS Stats:', {
@@ -247,7 +253,8 @@ export async function fetch_arcane_os_stats(gstore) {
       store.arcane_os = {
         total_nodes: 0,
         arcane_nodes: 0,
-        percentage: 0
+        percentage: 0,
+        humanVersion: null
       };
     }
   } catch (error) {
@@ -256,7 +263,8 @@ export async function fetch_arcane_os_stats(gstore) {
     store.arcane_os = {
       total_nodes: 0,
       arcane_nodes: 0,
-      percentage: 0
+      percentage: 0,
+      humanVersion: null
     };
   }
 
@@ -403,7 +411,7 @@ export async function fetch_global_stats(walletAddress = null) {
       const json = await res.json();
 
       const imageCounts = new Map();
-      json?.data?.forEach((item) => {
+      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
         totalRunningApps += item?.apps?.runningapps?.length;
         if (JSON.stringify(item?.apps?.runningapps).includes(streamr)) streamrCount++;
         if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
@@ -441,7 +449,7 @@ export async function fetch_global_stats(walletAddress = null) {
       const res = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
       const json = await res.json();
       const uniquePaymentAddresses = new Set();
-      json?.data?.forEach((item) => {
+      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
         uniquePaymentAddresses.add(item.payment_address);
       });
       store.uniqueWalletAddressesCount = Array.from(uniquePaymentAddresses).length;
@@ -457,7 +465,7 @@ export async function fetch_global_stats(walletAddress = null) {
       
       let wordpressCount = 0;
 
-      if (json.status !== 'error' && json?.data) {
+      if (json.status !== 'error' && Array.isArray(json?.data)) {
         json.data.forEach((item) => {
           if (item?.apps?.runningapps) {
             // Check each running app for WordPress images
@@ -947,7 +955,7 @@ async function fetch_fusion_fees() {
   });
   const result = await resp.json();
 
-  return result.data.mining;
+  return result?.data?.mining;
 }
 
 async function fetch_wallet_pas(walletAddress) {
@@ -1026,7 +1034,7 @@ export async function wallet_pas_summary(walletAddress) {
     }
   }
 
-  if (resultFees.status == 'fulfilled') {
+  if (resultFees.status == 'fulfilled' && resultFees.value) {
     const fees = resultFees.value;
 
     summary.assets.kda.fusion_fee = fees['kda'];
@@ -1105,7 +1113,7 @@ export async function fetch_global_performance_rankings() {
 
     // IP host → tier
     const ipTierMap = {};
-    for (const node of nodesJson.fluxNodes || []) {
+    for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
       const host = (node.ip || '').split(':')[0];
       if (host) ipTierMap[host] = (node.tier || '').toUpperCase();
     }
@@ -1113,7 +1121,7 @@ export async function fetch_global_performance_rankings() {
     // IP host → geo
     // API shape: { data: [ { geolocation: { ip, country, countryCode, continent, ... } } ] }
     const nodeGeoMap = {};
-    for (const entry of geoJson.data || []) {
+    for (const entry of (Array.isArray(geoJson.data) ? geoJson.data : [])) {
       const geo = entry.geolocation;
       if (!geo) continue;
       const host = (geo.ip || '').split(':')[0];
@@ -1133,7 +1141,7 @@ export async function fetch_global_performance_rankings() {
     const countryDominance = {};
     {
       const countryWalletCounts = {}; // cc → { country, counts: { addr → count } }
-      for (const node of nodesJson.fluxNodes || []) {
+      for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
         const host = (node.ip || '').split(':')[0];
         if (!host || !node.payment_address) continue;
         const geo = nodeGeoMap[host];
@@ -1155,7 +1163,7 @@ export async function fetch_global_performance_rankings() {
     // API shape: { data: [ { benchmark: { bench: { ipaddress, eps, ddwrite, download_speed, upload_speed, ... } } } ] }
     const VALID_TIERS = new Set(['CUMULUS', 'NIMBUS', 'STRATUS']);
     const nodeData = [];
-    for (const entry of benchJson.data || []) {
+    for (const entry of (Array.isArray(benchJson.data) ? benchJson.data : [])) {
       const bench = entry.benchmark?.bench;
       if (!bench) continue;
       const host = (bench.ipaddress || '').split(':')[0];
@@ -1303,7 +1311,7 @@ export async function fetch_global_app_specs(gstore) {
       const specHeight = spec.height || 0;
       const deployedAgeBlocks = currentBlock - specHeight;
 
-      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst };
+      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst, category: cat };
 
       if (currentBlock > 0 && deployedAgeBlocks >= 0 && deployedAgeBlocks < BLOCKS_PER_DAY) {
         deployedToday.push({ ...enriched, deployedAgeBlocks });
@@ -1397,6 +1405,44 @@ function _extract_country_counts(countryRankings) {
       ),
     }))
     .sort((a, b) => b.nodeCount - a.nodeCount);
+}
+
+// ── GPU Prices (FluxAI) ──────────────────────────────────────────────────────
+
+const API_GPU_PRICES_URL = 'https://service.fluxcore.ai/api/getGPUPrices';
+const GPU_PRICES_CACHE_KEY = 'gpuPrices_v1';
+const GPU_PRICES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function fetch_gpu_prices() {
+  try {
+    const raw = sessionStorage.getItem(GPU_PRICES_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && Date.now() - cached.timestamp < GPU_PRICES_CACHE_TTL) {
+        return cached.data;
+      }
+    }
+  } catch {}
+
+  try {
+    const res = await fetch(API_GPU_PRICES_URL, { ...REQUEST_OPTIONS_API });
+    const json = await res.json();
+    if (!Array.isArray(json)) return null;
+
+    const totalGPUs = json.reduce((s, g) => s + (g.number_of_gpus || 0), 0);
+    const totalComputers = json.reduce((s, g) => s + (g.number_of_computers || 0), 0);
+    const models = json
+      .filter((g) => g.number_of_gpus > 0)
+      .sort((a, b) => b.number_of_gpus - a.number_of_gpus);
+
+    const data = { models, totalGPUs, totalComputers };
+    try {
+      sessionStorage.setItem(GPU_PRICES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {}
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function isWalletDOSState(address) {

@@ -117,7 +117,7 @@ export class Projection extends React.Component {
     if (this.state.toggleCurrency === 'usd') {
       processedVal *= selectedCurrency.rate;
     }
-    return <CountUp duration={5} end={processedVal} separator=',' decimals={4} />;
+    return <CountUp duration={5} end={processedVal} separator=',' decimals={2} />;
   }
 
   formatTotalNodes(value) {

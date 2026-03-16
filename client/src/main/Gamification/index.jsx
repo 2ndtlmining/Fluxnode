@@ -5,16 +5,11 @@ import { Button, Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { IconContext } from 'react-icons';
 import { FaLock, FaGamepad } from 'react-icons/fa';
-import {
-  FiCpu,
-  FiDatabase,
-  FiLink,
-  FiBox,
-  FiZap,
-} from 'react-icons/fi';
+import { FiBox } from 'react-icons/fi';
 
 import ReactCountryFlag from 'react-country-flag';
 import { LayoutContext } from 'contexts/LayoutContext';
+import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { computeAchievements, TIER } from './achievements';
 import { analyzeAppCategories } from './appCategories';
 
@@ -36,32 +31,6 @@ const CATEGORY_LABELS = {
   performance: 'Performance',
   apps: 'Apps',
   geo: 'Geographic',
-};
-
-const APP_CATEGORY_ICONS = {
-  computing: FiCpu,
-  gaming: FaGamepad,
-  communication: FiLink,
-  web: FiBox,
-  blockchain: FiLink,
-  database: FiDatabase,
-  devops: FiBox,
-  media: FiZap,
-  ai: FiCpu,
-  other: FiBox,
-};
-
-const APP_CATEGORY_DISPLAY = {
-  computing: 'Computing',
-  gaming: 'Gaming',
-  communication: 'Communication',
-  web: 'Web / CMS',
-  blockchain: 'Blockchain',
-  database: 'Database',
-  devops: 'DevOps / CI',
-  media: 'Media',
-  ai: 'AI / ML',
-  other: 'Other',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -204,13 +173,14 @@ export function GamificationSection({ gstore, walletNodes, walletPASummary, tota
             <span className='gami-section-title adp-text-muted' style={{ marginBottom: 0 }}>Apps ({totalApps}):</span>
             <div className='gami-chips'>
               {appCategories.map(({ category, name, count }) => {
-                const CatIcon = APP_CATEGORY_ICONS[category] || FiBox;
+                const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
+                const CatIcon = meta?.Icon || FiBox;
                 return (
                   <span key={category} className='gami-chip'>
                     <IconContext.Provider value={{ size: '13px' }}>
                       <CatIcon />
                     </IconContext.Provider>
-                    {APP_CATEGORY_DISPLAY[category] || name} ×{count}
+                    {meta?.label || name} ×{count}
                   </span>
                 );
               })}

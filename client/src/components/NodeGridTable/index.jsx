@@ -15,9 +15,10 @@ import { fluxos_version_string } from 'main/flux_version';
 import { dateComparator, nextRewardComparator, isIOS } from 'utils';
 import { Button } from '@blueprintjs/core';
 import { FaTrophy } from 'react-icons/fa';
-import { FiServer } from 'react-icons/fi';
+import { FiServer, FiPackage } from 'react-icons/fi';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { GamificationSection } from 'main/Gamification';
+import { AppsSection } from 'main/AppsSection';
 import { computeAchievements } from 'main/Gamification/achievements';
 
 export const NodeGridTable = ({
@@ -40,7 +41,18 @@ export const NodeGridTable = ({
   const [rowData, setRowData] = useState(data);
   const [appTheme, setAppTheme] = useState(theme);
   const [ipFilter, setIpFilter] = useState('');
-  const [showAchievements, setShowAchievements] = useState(false);
+  const [activeTab, setActiveTab] = useState('nodes');
+
+  const uniqueAppCount = useMemo(() => {
+    if (!data || data.length === 0) return 0;
+    const seen = new Set();
+    for (const node of data) {
+      for (const app of (node.installedApps || [])) {
+        seen.add(app.name);
+      }
+    }
+    return seen.size;
+  }, [data]);
 
   const { earnedCount, totalCount } = useMemo(() => {
     if (!enableGamification || !data || data.length === 0 || !gstore) return { earnedCount: 0, totalCount: 0 };
@@ -214,55 +226,53 @@ export const NodeGridTable = ({
 
   return (
     <>
-      <div className='table-header'>
-        <span className='title adp-text-normal'>
-          {showAchievements ? (
-            <>
-              Achievements
-              <br />
-              <span className='adp-text-muted overview-info-subtitle'>
-                {earnedCount} of {totalCount} earned
-              </span>
-            </>
-          ) : (
-            <>
-              Nodes Overview
-              <br />
-              <span className='adp-text-muted overview-info-subtitle'>
-                Hover mouse over a column header to see more information.
-              </span>
-            </>
-          )}
-        </span>
+      <div className={`table-header${enableGamification ? ' table-header--tabbed' : ''}`}>
+        {enableGamification ? (
+          <div className='chrome-tabs'>
+            <button
+              className={`chrome-tab${activeTab === 'nodes' ? ' chrome-tab--active' : ''}`}
+              onClick={() => setActiveTab('nodes')}
+            >
+              <FiServer className='chrome-tab__icon' />
+              <span className='chrome-tab__label'>Nodes Overview</span>
+              {data?.length > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--blue'>{data.length}</span>
+              )}
+            </button>
+            <button
+              className={`chrome-tab${activeTab === 'achievements' ? ' chrome-tab--active' : ''}`}
+              onClick={() => setActiveTab('achievements')}
+              title='Achievements'
+            >
+              <FaTrophy className='chrome-tab__icon' />
+              <span className='chrome-tab__label'>Achievements</span>
+              {earnedCount > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--orange'>{earnedCount}</span>
+              )}
+            </button>
+            <button
+              className={`chrome-tab${activeTab === 'apps' ? ' chrome-tab--active' : ''}`}
+              onClick={() => setActiveTab('apps')}
+              title='Apps'
+            >
+              <FiPackage className='chrome-tab__icon' />
+              <span className='chrome-tab__label'>Apps</span>
+              {uniqueAppCount > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--green'>{uniqueAppCount}</span>
+              )}
+            </button>
+          </div>
+        ) : (
+          <span className='title adp-text-normal'>
+            Nodes Overview
+            <br />
+            <span className='adp-text-muted overview-info-subtitle'>
+              Hover mouse over a column header to see more information.
+            </span>
+          </span>
+        )}
         <div className='cta-button-wrapper'>
-          {enableGamification && (
-            <div className='node-view-tabs'>
-              <Button
-                small
-                minimal={showAchievements}
-                active={!showAchievements}
-                intent={!showAchievements ? 'primary' : 'none'}
-                title='Node Overview'
-                onClick={() => setShowAchievements(false)}
-              >
-                <FiServer style={{ marginRight: data && data.length > 0 ? 5 : 0, verticalAlign: 'middle' }} />
-                {data && data.length > 0 ? data.length : ''}
-              </Button>
-              <Button
-                small
-                minimal={!showAchievements}
-                active={showAchievements}
-                intent={showAchievements ? 'warning' : 'none'}
-                className={earnedCount > 0 && !showAchievements ? 'achievement-btn-glow' : ''}
-                title={earnedCount > 0 ? `Achievements — ${earnedCount} earned` : 'Achievements'}
-                onClick={() => setShowAchievements(true)}
-              >
-                <FaTrophy style={{ marginRight: earnedCount > 0 ? 5 : 0, verticalAlign: 'middle' }} />
-                {earnedCount > 0 ? earnedCount : ''}
-              </Button>
-            </div>
-          )}
-          {!showAchievements && (
+          {activeTab === 'nodes' && (
             <>
               <div>Filter (IP):&nbsp;
                 <input type='text' value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} size={16} />&nbsp;
@@ -295,7 +305,7 @@ export const NodeGridTable = ({
         </div>
       </div>
 
-      {showAchievements ? (
+      {activeTab === 'achievements' ? (
         <div className='gami-panel-scroll'>
           <GamificationSection
             gstore={gstore}
@@ -304,6 +314,10 @@ export const NodeGridTable = ({
             totalDonations={totalDonations}
             globalRankings={globalRankings}
           />
+        </div>
+      ) : activeTab === 'apps' ? (
+        <div className='gami-panel-scroll'>
+          <AppsSection walletNodes={data} gstore={gstore} />
         </div>
       ) : (
         <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>

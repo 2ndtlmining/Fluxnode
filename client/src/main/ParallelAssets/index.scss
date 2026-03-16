@@ -53,6 +53,7 @@ $asset-logo-banner-height: $asset-logo-top-padding + $asset-logo-circle-radius;
             border-radius: 100px;
             box-shadow: 5px 4px 20px rgba(17, 20, 24, 0.2), 5px 10px 37px 6px rgba(17, 20, 24, 0.18);
             @include rule-mode-dark() {
+                background-color: #1c2127;
                 box-shadow: 4px 10px 25px rgba(0, 0, 0, 0.5);
             }
 

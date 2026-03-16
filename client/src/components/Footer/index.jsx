@@ -5,7 +5,7 @@ import { IconContext } from 'react-icons';
 import { LayoutContext } from 'contexts/LayoutContext';
 
 import { IoLogoTwitter, IoMailUnread, IoLogoYoutube, IoLogoGithub } from 'react-icons/io5';
-import { BsGithub } from 'react-icons/bs';
+import { BsGithub, BsBugFill } from 'react-icons/bs';
 
 import { URL_YOUTUBE, URL_TWITTER, URL_GITHUB, EMAIL, ADDRESS_FLUX, ADDRESS_BTC } from 'content/index';
 
@@ -20,7 +20,7 @@ function _RenderAppVersion() {
 }
 
 export function Footer() {
-  const { lastUpdated } = useContext(LayoutContext);
+  const { lastUpdated, arcaneHumanVersion } = useContext(LayoutContext);
 
   return (
     <footer className='v-footer'>
@@ -50,10 +50,23 @@ export function Footer() {
                     <BsGithub className='footer-logo' />
                   </a>
                 </li>
+                <li>
+                  <a
+                    href='https://github.com/2ndtlmining/Fluxnode/issues'
+                    target='_blank'
+                    rel='noreferrer'
+                    title='Report an Issue'
+                  >
+                    <BsBugFill className='footer-logo' />
+                  </a>
+                </li>
               </ul>
             </IconContext.Provider>
             <p>
-              <span className='hl-app-version'>FluxNode {_RenderAppVersion()}</span>
+              <span className='hl-app-version'>
+                FluxNode {_RenderAppVersion()}
+                {arcaneHumanVersion && <> · {arcaneHumanVersion}</>}
+              </span>
             </p>
           </div>
 

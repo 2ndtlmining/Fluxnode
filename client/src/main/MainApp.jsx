@@ -72,6 +72,7 @@ class MainApp extends React.Component {
 
       totalDonations: 0,
       globalRankings: null,
+      walletHealth: null,
     };
 
     this._refreshInterval = null;
@@ -276,6 +277,7 @@ class MainApp extends React.Component {
 
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
+      this.setState({ inputAddress: address });
     } else {
       fetch_global_stats(null)
         .then((gstore) => {
@@ -285,6 +287,7 @@ class MainApp extends React.Component {
         .then((gstore) => {
           this.setState({ gstore });
           this.context.setLastUpdated(new Date());
+          this.context.setArcaneHumanVersion(gstore.arcane_os?.humanVersion ?? null);
         });
     }
   }
@@ -373,21 +376,28 @@ class MainApp extends React.Component {
       isPALoading: true, // Now start to fetch PA's (below)
 
       gstore,
-      activeAddress: address
+      activeAddress: address,
+      inputAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes }) => {
+    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes, health }) => {
       highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
       bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
       mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+      this.setState({ walletHealth: health });
     });
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
     this.context.setLastUpdated(new Date());
+    this.context.setArcaneHumanVersion(this.state.gstore?.arcane_os?.humanVersion ?? null);
   }
 
 
+
+  handleAddrChange = (e) => {
+    this.setState({ inputAddress: e.target.value });
+  };
 
   handleButtonClick = () => {
     this.onProcessAddress();
@@ -463,7 +473,7 @@ class MainApp extends React.Component {
 
   _selectAddr = (addr) => {
     this.addressInputRef.current.value = addr;
-    this.setState({ showSearchHistory: false });
+    this.setState({ showSearchHistory: false, inputAddress: addr });
   };
 
   _renderSearchHistory() {
@@ -559,7 +569,7 @@ class MainApp extends React.Component {
                   intent={intent}
                   placeholder={!this.state.isZelId ? 'Enter Wallet Address' : 'Enter Zel ID'}
                   id={WALLET_INPUT_ID}
-                  value={this.state.inputAddress || sessionStorage.getItem('wallet')}
+                  value={this.state.inputAddress}
                   onChange={this.handleAddrChange}
                   onKeyUp={this.handleAddrKeyPress}
                   inputRef={mergeRefs(ref, this.addressInputRef)}
@@ -606,6 +616,7 @@ class MainApp extends React.Component {
                   gstore={this.state.gstore}
                   total_donations={this.state.totalDonations}
                   totalScoreAgainstSearchedWallet={this.state.totalScoreAgainstSearchedWallet}
+                  walletHealth={this.state.walletHealth}
                 />
               )}
               {this.state.isWalletAvailable && this.renderActiveAddressView(enablePrivacyMode)}

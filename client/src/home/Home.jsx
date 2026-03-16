@@ -27,7 +27,8 @@ import {
   validateAddress,
   wallet_pas_summary,
   fetch_total_donations,
-  fetch_total_network_utils
+  fetch_total_network_utils,
+  fetch_gpu_prices
 } from './apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -70,7 +71,8 @@ class Home extends React.Component {
       appSpecs: null,
       appSpecsError: false,
       countryCounts: [],
-      globalRankings: null
+      globalRankings: null,
+      gpuPrices: null
     };
 
     this._refreshInterval = null;
@@ -241,11 +243,15 @@ class Home extends React.Component {
           fetch_global_performance_rankings()
             .then((rankings) => this.setState({ globalRankings: rankings }))
             .catch(() => {});
+          fetch_gpu_prices()
+            .then((data) => this.setState({ gpuPrices: data }))
+            .catch(() => {});
           return fetch_total_network_utils(gstore);
         })
         .then((gstore) => {
           this.setState({ gstore });
           this.context.setLastUpdated(new Date());
+          this.context.setArcaneHumanVersion(gstore.arcane_os?.humanVersion ?? null);
         });
     }
   }
@@ -339,6 +345,7 @@ class Home extends React.Component {
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
     this.context.setLastUpdated(new Date());
+    this.context.setArcaneHumanVersion(this.state.gstore?.arcane_os?.humanVersion ?? null);
   }
 
   handleAddrChange = (e) => {
@@ -581,6 +588,7 @@ class Home extends React.Component {
                 appSpecs={this.state.appSpecs}
                 countryCounts={this.state.countryCounts}
                 globalRankings={this.state.globalRankings}
+                gpuPrices={this.state.gpuPrices}
               />
             </>
           );

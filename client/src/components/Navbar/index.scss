@@ -14,3 +14,26 @@
 .bp4-menu {
     min-width: 150px !important;
 }
+
+// ── Navbar refinement ─────────────────────────────────────────────────────────
+
+.bp4-navbar {
+    box-shadow: inset 0 -1px 0 var(--border-primary) !important;
+    background: var(--surface-primary) !important;
+
+    .bp4-navbar-heading {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    // Active route: keep the outlined danger look but use accent-blue instead of red
+    .bp4-button.bp4-outlined.bp4-intent-danger {
+        color: var(--accent-blue) !important;
+        border-color: var(--accent-blue) !important;
+        background: transparent !important;
+
+        .bp4-icon {
+            color: var(--accent-blue) !important;
+        }
+    }
+}
