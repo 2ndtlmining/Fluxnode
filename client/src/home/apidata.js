@@ -174,19 +174,40 @@ function fill_rewards(gstore) {
 
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
-    fetch(url)
-      .then((res) => res.json())
-      .then((firstPage) => {
-        const { pagesTotal } = firstPage;
-        const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-        Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)))
-          .then((results) => Promise.all(results.map((result) => result.json())))
-          .then((json) => {
-            const txs = [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
-            resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
-          });
-      });
+    const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
+
+    const safeFetchJson = async (url) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null; // e.g. 400/500 - skip this page
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return null; // e.g. "Loading block index..."
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
+    };
+
+    (async () => {
+      const firstPage = await safeFetchJson(baseUrl);
+      if (!firstPage) {
+        resolve(0); // explorer unavailable - fail gracefully instead of crashing
+        return;
+      }
+
+      const { pagesTotal } = firstPage;
+      const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+
+      // fetch pages sequentially (or in small batches) instead of all at once
+      const pages = [firstPage];
+      for (const page of pageNums) {
+        const json = await safeFetchJson(`${baseUrl}&pageNum=${page}`);
+        if (json) pages.push(json);
+      }
+
+      const txs = pages.reduce((prev, current) => prev.concat(current.txs || []), []);
+      resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
+    })();
   });
 }
 
