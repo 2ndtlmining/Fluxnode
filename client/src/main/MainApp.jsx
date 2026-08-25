@@ -676,7 +676,7 @@ class MainApp extends React.Component {
                   {this.state.isPALoading ? (
                     <Spinner intent='primary' size={150} />
                   ) : (
-                    <ParallelAssets summary={this.state.walletPASummary} theme={this.props.theme} />
+                    <ParallelAssets summary={this.state.walletPASummary} theme={this.props.theme} enablePrivacyMode={enablePrivacyMode} />
                   )}
                 </div>
               ) : (
