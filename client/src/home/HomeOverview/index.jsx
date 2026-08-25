@@ -16,7 +16,7 @@ import CountUp from 'components/CountUp';
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
-import { fluxos_version_string } from 'main/flux_version';
+import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
 import { shortImageName } from 'utils';
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
@@ -186,6 +186,18 @@ function NetworkStatsPanel({ gstore, gpuPrices }) {
               ? fluxos_version_string(gstore.bench_latest_version)
               : '—'}
           </span>
+        </div>
+        <div className="hov-kv-row">
+          <Tooltip2
+            content="Version reported by the Flux daemon. Compare against your own node to spot an out-of-date fluxd."
+            placement="top"
+            hoverOpenDelay={250}
+            transitionDuration={80}
+            popoverClassName="hov-cat-tooltip"
+          >
+            <span className="hov-kv-label">Daemon Version</span>
+          </Tooltip2>
+          <span className="hov-kv-value">{daemon_version_string(gstore.daemon_version) ?? '—'}</span>
         </div>
         {gpuPrices && (
           <>

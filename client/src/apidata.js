@@ -60,6 +60,7 @@ export function create_global_store() {
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
     fluxBlockHeight: 0,
+    daemon_version: 0,
     node_count: {
       cumulus: 0,
       nimbus: 0,
@@ -421,10 +422,29 @@ export async function fetch_global_stats(walletAddress = null) {
   }
 };
 
-  const fetchBlockHeight = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getinfo');
-    const json = await res.json();
-    store.current_block_height = json['data']['blocks'];
+  /*
+   * daemon/getinfo used to be fetched twice per refresh — once here for
+   * current_block_height and again in getFluxBlockInfo for fluxBlockHeight,
+   * which is the same field under a second name. Both keys are kept because
+   * different views read different ones, but there is now one request.
+   *
+   * This also gains a try/catch it never had: fetchBlockHeight threw straight
+   * into the Promise.all below, so a single blip on this endpoint failed the
+   * entire global stats load.
+   */
+  const fetchDaemonInfo = async () => {
+    try {
+      const res = await fetch('https://api.runonflux.io/daemon/getinfo');
+      const json = await res.json();
+      const info = json?.data;
+
+      const blocks = info?.blocks ?? 0;
+      store.current_block_height = blocks;
+      store.fluxBlockHeight = blocks;
+      store.daemon_version = info?.version ?? 0;
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchRichList = async () => {
@@ -513,27 +533,16 @@ export async function fetch_global_stats(walletAddress = null) {
   // fetchTotalDeployedApps. store.wordpressCount is now derived from the shared
   // aggregate, with the same matching rule (exact runonflux/wp-nginx, any tag).
 
-  const getFluxBlockInfo = async () => {
-    try {
-      const res = await fetch('https://api.runonflux.io/daemon/getinfo');
-      const json = await res.json();
-      store.fluxBlockHeight = json?.data?.blocks ?? 0;
-    } catch (error) {
-      console.log('error', error);
-    }
-  };
-
   await Promise.all([
     fetchCurrency(),
     fetchWallet(),
     fetchNode(),
     fetchBenchVer(),
     fetchFluxVer(),
-    fetchBlockHeight(),
+    fetchDaemonInfo(),
     fetchRichList(),
     fetchTotalDeployedApps(),
-    fetchUniqueWalletAddresses(),
-    getFluxBlockInfo()
+    fetchUniqueWalletAddresses()
   ]);
 
   fill_rewards(store);
