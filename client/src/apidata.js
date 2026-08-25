@@ -852,48 +852,10 @@ export async function getDemoWallet() {
 }
 
 // Fetch USD Latest currency rate
-const usdCurrencyRate = async ()=> {
-  let response = await fetch('https://api.frankfurter.app/latest?to=USD');
-  const resData = await response.json();
-  return resData.rates;
-}
+// Currency rates now live in client/src/currency.js so they can be unit
+// tested. Re-exported here to keep existing import paths working.
+export { lazy_load_currency_rate, SUPPORTED_CURRENCIES } from 'currency';
 
-
-const CURRENCY_RATE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-// Fetch other currencies and store
-export async function lazy_load_currency_rate() {
-
-  const supportedCurrencies = ['USD', 'EUR', 'AUD'];
-  const cached = await appStore.getItem(StoreKeys.CURRENCY_RATES);
-  const isFresh = cached && cached.timestamp && (Date.now() - cached.timestamp < CURRENCY_RATE_TTL_MS);
-  if (isFresh) {
-    return cached.rates;
-  }
-
-  try {
-    const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
-    const json = await res.json();
-    const currencyRates = json.rates;
-
-    const usd = await usdCurrencyRate();
-    const currencies = {...usd, ...currencyRates}
-    console.log('rates:', currencies);
-
-    if(res.ok){
-      await appStore.setItem(StoreKeys.CURRENCY_RATES, { rates: currencies, timestamp: Date.now() });
-      return currencies;
-    }else{
-      return null
-    }
-
-  } catch (error) {
-    console.log(error);
-    // Return stale data if available rather than nothing
-    if (cached && cached.rates) return cached.rates;
-  }
-  return null;
-}
 /* ======================================================================= */
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
