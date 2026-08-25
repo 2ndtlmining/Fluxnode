@@ -2,7 +2,8 @@ import * as dayjs from 'dayjs';
 
 import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
-import { categorizeApp } from 'main/Gamification/appCategories';
+import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
+import { fetch_fluxinfo_aggregate } from 'fluxinfo';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -100,7 +101,12 @@ export function create_global_store() {
       ssd_percentage: 0
     },
     topRunningImages: [],
-    runningCategoryMap: {}
+    runningCategoryMap: {},
+    // Provenance for the running-app figures above. `runningAppsStatus` is one
+    // of 'live' | 'stale' | 'unavailable' so the UI can say what it is showing
+    // instead of silently swapping in a different dataset (see issue #144).
+    runningAppsStatus: 'unavailable',
+    runningAppsFetchedAt: null
   };
 }
 
@@ -170,19 +176,40 @@ function fill_rewards(gstore) {
 
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
-    fetch(url)
-      .then((res) => res.json())
-      .then((firstPage) => {
-        const { pagesTotal } = firstPage;
-        const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-        Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)))
-          .then((results) => Promise.all(results.map((result) => result.json())))
-          .then((json) => {
-            const txs = [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
-            resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
-          });
-      });
+    const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
+
+    const safeFetchJson = async (url) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null; // e.g. 400/500 - skip this page
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return null; // e.g. "Loading block index..."
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
+    };
+
+    (async () => {
+      const firstPage = await safeFetchJson(baseUrl);
+      if (!firstPage) {
+        resolve(0); // explorer unavailable - fail gracefully instead of crashing
+        return;
+      }
+
+      const { pagesTotal } = firstPage;
+      const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+
+      // fetch pages sequentially (or in small batches) instead of all at once
+      const pages = [firstPage];
+      for (const page of pageNums) {
+        const json = await safeFetchJson(`${baseUrl}&pageNum=${page}`);
+        if (json) pages.push(json);
+      }
+
+      const txs = pages.reduce((prev, current) => prev.concat(current.txs || []), []);
+      resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
+    })();
   });
 }
 
@@ -328,8 +355,18 @@ export async function fetch_total_network_utils(gstore) {
   // Fetch ArcaneOS stats
   await fetch_arcane_os_stats(store);
 
-  window.gstore = store;
-  return store;
+  /*
+   * Return a new top-level object rather than the one we were handed.
+   *
+   * This function mutates the store in place, so callers doing
+   * setState({ gstore: store }) were storing the reference they already had.
+   * Downstream useMemo hooks keyed on [gstore] therefore never recomputed and
+   * updated block height / utilisation figures never reached them. Nested
+   * objects are intentionally still shared — only the identity changes.
+   */
+  const updated = { ...store };
+  window.gstore = updated;
+  return updated;
 }
 
 export async function fetch_global_stats(walletAddress = null) {
@@ -395,53 +432,43 @@ export async function fetch_global_stats(walletAddress = null) {
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
   };
 
+  /*
+   * Derives every running-app figure from the single shared fluxinfo fetch.
+   * Also supplies wordpressCount, which used to come from a second, identical
+   * request to the same endpoint.
+   */
   const fetchTotalDeployedApps = async () => {
-    const streamr = process.env.REACT_APP_STREAMR;
-    const presearch = process.env.REACT_APP_PRE_SEARCH;
-    const watchtower = 'containrrr/watchtower:latest'
+    const { aggregate, status, fetchedAt } = await fetch_fluxinfo_aggregate();
 
-    let totalRunningApps = 0;
-    let streamrCount = 0;
-    let presearchCount = 0;
-    let watchtowerCount = 0;
+    store.runningAppsStatus = status;
+    store.runningAppsFetchedAt = fetchedAt;
 
+    // No data and no cache: leave the zeroed defaults in place. The UI reports
+    // this as unavailable rather than substituting a different dataset.
+    if (!aggregate) return;
 
-    try {
-      const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
-      const json = await res.json();
+    store.totalRunningApps = aggregate.totalContainers - aggregate.watchtowerContainers;
+    store.streamrRunningApps = aggregate.streamrNodes;
+    store.presearchRunningApps = aggregate.presearchNodes;
+    store.wordpressCount = aggregate.wordpressContainers;
 
-      const imageCounts = new Map();
-      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
-        totalRunningApps += item?.apps?.runningapps?.length;
-        if (JSON.stringify(item?.apps?.runningapps).includes(streamr)) streamrCount++;
-        if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
-        if (JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower:latest') || JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower'))
-          watchtowerCount++;
-        for (const app of item?.apps?.runningapps || []) {
-          const img = app.Image || '';
-          if (!img) continue;
-          imageCounts.set(img, (imageCounts.get(img) || 0) + 1);
-        }
-      });
+    const imageEntries = Object.entries(aggregate.imageCounts);
 
-      store.totalRunningApps = (totalRunningApps - watchtowerCount);
-      store.streamrRunningApps = streamrCount;
-      store.presearchRunningApps = presearchCount;
-      store.topRunningImages = [...imageCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([image, nodeCount]) => ({ image, nodeCount }));
+    store.topRunningImages = [...imageEntries]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([image, nodeCount]) => ({ image, nodeCount }));
 
-      // Category breakdown from actual running containers (more accurate than spec data)
-      const categoryMap = {};
-      for (const [image, count] of imageCounts.entries()) {
-        const cat = categorizeApp(image.toLowerCase());
-        categoryMap[cat] = (categoryMap[cat] || 0) + count;
-      }
-      store.runningCategoryMap = categoryMap;
-    } catch (error) {
-      console.log('error', error);
+    // Category breakdown from actual running containers (more accurate than spec data)
+    const categoryMap = {};
+    for (const [image, count] of imageEntries) {
+      // Git-deployed apps all run the same wrapper image, which says nothing
+      // about the workload inside — keep them uncategorized rather than
+      // reporting 175 containers of "DevOps".
+      const cat = isOpaqueRuntimeImage(image) ? 'other' : categorizeApp(image.toLowerCase());
+      categoryMap[cat] = (categoryMap[cat] || 0) + count;
     }
+    store.runningCategoryMap = categoryMap;
   };
 
   const fetchUniqueWalletAddresses = async () => {
@@ -458,38 +485,10 @@ export async function fetch_global_stats(walletAddress = null) {
     }
   };
 
-  const fetchWordpressInstancesCount = async () => {
-    try {
-      const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
-      const json = await res.json();
-      
-      let wordpressCount = 0;
-
-      if (json.status !== 'error' && Array.isArray(json?.data)) {
-        json.data.forEach((item) => {
-          if (item?.apps?.runningapps) {
-            // Check each running app for WordPress images
-            item.apps.runningapps.forEach((app) => {
-              if (app.Image) {
-                const imageName = app.Image.toLowerCase();
-                // Match runonflux/wp-nginx with any tag variation or no tag
-                if (imageName === 'runonflux/wp-nginx' || imageName.startsWith('runonflux/wp-nginx:')) {
-                  wordpressCount++;
-                }
-              }
-            });
-          }
-        });
-      }
-
-      store.wordpressCount = wordpressCount;
-      console.log('WordPress instances count:', wordpressCount);
-    } catch (error) {
-      console.log('Error fetching WordPress instances:', error);
-      // Set to 0 on error to prevent breaking the frontend
-      store.wordpressCount = 0;
-    }
-  };
+  // NOTE: fetchWordpressInstancesCount used to live here and issued a second,
+  // byte-identical request to stats.runonflux.io/fluxinfo alongside
+  // fetchTotalDeployedApps. store.wordpressCount is now derived from the shared
+  // aggregate, with the same matching rule (exact runonflux/wp-nginx, any tag).
 
   const getFluxBlockInfo = async () => {
     try {
@@ -511,7 +510,6 @@ export async function fetch_global_stats(walletAddress = null) {
     fetchRichList(),
     fetchTotalDeployedApps(),
     fetchUniqueWalletAddresses(),
-    fetchWordpressInstancesCount(),
     getFluxBlockInfo()
   ]);
 
@@ -1286,7 +1284,14 @@ export async function fetch_global_app_specs(gstore) {
 
       // Resource per instance — compose specs sum across components, flat specs read directly
       let cpuPerInst, ramGBPerInst, ssdGBPerInst;
-      if (isCompose) {
+      if (isCompose && spec.compose.length === 0) {
+        // Enterprise app: compose is encrypted, so the resource figures are
+        // unknown rather than zero. Summing the empty array reported 0.00
+        // cores / 0.00 GB in the Expiring and Deployed panels.
+        cpuPerInst = null;
+        ramGBPerInst = null;
+        ssdGBPerInst = null;
+      } else if (isCompose) {
         cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
         ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
         ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
@@ -1296,15 +1301,9 @@ export async function fetch_global_app_specs(gstore) {
         ssdGBPerInst = spec.hdd || 0;
       }
 
-      // Categorize by compose image names first (more accurate than app name)
-      let cat = 'other';
-      if (isCompose) {
-        for (const component of spec.compose) {
-          const imageCat = categorizeApp((component.repotag || '').toLowerCase());
-          if (imageCat !== 'other') { cat = imageCat; break; }
-        }
-      }
-      if (cat === 'other') cat = categorizeApp((spec.repotag || spec.name || '').toLowerCase());
+      // Categorize by compose image names first (more accurate than app name),
+      // and give encrypted enterprise specs their own bucket instead of Other.
+      const cat = categorizeAppSpec(spec);
       categoryMap[cat] = (categoryMap[cat] || 0) + instances;
 
       // Deployed / expiring — spec.height is lowercase in the API

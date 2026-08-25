@@ -8,7 +8,7 @@ import { FiBox } from 'react-icons/fi';
 import { FaGithub, FaDocker, FaLock } from 'react-icons/fa';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
-import { categorizeApp } from 'main/Gamification/appCategories';
+import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { fetch_global_app_specs } from 'main/apidata';
 import { hide_sensitive_number, blocksToHumanLong } from 'utils';
 
@@ -41,7 +41,15 @@ export function AppsSection({ walletNodes, gstore }) {
       const isCompose = Array.isArray(spec.compose);
 
       let cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag;
-      if (isCompose) {
+      if (isCompose && spec.compose.length === 0) {
+        // Enterprise apps ship an encrypted compose — the resource figures are
+        // genuinely unknown, so keep them null and render an em dash. Summing
+        // an empty array gave a misleading 0.00 for cores/RAM/SSD.
+        cpuPerInst = null;
+        ramGBPerInst = null;
+        ssdGBPerInst = null;
+        repotag = '';
+      } else if (isCompose) {
         cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
         ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
         ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
@@ -69,7 +77,13 @@ export function AppsSection({ walletNodes, gstore }) {
       }
       const deployType = isEnterprise ? 'enterprise' : allRepotags.includes('runonflux/orbit') ? 'git' : 'docker';
 
-      map.set(spec.name, { cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag, expiresInBlocks, hasExpire, isEnterprise, deployType });
+      map.set(spec.name, {
+        cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag, expiresInBlocks, hasExpire, isEnterprise, deployType,
+        // Categorize from the authoritative global spec (repotag-based) so this
+        // table agrees with the Home ecosystem panel. Categorizing on the
+        // user-chosen app name disagreed with the image for 24% of apps.
+        category: categorizeAppSpec(spec)
+      });
     }
     return map;
   }, [appSpecs, gstore]);
@@ -83,7 +97,9 @@ export function AppsSection({ walletNodes, gstore }) {
       for (const app of (node.installedApps || [])) {
         const spec = specMap.get(app.name);
         const isEnterprise = spec?.isEnterprise || false;
-        const category = categorizeApp(app.name);
+        // Prefer the global spec's repotag-based category; fall back to the
+        // node's own copy of the spec if the app is not in the global list yet.
+        const category = spec?.category ?? categorizeAppSpec(app);
         result.push({
           ip,
           port,
@@ -259,9 +275,9 @@ export function AppsSection({ walletNodes, gstore }) {
                       <td className="apps-td--num">{row.ramGBPerInst != null ? row.ramGBPerInst.toFixed(2) : '\u2014'}</td>
                       <td className="apps-td--num">{row.ssdGBPerInst != null ? row.ssdGBPerInst.toFixed(2) : '\u2014'}</td>
                       <td className="apps-td--expire">
-                        {row.expiresInBlocks != null && row.expiresInBlocks > 0
-                          ? blocksToHumanLong(row.expiresInBlocks)
-                          : row.hasExpire ? 'Expired' : 'N/A'}
+                        {row.expiresInBlocks != null
+                          ? (row.expiresInBlocks > 0 ? blocksToHumanLong(row.expiresInBlocks) : 'Expired')
+                          : row.hasExpire ? '—' : 'N/A'}
                       </td>
                     </tr>
                   );

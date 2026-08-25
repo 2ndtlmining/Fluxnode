@@ -3,7 +3,7 @@ import { FiServer, FiZap, FiCpu, FiDatabase, FiAward, FiLink, FiBox, FiShield, F
 import { LuBoxes, LuWarehouse } from 'react-icons/lu';
 import { GiToaster, GiTortoise, GiCastle, GiOilPump, GiSpermWhale, GiPlasticDuck, GiSwan, GiPotato, GiHeartBeats, GiSloth, GiRetroController, GiNestBirds } from 'react-icons/gi';
 import { TbBuildingSkyscraper, TbActivityHeartbeat, TbBrowser } from 'react-icons/tb';
-import { categorizeApp } from './appCategories';
+import { categorizeAppSpec } from './appCategories';
 import { fv_compare } from 'main/flux_version';
 import { hide_sensitive_number } from '../../utils';
 
@@ -539,7 +539,8 @@ function computeStaticAchievements(gstore, walletNodes, walletPASummary, totalDo
 
   nodes.forEach((node) => {
     (node.installedApps || []).forEach((app) => {
-      const cat = categorizeApp(app.name);
+      // Categorize from the spec's repotag, not the user-chosen app name.
+      const cat = categorizeAppSpec(app);
       categorySet.add(cat);
       const lower = (app.name || '').toLowerCase();
       if (cat === 'gaming') gamingApps.add(lower);
