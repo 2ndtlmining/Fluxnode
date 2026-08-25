@@ -1249,7 +1249,11 @@ export async function fetch_global_performance_rankings() {
 /* =================== GLOBAL APP SPECIFICATIONS ================= */
 /* ================================================================ */
 
-const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v1';
+// v2: enterprise apps now report null (unknown) resources instead of 0, so the
+// cached shape changed. Older code does spec.cpuPerInst.toFixed(2) unguarded
+// and would crash on a v1-keyed cache written by this version — bumping the key
+// keeps a rollback safe.
+const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v2';
 const HOME_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const BLOCKS_PER_DAY = 2880; // 30 sec/block
 
