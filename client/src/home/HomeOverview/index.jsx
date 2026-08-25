@@ -291,8 +291,8 @@ function NetworkResourcesPanel({ gstore }) {
 
 // ── Panel 3: App Ecosystem ─────────────────────────────────────────────────────
 
-function AppEcosystemPanel({ gstore, appSpecs }) {
-  const { runningCategoryMap, node_count } = gstore;
+function AppEcosystemPanel({ gstore }) {
+  const { runningCategoryMap, node_count, runningAppsStatus, runningAppsFetchedAt } = gstore;
   const hasRunning = Object.keys(runningCategoryMap).length > 0;
 
   // Still loading if no node data at all
@@ -304,21 +304,36 @@ function AppEcosystemPanel({ gstore, appSpecs }) {
     );
   }
 
-  // Prefer live running-app data; fall back to spec-based if fetch failed
-  let allCats;
-  if (hasRunning) {
-    allCats = Object.entries(runningCategoryMap)
-      .map(([category, totalInstances]) => ({ category, totalInstances }))
-      .sort((a, b) => b.totalInstances - a.totalInstances);
-  } else if (appSpecs) {
-    allCats = appSpecs.networkCategories || [];
-  } else {
+  /*
+   * Single source of truth: running containers reported by the nodes.
+   *
+   * This panel used to fall back to globalappsspecifications whenever the
+   * running-app fetch came back empty. That endpoint counts ORDERED instances,
+   * not running containers, so the whole panel would silently re-render with
+   * different numbers and a different row order — reported as the "Other"
+   * category jumping and then settling (issue #144). Retry and last-known-good
+   * caching now happen in fetch_fluxinfo_aggregate; if there is genuinely
+   * nothing to show we say so rather than swapping in another dataset.
+   */
+  if (!hasRunning) {
     return (
-      <div className="hov-panel hov-panel-center hov-panel--ecosystem">
-        <Spinner size={24} />
+      <div className="hov-panel hov-panel--ecosystem">
+        <PanelHeader title="APP ECOSYSTEM" />
+        <div className="hov-empty">
+          Running app data is unavailable right now.
+          <br />
+          Retrying on the next refresh.
+        </div>
       </div>
     );
   }
+
+  const allCats = Object.entries(runningCategoryMap)
+    .map(([category, totalInstances]) => ({ category, totalInstances }))
+    .sort((a, b) => b.totalInstances - a.totalInstances);
+
+  const isStale = runningAppsStatus === 'stale';
+  const staleSince = runningAppsFetchedAt ? new Date(runningAppsFetchedAt).toLocaleTimeString() : null;
 
   const cats = allCats.slice(0, 12);
   const grandTotal = allCats.reduce((s, c) => s + c.totalInstances, 0) || 1;
@@ -328,11 +343,32 @@ function AppEcosystemPanel({ gstore, appSpecs }) {
     <div className="hov-panel hov-panel--ecosystem">
       <PanelHeader
         title="APP ECOSYSTEM"
+        right={
+          isStale ? (
+            <Tooltip2
+              content={`Live data is unreachable. Showing the last successful reading${staleSince ? ' from ' + staleSince : ''}.`}
+              placement="top"
+              hoverOpenDelay={250}
+              transitionDuration={80}
+              popoverClassName="hov-cat-tooltip"
+            >
+              <span className="hov-eco-stale">stale</span>
+            </Tooltip2>
+          ) : null
+        }
         badgeContent={
           grandTotal > 1 ? (
-            <span className="hov-header-badge hov-header-badge--hero">
-              <CountUp end={grandTotal} separator="," duration={1.5} />
-            </span>
+            <Tooltip2
+              content="Running containers across the network. Multi-component apps contribute one per component."
+              placement="top"
+              hoverOpenDelay={250}
+              transitionDuration={80}
+              popoverClassName="hov-cat-tooltip"
+            >
+              <span className="hov-header-badge hov-header-badge--hero">
+                <CountUp end={grandTotal} separator="," duration={1.5} />
+              </span>
+            </Tooltip2>
           ) : null
         }
       />
@@ -409,6 +445,16 @@ function TopHostedAppsPanel({ gstore }) {
 
 // ── Spec Header (shared by Expiring / Deployed panels) ──────────────────────
 
+/*
+ * Enterprise apps ship an encrypted compose, so their CPU / RAM / SSD are
+ * genuinely unknown — not zero. Render an em dash rather than a confident 0.00.
+ */
+function fmtSpecVal(value, suffix) {
+  if (value == null) return '—';
+  return `${value.toFixed(2)}${suffix}`;
+}
+
+
 function SpecHeader() {
   return (
     <div className="hov-spec-header">
@@ -462,9 +508,9 @@ function ExpiringTodayPanel({ appSpecs }) {
               <span className="hov-list-name">{spec.name}</span>
               <SpecCategoryIcon category={spec.category} />
               <span className="hov-badge hov-badge--warn">{spec.instances}×</span>
-              <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
-              <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
-              <span className="hov-spec-val">{(spec.ssdGBPerInst || 0).toFixed(2)}GB</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
               <span className="hov-time hov-time--warn">in {blocksToHuman(spec.expiresInBlocks)}</span>
             </div>
           ))
@@ -500,9 +546,9 @@ function DeployedTodayPanel({ appSpecs }) {
               <span className="hov-list-name">{spec.name}</span>
               <SpecCategoryIcon category={spec.category} />
               <span className="hov-badge hov-badge--green">{spec.instances}×</span>
-              <span className="hov-spec-val">{spec.cpuPerInst.toFixed(2)}c</span>
-              <span className="hov-spec-val">{spec.ramGBPerInst.toFixed(2)}GB</span>
-              <span className="hov-spec-val">{(spec.ssdGBPerInst || 0).toFixed(2)}GB</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
+              <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
               <span className="hov-time hov-time--green">{blocksToHuman(spec.deployedAgeBlocks)} ago</span>
             </div>
           ))
@@ -746,7 +792,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, 
       <div className="home-overview-row">
         <NetworkStatsPanel gstore={gstore} gpuPrices={gpuPrices} />
         <NetworkResourcesPanel gstore={gstore} />
-        <AppEcosystemPanel gstore={gstore} appSpecs={appSpecs} />
+        <AppEcosystemPanel gstore={gstore} />
       </div>
       <div className="home-overview-row home-overview-row--bottom">
         <TopHostedAppsPanel gstore={gstore} />
