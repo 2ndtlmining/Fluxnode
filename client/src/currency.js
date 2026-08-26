@@ -5,7 +5,17 @@ import { appStore, StoreKeys } from 'persistance/store';
 
 const CURRENCY_RATE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-const FRANKFURTER_URL = 'https://api.frankfurter.app/latest';
+/*
+ * frankfurter.app now 301s to frankfurter.dev, and the redirect response
+ * carries no Access-Control-Allow-Origin header. Browsers refuse to follow a
+ * CORS redirect that does not itself allow the origin, so every call failed
+ * with "TypeError: Failed to fetch" — while curl and Node followed the redirect
+ * transparently and looked fine, which is what hid it.
+ *
+ * The final destination does send `access-control-allow-origin: *`, so calling
+ * it directly works. `symbols` is the documented v1 parameter.
+ */
+const FRANKFURTER_URL = 'https://api.frankfurter.dev/v1/latest';
 
 /*
  * Every rate is quoted against USD, because all prices in the app originate as
@@ -42,11 +52,17 @@ export function buildRates(apiRates) {
 }
 
 export async function lazy_load_currency_rate() {
-  const cached = await appStore.getItem(StoreKeys.CURRENCY_RATES);
+  let cached = null;
+  try {
+    cached = await appStore.getItem(StoreKeys.CURRENCY_RATES);
+  } catch {
+    // IndexedDB unavailable (private browsing, storage disabled). Not fatal —
+    // this used to reject out of the function and leave the caller with nothing.
+  }
   if (isCacheUsable(cached)) return cached.rates;
 
   try {
-    const res = await fetch(`${FRANKFURTER_URL}?to=${SUPPORTED_CURRENCIES.join(',')}&base=USD`);
+    const res = await fetch(`${FRANKFURTER_URL}?base=USD&symbols=${SUPPORTED_CURRENCIES.join(',')}`);
     if (!res.ok) return cached?.rates ?? null;
 
     const json = await res.json();
@@ -55,9 +71,12 @@ export async function lazy_load_currency_rate() {
     await appStore.setItem(StoreKeys.CURRENCY_RATES, { rates: currencies, timestamp: Date.now() });
     return currencies;
   } catch (error) {
-    console.log(error);
-    // Return stale data if available rather than nothing
-    if (cached?.rates) return cached.rates;
+    console.warn('[currency] rate fetch failed:', error?.message);
   }
-  return null;
+
+  // Stale rates beat no rates; USD-at-1 beats null. Returning null here used to
+  // collapse the currency menu to USD only for the rest of the session, because
+  // Application.jsx wrote it straight over its own { USD: 1 } default.
+  if (cached?.rates) return cached.rates;
+  return { USD: 1 };
 }

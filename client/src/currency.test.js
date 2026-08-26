@@ -85,3 +85,65 @@ describe('isCacheUsable', () => {
     expect(isCacheUsable({ timestamp: 1000 }, now)).toBe(false);
   });
 });
+
+describe('lazy_load_currency_rate — failure behaviour', () => {
+  const { appStore } = require('persistance/store');
+  const { lazy_load_currency_rate } = require('./currency');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    appStore.getItem.mockReset();
+    appStore.setItem.mockReset();
+  });
+
+  it('calls the .dev host, not the .app host that 301s without CORS headers', async () => {
+    appStore.getItem.mockResolvedValue(null);
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ rates: { EUR: 0.857, AUD: 1.39, GBP: 0.734 } }),
+    });
+
+    await lazy_load_currency_rate();
+
+    const url = global.fetch.mock.calls[0][0];
+    expect(url).toContain('api.frankfurter.dev');
+    expect(url).not.toContain('api.frankfurter.app');
+    expect(url).toContain('base=USD');
+  });
+
+  it('never returns null — a failed fetch must not collapse the menu to USD only', async () => {
+    appStore.getItem.mockResolvedValue(null);
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const rates = await lazy_load_currency_rate();
+
+    expect(rates).not.toBeNull();
+    expect(rates.USD).toBe(1);
+  });
+
+  it('prefers stale cached rates over the bare USD fallback', async () => {
+    appStore.getItem.mockResolvedValue({
+      rates: { USD: 1, EUR: 0.9, AUD: 1.4, GBP: 0.75 },
+      timestamp: 0, // long expired
+    });
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const rates = await lazy_load_currency_rate();
+
+    expect(Object.keys(rates).sort()).toEqual(['AUD', 'EUR', 'GBP', 'USD']);
+  });
+
+  it('survives storage being unavailable', async () => {
+    // private browsing / storage disabled: getItem rejects
+    appStore.getItem.mockRejectedValue(new Error('IndexedDB unavailable'));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ rates: { EUR: 0.857 } }),
+    });
+
+    const rates = await lazy_load_currency_rate();
+
+    expect(rates.USD).toBe(1);
+    expect(rates.EUR).toBe(0.857);
+  });
+});

@@ -70,9 +70,18 @@ class Application extends React.Component {
 
   async componentDidMount() {
     document.body.classList.remove('app-mode-dark');
-    await lazy_load_currency_rate().then((currencyRates) => {
-      this.setState({ currencyRates });
-    });
+    // Only replace the default when we actually got rates. This used to write
+    // the result straight into state, so a failed fetch (which returned null)
+    // wiped the { USD: 1 } default and left the currency menu stuck on USD for
+    // the rest of the session, with no retry and no error shown.
+    try {
+      const currencyRates = await lazy_load_currency_rate();
+      if (currencyRates && Object.keys(currencyRates).length > 0) {
+        this.setState({ currencyRates });
+      }
+    } catch (error) {
+      console.warn('[currency] could not load rates, keeping USD default:', error?.message);
+    }
   }
 
   setDarkMode(enable) {
