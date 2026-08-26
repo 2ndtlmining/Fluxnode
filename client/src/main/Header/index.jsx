@@ -1,4 +1,4 @@
-import { format_minutes } from 'utils';
+import { format_minutes, hide_sensitive_number } from 'utils';
 
 import { Classes, Popover2 } from '@blueprintjs/popover2';
 
@@ -85,7 +85,12 @@ function DisplayTotalScore({ value }) {
   );
 }
 
-function WalletFluxBreakdown({ walletHealth, walletAmountFlux, totalScore }) {
+/*
+ * The wallet cell itself respects Privacy Mode, but this hover tooltip did not
+ * — locked, available and total score stayed readable with Privacy Mode on
+ * (issue #142).
+ */
+function WalletFluxBreakdown({ walletHealth, walletAmountFlux, totalScore, isPrivacy }) {
   const locked = walletHealth
     ? (walletHealth.cumulus.node_count * CC_COLLATERAL_CUMULUS) +
       (walletHealth.nimbus.node_count * CC_COLLATERAL_NIMBUS) +
@@ -93,19 +98,24 @@ function WalletFluxBreakdown({ walletHealth, walletAmountFlux, totalScore }) {
     : 0;
   const available = walletAmountFlux - locked;
 
+  const show = (value) => {
+    const formatted = value.toLocaleString();
+    return isPrivacy ? hide_sensitive_number(formatted) : formatted;
+  };
+
   return (
     <div className='d-block mb-0 cell-tooltip-box'>
       <p>
         <span className='ct-name'>Locked: </span>
-        <span className='ct-val'>{locked.toLocaleString()} FLUX</span>
+        <span className='ct-val'>{show(locked)} FLUX</span>
       </p>
       <p>
         <span className='ct-name'>Available: </span>
-        <span className='ct-val'>{available.toLocaleString()} FLUX</span>
+        <span className='ct-val'>{show(available)} FLUX</span>
       </p>
       <p>
         <span className='ct-name'>Total Score: </span>
-        <span className='ct-val'>{totalScore}</span>
+        <span className='ct-val'>{show(totalScore ?? 0)}</span>
       </p>
     </div>
   );
@@ -232,7 +242,7 @@ export function DashboardCells({ gstore: gs, total_donations, totalScoreAgainstS
               )}
             </CellTooltip>
 
-            <CellTooltip tooltipContent={<WalletFluxBreakdown walletHealth={walletHealth} walletAmountFlux={gs.wallet_amount_flux} totalScore={totalScoreAgainstSearchedWallet} />}>
+            <CellTooltip tooltipContent={<WalletFluxBreakdown walletHealth={walletHealth} walletAmountFlux={gs.wallet_amount_flux} totalScore={totalScoreAgainstSearchedWallet} isPrivacy={enablePrivacyMode} />}>
               {(ref, tooltipProps) => (
                 <Cell
                   elementRef={ref}
