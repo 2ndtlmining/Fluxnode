@@ -1,4 +1,4 @@
-import * as localforage from 'localforage';
+import localforage from 'localforage';
 import 'localforage-observable'; //Buchi: Update needed to gain access to newObservables
 
 export let appStore;
