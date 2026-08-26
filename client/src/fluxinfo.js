@@ -19,9 +19,16 @@
  * on every read so keyword changes take effect immediately.
  */
 
-const FLUXINFO_URL = 'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image';
-const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v1';
+// `ip` is included so per-node app counts can be attributed to a node — the
+// Workhorse showcase ranks nodes by how many apps they host. Costs ~158 KB on
+// a call the page already makes, rather than a second request.
+const FLUXINFO_URL = 'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image,ip,tier';
+const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v2'; // v2: adds topNodesByApps
+const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1'];
 const FLUXINFO_STALE_MAX_AGE = 6 * 60 * 60 * 1000; // serve last-known-good for up to 6 hours
+// Enough to fill the showcase with a couple spare, in case one drops offline.
+const TOP_NODES_KEPT = 5;
+
 const FLUXINFO_ATTEMPTS = 3;
 const FLUXINFO_RETRY_BASE_MS = 400;
 
@@ -51,6 +58,9 @@ function _fluxinfo_aggregate(nodes) {
   const presearchImage = process.env.REACT_APP_PRE_SEARCH || 'presearch/node:latest';
 
   const imageCounts = {};
+  // Per-node app lists, kept only for the busiest handful. Retaining all ~6,500
+  // would bloat the cached aggregate for no benefit — the showcase needs three.
+  const perNode = [];
   let totalContainers = 0;
   let watchtowerContainers = 0;
   let wordpressContainers = 0;
@@ -80,7 +90,25 @@ function _fluxinfo_aggregate(nodes) {
 
     if (hasStreamr) streamrNodes++;
     if (hasPresearch) presearchNodes++;
+
+    const ip = typeof item?.ip === 'string' ? item.ip : '';
+    if (ip && running.length > 0) {
+      perNode.push({
+        ip,
+        // Tier comes from here rather than the benchmark projection: this call
+        // is ~726 KB and reliable, that one is 3.45 MB and has been observed
+        // returning status=error for minutes at a time.
+        tier: typeof item?.tier === 'string' ? item.tier : null,
+        appCount: running.length,
+        images: running.map((a) => (typeof a?.Image === 'string' ? a.Image : '')).filter(Boolean)
+      });
+    }
   }
+
+  // Descending by app count, ties broken on ip so the order is stable between
+  // refreshes rather than reshuffling on equal counts.
+  perNode.sort((a, b) => b.appCount - a.appCount || a.ip.localeCompare(b.ip));
+  const topNodesByApps = perNode.slice(0, TOP_NODES_KEPT);
 
   return {
     imageCounts,
@@ -89,11 +117,21 @@ function _fluxinfo_aggregate(nodes) {
     wordpressContainers,
     streamrNodes,
     presearchNodes,
+    topNodesByApps,
     nodesReporting: nodes.length
   };
 }
 
+function _fluxinfo_prune_stale() {
+  for (const key of FLUXINFO_STALE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  }
+}
+
 function _fluxinfo_read_cache() {
+  _fluxinfo_prune_stale();
   try {
     const raw = localStorage.getItem(FLUXINFO_CACHE_KEY);
     if (!raw) return null;
