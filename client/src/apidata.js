@@ -1249,11 +1249,34 @@ export async function fetch_global_performance_rankings() {
 /* =================== GLOBAL APP SPECIFICATIONS ================= */
 /* ================================================================ */
 
-const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v1';
+// v2: enterprise apps now report null (unknown) resources instead of 0, so the
+// cached shape changed. Older code does spec.cpuPerInst.toFixed(2) unguarded
+// and would crash on a v1-keyed cache written by this version — bumping the key
+// keeps a rollback safe.
+const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v2';
+
+/*
+ * Keys this module used to write. sessionStorage runs ~85% full on a normal
+ * load (globalPerfRankings_v3 alone is ~2.9 MB of a ~5 MB quota), so leaving a
+ * ~1.3 MB orphan behind after a key bump is enough to push the new write over
+ * the limit. setItem is wrapped in a silent catch, so that failure is invisible
+ * and caching just quietly stops working.
+ */
+const HOME_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v1'];
+
+function _prune_stale_app_spec_caches() {
+  for (const key of HOME_APP_SPECS_STALE_KEYS) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+  }
+}
 const HOME_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const BLOCKS_PER_DAY = 2880; // 30 sec/block
 
 export async function fetch_global_app_specs(gstore) {
+  _prune_stale_app_spec_caches();
+
   try {
     const raw = sessionStorage.getItem(HOME_APP_SPECS_CACHE_KEY);
     if (raw) {
