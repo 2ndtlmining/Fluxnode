@@ -8,7 +8,10 @@ import { FaGamepad, FaTrophy } from 'react-icons/fa';
 import { LuBrainCircuit } from 'react-icons/lu';
 import { Gpu } from 'lucide-react';
 import ReactCountryFlag from 'react-country-flag';
-import CountUp from 'react-countup';
+// The project's own wrapper, which honours REACT_APP_ENABLE_NUMBER_SPINNING.
+// HomeOverview was the only file importing react-countup directly, so the home
+// page animated while the rest of the app did not.
+import CountUp from 'components/CountUp';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
@@ -130,7 +133,7 @@ function NetworkStatsPanel({ gstore, gpuPrices }) {
         badgeContent={
           total > 0 ? (
             <span className="hov-header-badge hov-header-badge--hero">
-              <CountUp end={total} separator="," duration={1.5} />
+              <CountUp end={total} />
             </span>
           ) : null
         }
@@ -163,7 +166,7 @@ function NetworkStatsPanel({ gstore, gpuPrices }) {
           <span className="hov-kv-label">FLUX Price</span>
           <span className="hov-kv-value hov-green" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
             {gstore.flux_price_usd > 0
-              ? <CountUp end={gstore.flux_price_usd} decimals={4} prefix="$" duration={1.5} />
+              ? <CountUp end={gstore.flux_price_usd} decimals={4} prefix="$" />
               : '—'}
           </span>
         </div>
@@ -366,7 +369,7 @@ function AppEcosystemPanel({ gstore }) {
               popoverClassName="hov-cat-tooltip"
             >
               <span className="hov-header-badge hov-header-badge--hero">
-                <CountUp end={grandTotal} separator="," duration={1.5} />
+                <CountUp end={grandTotal} />
               </span>
             </Tooltip2>
           ) : null
