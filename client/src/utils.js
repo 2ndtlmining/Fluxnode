@@ -185,3 +185,11 @@ export function calculate_float_number(amount) {
 
   return Math.round(amount * 100) / 100;
 }
+
+/** "ghcr.io/girderworks/feather:1.0.14" -> "girderworks/feather" */
+export function shortImageName(image) {
+  return (image || '')
+    .replace(/^(docker\.io\/|registry\.hub\.docker\.com\/|ghcr\.io\/|quay\.io\/)/, '')
+    .replace(/^library\//, '')
+    .split(':')[0];
+}

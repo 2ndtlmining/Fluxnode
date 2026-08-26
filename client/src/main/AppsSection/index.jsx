@@ -7,7 +7,8 @@ import { IconContext } from 'react-icons';
 import { FiBox } from 'react-icons/fi';
 import { FaGithub, FaDocker, FaLock } from 'react-icons/fa';
 import { LayoutContext } from 'contexts/LayoutContext';
-import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
+import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { CategoryTooltip } from 'components/CategoryTooltip';
 import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { fetch_global_app_specs } from 'main/apidata';
 import { hide_sensitive_number, blocksToHumanLong } from 'utils';
@@ -179,7 +180,7 @@ export function AppsSection({ walletNodes, gstore }) {
             const meta = APP_CATEGORY_META[cat] || APP_CATEGORY_META.other;
             const CatIcon = meta.Icon || FiBox;
             return (
-              <Tooltip2 key={cat} content={CATEGORY_TOOLTIPS[cat] || cat} placement="top" hoverOpenDelay={200}>
+              <Tooltip2 key={cat} content={<CategoryTooltip category={cat} />} placement="top" hoverOpenDelay={200}>
                 <span className="apps-summary__chip" style={{ borderColor: `${meta.color}44` }}>
                   <IconContext.Provider value={{ size: '12px' }}>
                     <span style={{ color: meta.color }}><CatIcon /></span>
@@ -260,7 +261,7 @@ export function AppsSection({ walletNodes, gstore }) {
                       </td>
                       <td className="apps-td--name">{row.appName}</td>
                       <td className="apps-td--cat">
-                        <Tooltip2 content={CATEGORY_TOOLTIPS[row.category] || row.category} placement="top" hoverOpenDelay={200}>
+                        <Tooltip2 content={<CategoryTooltip category={row.category} />} placement="top" hoverOpenDelay={200}>
                           <span style={{ color: meta.color }}>
                             <IconContext.Provider value={{ size: '13px' }}><CatIcon /></IconContext.Provider>
                           </span>

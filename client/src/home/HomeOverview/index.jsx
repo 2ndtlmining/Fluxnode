@@ -14,8 +14,10 @@ import ReactCountryFlag from 'react-country-flag';
 import CountUp from 'components/CountUp';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
-import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
+import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { CategoryTooltip } from 'components/CategoryTooltip';
 import { fluxos_version_string } from 'main/flux_version';
+import { shortImageName } from 'utils';
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
 
@@ -37,13 +39,6 @@ function blocksToHuman(blocks) {
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function shortImageName(image) {
-  return image
-    .replace(/^(docker\.io\/|registry\.hub\.docker\.com\/)/, '')
-    .replace(/^library\//, '')
-    .split(':')[0];
 }
 
 // ── Shared sub-components ──────────────────────────────────────────────────────
@@ -295,7 +290,7 @@ function NetworkResourcesPanel({ gstore }) {
 // ── Panel 3: App Ecosystem ─────────────────────────────────────────────────────
 
 function AppEcosystemPanel({ gstore }) {
-  const { runningCategoryMap, node_count, runningAppsStatus, runningAppsFetchedAt } = gstore;
+  const { runningCategoryMap, runningCategoryTop, node_count, runningAppsStatus, runningAppsFetchedAt } = gstore;
   const hasRunning = Object.keys(runningCategoryMap).length > 0;
 
   // Still loading if no node data at all
@@ -382,7 +377,7 @@ function AppEcosystemPanel({ gstore }) {
           const { label, Icon, color } = meta;
           const barPct = (totalInstances / maxVal) * 100;
           const sharePct = ((totalInstances / grandTotal) * 100).toFixed(0);
-          const tooltip = CATEGORY_TOOLTIPS[category] || category;
+          const tooltip = <CategoryTooltip category={category} breakdown={runningCategoryTop?.[category]} />;
 
           return (
             <div key={category} className="hov-eco-row">
@@ -475,7 +470,8 @@ function SpecHeader() {
 function SpecCategoryIcon({ category }) {
   const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
   const { Icon, color } = meta;
-  const tooltip = CATEGORY_TOOLTIPS[category] || CATEGORY_TOOLTIPS.other;
+  // Per-app row: the network-wide breakdown would be misleading here.
+  const tooltip = <CategoryTooltip category={category} />;
   return (
     <Tooltip2 content={tooltip} placement="top" hoverOpenDelay={200} popoverClassName="hov-cat-tooltip">
       <span className="hov-spec-cat" style={{ color }}>
