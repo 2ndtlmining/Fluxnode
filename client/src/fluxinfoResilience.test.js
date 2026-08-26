@@ -1,4 +1,4 @@
-import { fetch_fluxinfo_aggregate } from './fluxinfo';
+import { fetch_fluxinfo_aggregate, buildCategoryTop } from './fluxinfo';
 
 /*
  * Regression tests for issue #144.
@@ -126,5 +126,52 @@ describe('fetch_fluxinfo_aggregate', () => {
 
     expect(status).toBe('unavailable');
     expect(aggregate).toBeNull();
+  });
+});
+
+describe('buildCategoryTop', () => {
+  it('returns the three biggest apps, most to least', () => {
+    const { computing } = buildCategoryTop({
+      computing: { 'a/folding-at-home': 2264, 'b/foldingathome-arm64': 13, 'c/rosetta': 3, 'd/other': 1 },
+    });
+    expect(computing.top).toEqual([
+      { image: 'a/folding-at-home', count: 2264 },
+      { image: 'b/foldingathome-arm64', count: 13 },
+      { image: 'c/rosetta', count: 3 },
+    ]);
+  });
+
+  it('never returns more than three', () => {
+    const images = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`img${i}`, i + 1]));
+    expect(buildCategoryTop({ web: images }).web.top).toHaveLength(3);
+  });
+
+  it('reports the remainder so the top 3 are not mistaken for the whole category', () => {
+    const { gaming } = buildCategoryTop({ gaming: { a: 10, b: 5, c: 3, d: 2, e: 1 } });
+    expect(gaming.otherCount).toBe(2);
+    expect(gaming.otherTotal).toBe(3);
+    // top + remainder must reconcile to the category total
+    expect(gaming.top.reduce((s, x) => s + x.count, 0) + gaming.otherTotal).toBe(21);
+  });
+
+  it('breaks ties alphabetically so the order is stable between refreshes', () => {
+    // Media really does have three apps on 3 containers each
+    const a = buildCategoryTop({ media: { owncast: 3, 'yt-dl': 3, qbittorrent: 3 } });
+    const b = buildCategoryTop({ media: { qbittorrent: 3, owncast: 3, 'yt-dl': 3 } });
+    expect(a.media.top.map((x) => x.image)).toEqual(['owncast', 'qbittorrent', 'yt-dl']);
+    expect(a.media.top).toEqual(b.media.top);
+  });
+
+  it('handles categories with fewer than three apps', () => {
+    const { ai } = buildCategoryTop({ ai: { doccano: 3, duckling: 3 } });
+    expect(ai.top).toHaveLength(2);
+    expect(ai.otherCount).toBe(0);
+    expect(ai.otherTotal).toBe(0);
+  });
+
+  it('handles missing and empty input without throwing', () => {
+    expect(buildCategoryTop(undefined)).toEqual({});
+    expect(buildCategoryTop({})).toEqual({});
+    expect(buildCategoryTop({ web: {} })).toEqual({ web: { top: [], otherCount: 0, otherTotal: 0 } });
   });
 });

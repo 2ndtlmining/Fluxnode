@@ -3,7 +3,7 @@ import * as dayjs from 'dayjs';
 import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
 import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
-import { fetch_fluxinfo_aggregate } from 'fluxinfo';
+import { fetch_fluxinfo_aggregate, buildCategoryTop } from 'fluxinfo';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -102,6 +102,7 @@ export function create_global_store() {
     },
     topRunningImages: [],
     runningCategoryMap: {},
+    runningCategoryTop: {},
     // Provenance for the running-app figures above. `runningAppsStatus` is one
     // of 'live' | 'stale' | 'unavailable' so the UI can say what it is showing
     // instead of silently swapping in a different dataset (see issue #144).
@@ -461,14 +462,36 @@ export async function fetch_global_stats(walletAddress = null) {
 
     // Category breakdown from actual running containers (more accurate than spec data)
     const categoryMap = {};
+    // Per-category image tallies, keyed on the image name with the tag stripped
+    // so feather:1.0.13 and feather:1.0.14 count as one app rather than two.
+    // Genuinely different images stay separate — minecraft-server and
+    // minecraft-bedrock-server are two apps, not two versions of one.
+    const categoryImages = {};
+
     for (const [image, count] of imageEntries) {
       // Git-deployed apps all run the same wrapper image, which says nothing
       // about the workload inside — keep them uncategorized rather than
       // reporting 175 containers of "DevOps".
       const cat = isOpaqueRuntimeImage(image) ? 'other' : categorizeApp(image.toLowerCase());
       categoryMap[cat] = (categoryMap[cat] || 0) + count;
+
+      const base = image.split(':')[0];
+      categoryImages[cat] = categoryImages[cat] || {};
+      categoryImages[cat][base] = (categoryImages[cat][base] || 0) + count;
     }
+
     store.runningCategoryMap = categoryMap;
+
+    /*
+     * Top 3 apps per category, for the category tooltips. Several categories
+     * are effectively a single app — Computing is 99% Folding@Home, Monitoring
+     * 94% Globalping — which the bar chart alone does not convey.
+     *
+     * Ties are broken alphabetically: Media currently has three apps on 3
+     * containers each, so sorting by count alone reshuffles them on every
+     * refresh.
+     */
+    store.runningCategoryTop = buildCategoryTop(categoryImages);
   };
 
   const fetchUniqueWalletAddresses = async () => {

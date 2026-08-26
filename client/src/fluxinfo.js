@@ -154,3 +154,32 @@ export async function fetch_fluxinfo_aggregate() {
     _fluxinfoInFlight = null;
   }
 }
+
+/**
+ * Shape per-category image tallies into the top 3 plus a remainder, for the
+ * category tooltips.
+ *
+ * Input is { category: { imageName: count } } with tags already stripped, so
+ * feather:1.0.13 and feather:1.0.14 arrive as one entry. Genuinely different
+ * images stay separate — minecraft-server and minecraft-bedrock-server are two
+ * apps, not two versions of one.
+ *
+ * Ties break alphabetically. Media currently has three apps on 3 containers
+ * each, so sorting by count alone reshuffles them between refreshes.
+ */
+export function buildCategoryTop(categoryImages) {
+  return Object.fromEntries(
+    Object.entries(categoryImages || {}).map(([cat, images]) => {
+      const ranked = Object.entries(images || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const top = ranked.slice(0, 3);
+      return [
+        cat,
+        {
+          top: top.map(([image, count]) => ({ image, count })),
+          otherCount: ranked.length - top.length,
+          otherTotal: ranked.slice(3).reduce((sum, [, c]) => sum + c, 0)
+        }
+      ];
+    })
+  );
+}
