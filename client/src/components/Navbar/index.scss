@@ -37,3 +37,66 @@
         }
     }
 }
+
+// ── Mobile ────────────────────────────────────────────────────────────────────
+//
+// The navbar needs ~606px of intrinsic width: logo, four labelled buttons
+// (Home / Nodes / Guides / Demo), a divider, theme and settings. Blueprint's
+// navbar groups clip rather than scroll, so there was no horizontal overflow to
+// notice — the content was simply cut off. On a 390px phone the Flux logo and
+// the whole Home button sat off-screen at x -85..-3 and could not be tapped
+// (issue #96).
+//
+// Icons already carry the meaning, so dropping the labels is what buys the
+// room: 606px -> 388px at the first tier, -> 283px at the second, which fits a
+// 320px phone with every control reachable.
+
+@media (max-width: 768px) {
+  .bp4-navbar {
+    padding-left: 6px;
+    padding-right: 6px;
+
+    .bp4-button-text {
+      display: none;
+    }
+
+    .bp4-button {
+      margin-right: 2px !important;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .bp4-navbar-group.bp4-align-right {
+      margin-right: 0 !important;
+    }
+
+    img {
+      margin-left: 4px !important;
+      height: 26px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .bp4-navbar {
+    padding-left: 4px;
+    padding-right: 4px;
+
+    .bp4-button {
+      margin-right: 0 !important;
+      padding-left: 7px;
+      padding-right: 7px;
+      min-width: 38px;
+    }
+
+    // The divider is decoration, and it is the cheapest thing to drop.
+    .bp4-navbar-divider {
+      display: none;
+    }
+
+    img {
+      margin-left: 2px !important;
+      height: 22px;
+    }
+  }
+}
