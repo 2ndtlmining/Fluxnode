@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import './index.scss';
 
 import { Tooltip2 } from '@blueprintjs/popover2';
-import { FiCpu, FiHardDrive, FiDownload, FiUpload, FiBox, FiMapPin } from 'react-icons/fi';
+import { FiCpu, FiHardDrive, FiDownload, FiUpload, FiBox } from 'react-icons/fi';
 
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
@@ -99,9 +99,7 @@ function NodeCard({ node }) {
             {node.tier || 'UNKNOWN'}
           </span>
           {node.country && (
-            <span className="whp-country">
-              <FiMapPin size={10} /> {node.country}
-            </span>
+            <span className="whp-country">{node.country}</span>
           )}
         </div>
 
