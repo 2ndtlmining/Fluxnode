@@ -1,4 +1,4 @@
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 
 import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
@@ -147,7 +147,9 @@ function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkF
 */
 
 
-function fill_rewards(gstore) {
+// Exported so the reward maths can be unit tested. It is the most
+// financially sensitive calculation in the app and #147 will move it.
+export function fill_rewards(gstore) {
   fill_tier_g_projection(
     gstore.reward_projections.cumulus,
     gstore.node_count.cumulus,

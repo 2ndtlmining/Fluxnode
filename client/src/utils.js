@@ -1,5 +1,9 @@
-import * as dayjs from 'dayjs';
-import * as duration from 'dayjs/plugin/duration';
+// Default imports, not namespace imports. `import * as dayjs` only works
+// because webpack's CJS interop hands back module.exports directly; under
+// Jest it yields a Module namespace object, so dayjs.extend is undefined and
+// any test importing this file dies before reaching the code under test.
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
 dayjs.extend(duration);
 
 const ds = dayjs;
