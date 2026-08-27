@@ -1,4 +1,4 @@
-import { fetch_fluxinfo_aggregate, buildCategoryTop } from './fluxinfo';
+import { fetch_fluxinfo_aggregate, buildCategoryTop, appNameFromContainer } from './fluxinfo';
 
 /*
  * Regression tests for issue #144.
@@ -173,5 +173,25 @@ describe('buildCategoryTop', () => {
     expect(buildCategoryTop(undefined)).toEqual({});
     expect(buildCategoryTop({})).toEqual({});
     expect(buildCategoryTop({ web: {} })).toEqual({ web: { top: [], otherCount: 0, otherTotal: 0 } });
+  });
+});
+
+describe('appNameFromContainer', () => {
+  it('takes the app name from a compose container', () => {
+    expect(appNameFromContainer('/fluxFoldingAtHome_FoldingAtRunOnFlux29')).toBe('FoldingAtRunOnFlux29');
+  });
+
+  it('handles a single-component app with no underscore', () => {
+    expect(appNameFromContainer('/fluxPresearch')).toBe('Presearch');
+  });
+
+  it('splits on the first underscore, since app names may contain more', () => {
+    expect(appNameFromContainer('/fluxbackend_my_app_name')).toBe('my_app_name');
+  });
+
+  it('ignores containers that are not Flux apps', () => {
+    expect(appNameFromContainer('/watchtower')).toBeNull();
+    expect(appNameFromContainer('')).toBeNull();
+    expect(appNameFromContainer(undefined)).toBeNull();
   });
 });

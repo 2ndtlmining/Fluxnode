@@ -811,7 +811,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, 
         <ExpiringTodayPanel appSpecs={appSpecs} />
         <DeployedTodayPanel appSpecs={appSpecs} />
       </div>
-      <WorkhorsePanel gstore={gstore} />
+      <WorkhorsePanel gstore={gstore} appSpecs={appSpecs} />
       <TopDogsPanel globalRankings={globalRankings} />
       <FluxAIPanel gpuPrices={gpuPrices} />
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />

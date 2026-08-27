@@ -103,6 +103,7 @@
 /* ── Identity ───────────────────────────────────────────────────────────── */
 
 .whp-ip {
+  display: block;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 0.95rem;
   font-weight: 600;
@@ -110,6 +111,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.whp-ip--link {
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover,
+  &:focus-visible {
+    color: #14b8a6;
+    border-bottom-color: #14b8a6;
+  }
 }
 
 .whp-meta {
@@ -238,45 +252,76 @@
   }
 }
 
-/* ── App list ───────────────────────────────────────────────────────────── */
+/* ── App list — mirrors the Deployed Today spec rows ────────────────────── */
+
+.whp-spec-head,
+.whp-spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px 30px 46px 52px 52px;
+  align-items: center;
+  gap: 6px;
+}
+
+.whp-spec-head {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-secondary);
+}
 
 .whp-apps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 172px;
+  max-height: 168px;
   overflow-y: auto;
 
-  // A faint rail makes it obvious the list continues rather than just ending
+  // The instance and size columns used to sit under the scrollbar; this keeps
+  // the track clear of them.
+  padding-right: 10px;
+
   scrollbar-width: thin;
   &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
     background: var(--border-hover);
     border-radius: 3px;
   }
 }
 
-.whp-app {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.72rem;
-  line-height: 1.75;
+.whp-spec-row {
+  font-size: 0.7rem;
+  line-height: 1.9;
   color: var(--text-secondary);
 }
 
-.whp-app__name {
+.whp-spec-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-.whp-app__count {
-  margin-left: auto;
-  flex: none;
-  font-weight: 700;
+.whp-spec-cat {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.whp-spec-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
+}
+
+.whp-badge {
+  justify-self: start;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(20, 184, 166, 0.14);
+  color: #14b8a6;
   font-variant-numeric: tabular-nums;
 }
 

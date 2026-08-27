@@ -22,9 +22,10 @@
 // `ip` is included so per-node app counts can be attributed to a node — the
 // Workhorse showcase ranks nodes by how many apps they host. Costs ~158 KB on
 // a call the page already makes, rather than a second request.
-const FLUXINFO_URL = 'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image,ip,tier';
-const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v2'; // v2: adds topNodesByApps
-const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1'];
+const FLUXINFO_URL =
+  'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image,apps.runningapps.Names,ip,tier';
+const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v3'; // v3: adds app names per node
+const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1', 'fluxinfoAggregate_v2'];
 const FLUXINFO_STALE_MAX_AGE = 6 * 60 * 60 * 1000; // serve last-known-good for up to 6 hours
 // Enough to fill the showcase with a couple spare, in case one drops offline.
 const TOP_NODES_KEPT = 5;
@@ -35,6 +36,26 @@ const FLUXINFO_RETRY_BASE_MS = 400;
 let _fluxinfoInFlight = null;
 
 const _delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Recover the Flux app name from a docker container name.
+ *
+ * Flux names containers `flux<component>_<appname>` for compose apps and
+ * `flux<appname>` for single-component ones, so the app name is whatever
+ * follows the first underscore. Component names never contain one; app names
+ * may, which is why this splits on the first and not the last.
+ *
+ *   /fluxFoldingAtHome_FoldingAtRunOnFlux29  ->  FoldingAtRunOnFlux29
+ *   /fluxPresearch                           ->  Presearch
+ */
+export function appNameFromContainer(containerName) {
+  const raw = (containerName || '').replace(/^\//, '');
+  if (!raw.startsWith('flux')) return null;
+  const body = raw.slice(4);
+  const underscore = body.indexOf('_');
+  const name = underscore === -1 ? body : body.slice(underscore + 1);
+  return name || null;
+}
 
 async function _fluxinfo_fetch_once() {
   const res = await fetch(FLUXINFO_URL);
@@ -99,9 +120,28 @@ function _fluxinfo_aggregate(nodes) {
         // is ~726 KB and reliable, that one is 3.45 MB and has been observed
         // returning status=error for minutes at a time.
         tier: typeof item?.tier === 'string' ? item.tier : null,
-        appCount: running.length,
-        images: running.map((a) => (typeof a?.Image === 'string' ? a.Image : '')).filter(Boolean)
+        // Containers, kept for the utilisation reading. Not the ranking metric:
+        // a compose app runs one container per component, so a node with 13
+        // containers can be hosting as few as 6 apps.
+        containerCount: running.length,
+        images: running.map((a) => (typeof a?.Image === 'string' ? a.Image : '')).filter(Boolean),
+        // Deployed app names, so the showcase can look each one up in the
+        // global app specs for its category and resource reservation.
+        appNames: []
       });
+
+      // Distinct deployed apps — "hosting the most apps" means apps, not
+      // containers. Populated after the push so appCount can be derived from it.
+      const names = [
+        ...new Set(
+          running
+            .map((a) => appNameFromContainer(Array.isArray(a?.Names) ? a.Names[0] : null))
+            .filter(Boolean)
+        )
+      ];
+      const entry = perNode[perNode.length - 1];
+      entry.appNames = names;
+      entry.appCount = names.length || running.length;
     }
   }
 

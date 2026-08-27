@@ -75,9 +75,21 @@ export const fetch_node_benchmarks = _shared(BENCHMARKS_URL);
 export const fetch_node_resources = _shared(RESOURCES_URL);
 export const fetch_node_geolocation = _shared(GEOLOCATION_URL);
 
-/** Node addresses arrive with and without a port; the host is the join key. */
+/** The bare IP, no port. Geolocation is per-machine, so it keys on this. */
 export function hostOf(address) {
   return (address || '').split(':')[0];
+}
+
+/**
+ * The full address including port, normalised.
+ *
+ * One machine commonly runs several nodes on different ports — 82.66.83.104 has
+ * three, each with its own wallet, benchmark row and resource reservation.
+ * Keying on the bare IP silently merged them and attributed one node's wallet
+ * to another, so everything except geolocation joins on this.
+ */
+export function addressOf(address) {
+  return (address || '').trim();
 }
 
 /**
@@ -93,14 +105,21 @@ export function hostOf(address) {
  * app list and utilisation all come from cheaper, steadier calls — so the card
  * renders with the specs section omitted rather than not at all.
  */
-export function buildWorkhorseNodes(topNodesByApps, benchmarks, geolocations, resources, limit = 3) {
+export function buildWorkhorseNodes(
+  topNodesByApps,
+  benchmarks,
+  geolocations,
+  resources,
+  paymentAddresses,
+  limit = 3
+) {
   if (!Array.isArray(topNodesByApps) || topNodesByApps.length === 0) return [];
 
-  const benchByHost = {};
+  const benchByAddr = {};
   for (const entry of benchmarks || []) {
     const bench = entry?.benchmark?.bench;
-    const host = hostOf(bench?.ipaddress);
-    if (host) benchByHost[host] = { bench, tier: entry?.benchmark?.status?.benchmarking || null };
+    const addr = addressOf(bench?.ipaddress);
+    if (addr) benchByAddr[addr] = { bench, tier: entry?.benchmark?.status?.benchmarking || null };
   }
 
   const geoByHost = {};
@@ -110,25 +129,36 @@ export function buildWorkhorseNodes(topNodesByApps, benchmarks, geolocations, re
     if (host) geoByHost[host] = geo;
   }
 
-  const resByHost = {};
+  const resByAddr = {};
   for (const entry of resources || []) {
-    const host = hostOf(entry?.ip);
-    if (host) resByHost[host] = entry?.apps?.resources || null;
+    const addr = addressOf(entry?.ip);
+    if (addr) resByAddr[addr] = entry?.apps?.resources || null;
+  }
+
+  // So the showcase can link a node through to the wallet that runs it.
+  const walletByAddr = {};
+  for (const entry of paymentAddresses || []) {
+    const addr = addressOf(entry?.ip);
+    if (addr && entry?.payment_address) walletByAddr[addr] = entry.payment_address;
   }
 
   const out = [];
   for (const node of topNodesByApps) {
+    const addr = addressOf(node.ip);
     const host = hostOf(node.ip);
-    const benchEntry = benchByHost[host];
+    const benchEntry = benchByAddr[addr];
     const b = benchEntry?.bench || null;
-    const geo = geoByHost[host] || {};
-    const res = resByHost[host] || {};
+    const geo = geoByHost[host] || {};   // per-machine, carries no port
+    const res = resByAddr[addr] || {};
 
     out.push({
       ip: node.ip,
       host,
       appCount: node.appCount,
+      containerCount: node.containerCount ?? node.appCount,
       images: node.images,
+      appNames: node.appNames || [],
+      paymentAddress: walletByAddr[addr] || null,
       tier: node.tier || benchEntry?.tier || null,
       country: geo.country || null,
       // Capacity, from the node's own benchmark run. Null when benchmarks are

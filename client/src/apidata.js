@@ -4,6 +4,7 @@ import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
 import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { fetch_fluxinfo_aggregate, buildCategoryTop } from 'fluxinfo';
+import { specResources } from 'appSpecs';
 import {
   fetch_node_benchmarks,
   fetch_node_resources,
@@ -111,6 +112,7 @@ export function create_global_store() {
     runningCategoryMap: {},
     runningCategoryTop: {},
     topNodesByApps: [],
+    nodePaymentAddresses: [],
     workhorseNodes: [],
     // Provenance for the running-app figures above. `runningAppsStatus` is one
     // of 'live' | 'stale' | 'unavailable' so the UI can say what it is showing
@@ -378,7 +380,8 @@ export async function fetch_total_network_utils(gstore) {
         store.topNodesByApps,
         benchmarkData,
         geoData,
-        resourceData
+        resourceData,
+        store.nodePaymentAddresses
       );
     }
   } catch (error) {
@@ -553,11 +556,16 @@ export async function fetch_global_stats(walletAddress = null) {
     try {
       const res = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
       const json = await res.json();
+      const nodeList = Array.isArray(json?.data) ? json.data : [];
       const uniquePaymentAddresses = new Set();
-      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
+      nodeList.forEach((item) => {
         uniquePaymentAddresses.add(item.payment_address);
       });
       store.uniqueWalletAddressesCount = Array.from(uniquePaymentAddresses).length;
+
+      // Retained so the Workhorse showcase can link a node to its wallet
+      // without a second trip for the same list.
+      store.nodePaymentAddresses = nodeList;
     } catch (error) {
       console.log('error', error);
     }
@@ -1333,27 +1341,11 @@ export async function fetch_global_app_specs(gstore) {
     const categoryMap = {};
 
     for (const spec of specs) {
-      const isCompose = Array.isArray(spec.compose);
       const instances = spec.instances || 1;
 
-      // Resource per instance — compose specs sum across components, flat specs read directly
-      let cpuPerInst, ramGBPerInst, ssdGBPerInst;
-      if (isCompose && spec.compose.length === 0) {
-        // Enterprise app: compose is encrypted, so the resource figures are
-        // unknown rather than zero. Summing the empty array reported 0.00
-        // cores / 0.00 GB in the Expiring and Deployed panels.
-        cpuPerInst = null;
-        ramGBPerInst = null;
-        ssdGBPerInst = null;
-      } else if (isCompose) {
-        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
-        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
-        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
-      } else {
-        cpuPerInst = spec.cpu || 0;
-        ramGBPerInst = (spec.ram || 0) / 1024;
-        ssdGBPerInst = spec.hdd || 0;
-      }
+      // Resource per instance — see specResources: enterprise specs report null
+      // rather than a misleading zero.
+      const { cpuPerInst, ramGBPerInst, ssdGBPerInst } = specResources(spec);
 
       // Categorize by compose image names first (more accurate than app name),
       // and give encrypted enterprise specs their own bucket instead of Other.
