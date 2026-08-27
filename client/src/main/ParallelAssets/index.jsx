@@ -9,6 +9,7 @@ import { InfoCell } from 'components/InfoCell';
 import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
 
 import { pa_summary_full } from 'main/apidata';
+import { hide_sensitive_number } from 'utils';
 import ErgoLogo from 'assets/Ergo_Orange.png'
 import KDALogo from 'assets/kadena-kda-logo.png'
 import ETHLogo from 'assets/ethereum-eth-logo.png'
@@ -22,7 +23,17 @@ import MATICLogo from 'assets/polygon-matic-logo.png'
 import BaseLogo_white from 'assets/Base_Symbol_White.png'
 import BaseLogo_black from 'assets/Base_Symbol_Black.png'
 
-function PASummary(summary) {
+/*
+ * Privacy Mode promises no wallet data is on screen. Parallel Assets had no
+ * privacy handling at all, so every claimable / claimed / mined figure stayed
+ * visible with it on (issue #142).
+ */
+function maskAmount(value, enablePrivacyMode, decimals = 2) {
+  const fixed = Number(value ?? 0).toFixed(decimals);
+  return enablePrivacyMode ? hide_sensitive_number(fixed) : fixed;
+}
+
+function PASummary(summary, enablePrivacyMode) {
   return (
     <div className='pa-summary adp-border-color'>
       <div id='title'>Parallel Assets Summary</div>
@@ -30,6 +41,7 @@ function PASummary(summary) {
         <InfoCell
           name='Total Claimable'
           value={summary.total_claimable}
+          isPrivacy={enablePrivacyMode}
           icon={<FiShoppingBag />}
           iconColor='#000'
           iconColorAlt='#eeeeee'
@@ -39,6 +51,7 @@ function PASummary(summary) {
         <InfoCell
           name={<>Total Claimed to date</>}
           value={summary.total_claimed_to_date}
+          isPrivacy={enablePrivacyMode}
           icon={<FiAward />}
           iconColor='#000'
           iconColorAlt='#eeeeee'
@@ -50,6 +63,7 @@ function PASummary(summary) {
         <InfoCell
           name='Total mined'
           value={summary.total_mined}
+          isPrivacy={enablePrivacyMode}
           icon={<FiLayers />}
           iconColor='#000'
           iconColorAlt='#eeeeee'
@@ -62,7 +76,7 @@ function PASummary(summary) {
   );
 }
 
-function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder }) {
+function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder, enablePrivacyMode }) {
   return (
     <div className={'adp-text-normal pa-card' + ` pa-grad-${blockStyle}`}>
       <div className='logo-wrapper'>
@@ -74,31 +88,31 @@ function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder }) {
       <div className='info-area'>
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.possible_claimable.toFixed(2)} Possible
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${maskAmount(paInfo.possible_claimable, enablePrivacyMode)} Possible
             Claimable`}</span>
           </div>
         </div>
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.amount_claimed.toFixed(2)} Claimed Amount`}</span>
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${maskAmount(paInfo.amount_claimed, enablePrivacyMode)} Claimed Amount`}</span>
           </div>
         </div>
 
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.fusion_fee.toFixed(2)} Fusion Fee`}</span>
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${maskAmount(paInfo.fusion_fee, enablePrivacyMode)} Fusion Fee`}</span>
           </div>
         </div>
 
         <div className='border-bottom adp-border-color pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.paid.toFixed(2)} Fees Paid`}</span>
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${maskAmount(paInfo.paid, enablePrivacyMode)} Fees Paid`}</span>
           </div>
         </div>
 
         <div className='pt-2 pb-2'>
           <div className='text-center fs-6 text-wrap'>
-            <span className='fw-bold'>{placeholder ? 'TBC' : `${paInfo.amount_received.toFixed(2)} Received Amount`}</span>
+            <span className='fw-bold'>{placeholder ? 'TBC' : `${maskAmount(paInfo.amount_received, enablePrivacyMode)} Received Amount`}</span>
           </div>
         </div>
       </div>
@@ -106,17 +120,18 @@ function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder }) {
   );
 }
 
-export function ParallelAssets({ summary, theme }) {
+export function ParallelAssets({ summary, theme, enablePrivacyMode = false }) {
 
   return (
     <Container fluid>
       <Row>
         <Col className='margin-b-xl' offset={{}} lg={7}>
-          {PASummary(summary)}
+          {PASummary(summary, enablePrivacyMode)}
         </Col>
         <Col className='margin-b-xl' lg={17}>
           <div className='parallel-assets-list'>
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.kda}
               blockStyle='kda'
               logoUrl={KDALogo}
@@ -124,6 +139,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'KDA'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.eth}
               blockStyle='eth'
               logoUrl={ETHLogo}
@@ -131,6 +147,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Ethereum'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.bsc}
               blockStyle='bsc'
               logoUrl={BNBLogo}
@@ -138,6 +155,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'BSC'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.trn}
               blockStyle='trn'
               logoUrl={TRNLogo}
@@ -145,6 +163,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Tron'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.sol}
               blockStyle='sol'
               logoUrl={SOLLogo}
@@ -152,6 +171,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Solana'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.avx}
               blockStyle='avx'
               logoUrl={AVXLogo}
@@ -159,6 +179,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'AVAX'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.erg}
               blockStyle='erg'
               logoUrl={ErgoLogo}
@@ -166,12 +187,14 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Ergo'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.algo}
               blockStyle='alg'
               logoUrl={theme === 'light' ? ArgoblackLogo : ArgoLogo}
               assetName={'Algorand'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.matic}
               blockStyle='matic'
               logoUrl={MATICLogo}
@@ -179,6 +202,7 @@ export function ParallelAssets({ summary, theme }) {
               assetName={'Polygon'}
             />
             <PAssetCard
+              enablePrivacyMode={enablePrivacyMode}
               paInfo={summary.assets.base}
               blockStyle='base'
               logoUrl={theme === 'light' ? BaseLogo_black : BaseLogo_white}

@@ -2,8 +2,19 @@ import { Select2 } from '@blueprintjs/select';
 import { Button, Label } from '@blueprintjs/core';
 import { MenuItem2 } from '@blueprintjs/popover2';
 
+import { SUPPORTED_CURRENCIES } from 'currency';
+
 export function CurrencyMenuItem({ currencyRates, selectedCurrency, onChange }) {
-  const currencyOptions = currencyRates === null ? ['USD'] : Object.entries(currencyRates).map(([currency, rate]) => currency);
+  // Order by SUPPORTED_CURRENCIES rather than whatever order the rates object
+  // happens to have, so USD stays first and the menu does not reshuffle when
+  // the API changes its response order.
+  const currencyOptions =
+    currencyRates === null
+      ? ['USD']
+      : [
+          ...SUPPORTED_CURRENCIES.filter((c) => c in currencyRates),
+          ...Object.keys(currencyRates).filter((c) => !SUPPORTED_CURRENCIES.includes(c))
+        ];
 
   return (
     <Select2

@@ -7,8 +7,10 @@ import { IconContext } from 'react-icons';
 import { FiBox } from 'react-icons/fi';
 import { FaGithub, FaDocker, FaLock } from 'react-icons/fa';
 import { LayoutContext } from 'contexts/LayoutContext';
-import { APP_CATEGORY_META, CATEGORY_TOOLTIPS } from 'content/appCategoryMeta';
-import { categorizeApp } from 'main/Gamification/appCategories';
+import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { CategoryTooltip } from 'components/CategoryTooltip';
+import { categorizeAppSpec } from 'main/Gamification/appCategories';
+import { specResources } from 'appSpecs';
 import { fetch_global_app_specs } from 'main/apidata';
 import { hide_sensitive_number, blocksToHumanLong } from 'utils';
 
@@ -40,18 +42,9 @@ export function AppsSection({ walletNodes, gstore }) {
     for (const spec of appSpecs.rawSpecs) {
       const isCompose = Array.isArray(spec.compose);
 
-      let cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag;
-      if (isCompose) {
-        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
-        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
-        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
-        repotag = spec.compose[0]?.repotag || '';
-      } else {
-        cpuPerInst = spec.cpu || 0;
-        ramGBPerInst = (spec.ram || 0) / 1024;
-        ssdGBPerInst = spec.hdd || 0;
-        repotag = spec.repotag || '';
-      }
+      // Shared with fetch_global_app_specs and the Workhorse showcase; the two
+      // copies this replaced both carried the enterprise 0.00 bug.
+      const { cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag } = specResources(spec);
 
       const specHeight = spec.height || 0;
       let expiresInBlocks = null;
@@ -69,7 +62,13 @@ export function AppsSection({ walletNodes, gstore }) {
       }
       const deployType = isEnterprise ? 'enterprise' : allRepotags.includes('runonflux/orbit') ? 'git' : 'docker';
 
-      map.set(spec.name, { cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag, expiresInBlocks, hasExpire, isEnterprise, deployType });
+      map.set(spec.name, {
+        cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag, expiresInBlocks, hasExpire, isEnterprise, deployType,
+        // Categorize from the authoritative global spec (repotag-based) so this
+        // table agrees with the Home ecosystem panel. Categorizing on the
+        // user-chosen app name disagreed with the image for 24% of apps.
+        category: categorizeAppSpec(spec)
+      });
     }
     return map;
   }, [appSpecs, gstore]);
@@ -83,7 +82,9 @@ export function AppsSection({ walletNodes, gstore }) {
       for (const app of (node.installedApps || [])) {
         const spec = specMap.get(app.name);
         const isEnterprise = spec?.isEnterprise || false;
-        const category = categorizeApp(app.name);
+        // Prefer the global spec's repotag-based category; fall back to the
+        // node's own copy of the spec if the app is not in the global list yet.
+        const category = spec?.category ?? categorizeAppSpec(app);
         result.push({
           ip,
           port,
@@ -163,7 +164,7 @@ export function AppsSection({ walletNodes, gstore }) {
             const meta = APP_CATEGORY_META[cat] || APP_CATEGORY_META.other;
             const CatIcon = meta.Icon || FiBox;
             return (
-              <Tooltip2 key={cat} content={CATEGORY_TOOLTIPS[cat] || cat} placement="top" hoverOpenDelay={200}>
+              <Tooltip2 key={cat} content={<CategoryTooltip category={cat} />} placement="top" hoverOpenDelay={200}>
                 <span className="apps-summary__chip" style={{ borderColor: `${meta.color}44` }}>
                   <IconContext.Provider value={{ size: '12px' }}>
                     <span style={{ color: meta.color }}><CatIcon /></span>
@@ -244,7 +245,7 @@ export function AppsSection({ walletNodes, gstore }) {
                       </td>
                       <td className="apps-td--name">{row.appName}</td>
                       <td className="apps-td--cat">
-                        <Tooltip2 content={CATEGORY_TOOLTIPS[row.category] || row.category} placement="top" hoverOpenDelay={200}>
+                        <Tooltip2 content={<CategoryTooltip category={row.category} />} placement="top" hoverOpenDelay={200}>
                           <span style={{ color: meta.color }}>
                             <IconContext.Provider value={{ size: '13px' }}><CatIcon /></IconContext.Provider>
                           </span>
@@ -259,9 +260,9 @@ export function AppsSection({ walletNodes, gstore }) {
                       <td className="apps-td--num">{row.ramGBPerInst != null ? row.ramGBPerInst.toFixed(2) : '\u2014'}</td>
                       <td className="apps-td--num">{row.ssdGBPerInst != null ? row.ssdGBPerInst.toFixed(2) : '\u2014'}</td>
                       <td className="apps-td--expire">
-                        {row.expiresInBlocks != null && row.expiresInBlocks > 0
-                          ? blocksToHumanLong(row.expiresInBlocks)
-                          : row.hasExpire ? 'Expired' : 'N/A'}
+                        {row.expiresInBlocks != null
+                          ? (row.expiresInBlocks > 0 ? blocksToHumanLong(row.expiresInBlocks) : 'Expired')
+                          : row.hasExpire ? '—' : 'N/A'}
                       </td>
                     </tr>
                   );

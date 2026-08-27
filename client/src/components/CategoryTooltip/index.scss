@@ -1,0 +1,42 @@
+.cat-tooltip {
+  max-width: 300px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.cat-tooltip__desc {
+  opacity: 0.9;
+}
+
+.cat-tooltip__list {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 7px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cat-tooltip__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.cat-tooltip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-tooltip__count {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-tooltip__row--rest {
+  opacity: 0.6;
+}

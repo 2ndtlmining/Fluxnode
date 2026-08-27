@@ -1,8 +1,16 @@
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 
 import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
-import { categorizeApp } from 'main/Gamification/appCategories';
+import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
+import { fetch_fluxinfo_aggregate, buildCategoryTop } from 'fluxinfo';
+import { specResources } from 'appSpecs';
+import {
+  fetch_node_benchmarks,
+  fetch_node_resources,
+  fetch_node_geolocation,
+  buildWorkhorseNodes
+} from 'networkNodes';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -59,6 +67,7 @@ export function create_global_store() {
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
     fluxBlockHeight: 0,
+    daemon_version: 0,
     node_count: {
       cumulus: 0,
       nimbus: 0,
@@ -100,7 +109,16 @@ export function create_global_store() {
       ssd_percentage: 0
     },
     topRunningImages: [],
-    runningCategoryMap: {}
+    runningCategoryMap: {},
+    runningCategoryTop: {},
+    topNodesByApps: [],
+    nodePaymentAddresses: [],
+    workhorseNodes: [],
+    // Provenance for the running-app figures above. `runningAppsStatus` is one
+    // of 'live' | 'stale' | 'unavailable' so the UI can say what it is showing
+    // instead of silently swapping in a different dataset (see issue #144).
+    runningAppsStatus: 'unavailable',
+    runningAppsFetchedAt: null
   };
 }
 
@@ -139,7 +157,9 @@ function fill_tier_g_projection_fractus(projectionTargetObj, nodeCount, networkF
 */
 
 
-function fill_rewards(gstore) {
+// Exported so the reward maths can be unit tested. It is the most
+// financially sensitive calculation in the app and #147 will move it.
+export function fill_rewards(gstore) {
   fill_tier_g_projection(
     gstore.reward_projections.cumulus,
     gstore.node_count.cumulus,
@@ -170,19 +190,40 @@ function fill_rewards(gstore) {
 
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    const url = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
-    fetch(url)
-      .then((res) => res.json())
-      .then((firstPage) => {
-        const { pagesTotal } = firstPage;
-        const array = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-        Promise.all(array.map((page) => fetch(url + `&pageNum=${page}`)))
-          .then((results) => Promise.all(results.map((result) => result.json())))
-          .then((json) => {
-            const txs = [firstPage, ...json].reduce((prev, current) => prev.concat(current.txs), []);
-            resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
-          });
-      });
+    const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
+
+    const safeFetchJson = async (url) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null; // e.g. 400/500 - skip this page
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return null; // e.g. "Loading block index..."
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
+    };
+
+    (async () => {
+      const firstPage = await safeFetchJson(baseUrl);
+      if (!firstPage) {
+        resolve(0); // explorer unavailable - fail gracefully instead of crashing
+        return;
+      }
+
+      const { pagesTotal } = firstPage;
+      const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+
+      // fetch pages sequentially (or in small batches) instead of all at once
+      const pages = [firstPage];
+      for (const page of pageNums) {
+        const json = await safeFetchJson(`${baseUrl}&pageNum=${page}`);
+        if (json) pages.push(json);
+      }
+
+      const txs = pages.reduce((prev, current) => prev.concat(current.txs || []), []);
+      resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
+    })();
   });
 }
 
@@ -273,63 +314,95 @@ export async function fetch_arcane_os_stats(gstore) {
 export async function fetch_total_network_utils(gstore) {
   const store = gstore;
 
-  const [resFluxNetworkUtils, resNodeBenchmarks] = await Promise.allSettled([
-    fetch(API_FLUX_NETWORK_UTILISATION),
-    fetch(API_NODE_BENCHMARKS)
+  /*
+   * Both of these projections were also being fetched by
+   * fetch_global_performance_rankings, so benchmark (~3.45 MB) and geolocation
+   * were each pulled twice per home-page load. They now go through shared
+   * in-flight fetchers, so whichever caller asks first wins and the other
+   * joins the same request.
+   */
+  const [resourceData, benchmarkData] = await Promise.all([
+    fetch_node_resources(),
+    fetch_node_benchmarks()
   ]);
 
-  if (resFluxNetworkUtils.status == 'fulfilled') {
-    const res = resFluxNetworkUtils.value;
-    const json = await res.json();
+  store.nodeResources = resourceData;
+  store.nodeBenchmarks = benchmarkData;
 
-    if (json.status !== 'error') {
-      const emptyNodes = json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
+  if (resourceData.length > 0) {
+    const emptyNodes = resourceData.filter((data) => data.apps.resources.appsRamLocked === 0).length;
 
-      store.utilized.nodes = store.node_count.total - emptyNodes;
+    store.utilized.nodes = store.node_count.total - emptyNodes;
 
-      // Total locked resources
-      store.utilized.ram =
-        json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
-      store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
-      store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000; // GB to TB;
+    // Total locked resources
+    store.utilized.ram =
+      resourceData.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
+    store.utilized.cores = resourceData.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+    store.utilized.ssd = resourceData.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000; // GB to TB;
 
-      // Utilised Node Percentage
-      store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
-    }
+    // Utilised Node Percentage
+    store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
   }
 
-  if (resNodeBenchmarks.status == 'fulfilled') {
+  if (benchmarkData.length > 0) {
     let totalRam = 0,
       totalSsd = 0,
       totalCores = 0;
-    const res = resNodeBenchmarks.value;
-    const json = await res.json();
-    if (json.status !== 'error') {
-      for (const data of json.data) {
-        totalRam = totalRam + data.benchmark.bench.ram;
-        totalSsd = totalSsd + data.benchmark.bench.ssd;
-        totalCores = totalCores + data.benchmark.bench.cores;
-      }
 
-      // Covert from GB to TB
-      store.total.ram = totalRam / 1000;
-      store.total.ssd = totalSsd / 1000;
-
-      store.total.cores = totalCores;
-
-      // Utilized Resources Percentage
-      store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
-      store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
-      store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
-      //store.node_count.fractus = await lazy_load_fractus_count(json.data);
+    for (const data of benchmarkData) {
+      totalRam = totalRam + data.benchmark.bench.ram;
+      totalSsd = totalSsd + data.benchmark.bench.ssd;
+      totalCores = totalCores + data.benchmark.bench.cores;
     }
+
+    // Covert from GB to TB
+    store.total.ram = totalRam / 1000;
+    store.total.ssd = totalSsd / 1000;
+
+    store.total.cores = totalCores;
+
+    // Utilized Resources Percentage
+    store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
+    store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
+    store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
+  }
+
+  /*
+   * Workhorse showcase: the busiest nodes on the network, joined against data
+   * already in hand. topNodesByApps rides on the ecosystem panel's fetch,
+   * benchmarks and resources are the ones just awaited above, and geolocation
+   * is shared with the rankings panel — so this costs no extra request.
+   */
+  try {
+    if (store.topNodesByApps?.length) {
+      const geoData = await fetch_node_geolocation();
+      store.workhorseNodes = buildWorkhorseNodes(
+        store.topNodesByApps,
+        benchmarkData,
+        geoData,
+        resourceData,
+        store.nodePaymentAddresses
+      );
+    }
+  } catch (error) {
+    console.warn('[workhorse] could not build showcase:', error?.message);
   }
 
   // Fetch ArcaneOS stats
   await fetch_arcane_os_stats(store);
 
-  window.gstore = store;
-  return store;
+  /*
+   * Return a new top-level object rather than the one we were handed.
+   *
+   * This function mutates the store in place, so callers doing
+   * setState({ gstore: store }) were storing the reference they already had.
+   * Downstream useMemo hooks keyed on [gstore] therefore never recomputed and
+   * updated block height / utilisation figures never reached them. Nested
+   * objects are intentionally still shared — only the identity changes.
+   */
+  const updated = { ...store };
+  window.gstore = updated;
+  return updated;
 }
 
 export async function fetch_global_stats(walletAddress = null) {
@@ -383,10 +456,29 @@ export async function fetch_global_stats(walletAddress = null) {
   }
 };
 
-  const fetchBlockHeight = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getinfo');
-    const json = await res.json();
-    store.current_block_height = json['data']['blocks'];
+  /*
+   * daemon/getinfo used to be fetched twice per refresh — once here for
+   * current_block_height and again in getFluxBlockInfo for fluxBlockHeight,
+   * which is the same field under a second name. Both keys are kept because
+   * different views read different ones, but there is now one request.
+   *
+   * This also gains a try/catch it never had: fetchBlockHeight threw straight
+   * into the Promise.all below, so a single blip on this endpoint failed the
+   * entire global stats load.
+   */
+  const fetchDaemonInfo = async () => {
+    try {
+      const res = await fetch('https://api.runonflux.io/daemon/getinfo');
+      const json = await res.json();
+      const info = json?.data;
+
+      const blocks = info?.blocks ?? 0;
+      store.current_block_height = blocks;
+      store.fluxBlockHeight = blocks;
+      store.daemon_version = info?.version ?? 0;
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchRichList = async () => {
@@ -395,111 +487,94 @@ export async function fetch_global_stats(walletAddress = null) {
     store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
   };
 
+  /*
+   * Derives every running-app figure from the single shared fluxinfo fetch.
+   * Also supplies wordpressCount, which used to come from a second, identical
+   * request to the same endpoint.
+   */
   const fetchTotalDeployedApps = async () => {
-    const streamr = process.env.REACT_APP_STREAMR;
-    const presearch = process.env.REACT_APP_PRE_SEARCH;
-    const watchtower = 'containrrr/watchtower:latest'
+    const { aggregate, status, fetchedAt } = await fetch_fluxinfo_aggregate();
 
-    let totalRunningApps = 0;
-    let streamrCount = 0;
-    let presearchCount = 0;
-    let watchtowerCount = 0;
+    store.runningAppsStatus = status;
+    store.runningAppsFetchedAt = fetchedAt;
 
+    // No data and no cache: leave the zeroed defaults in place. The UI reports
+    // this as unavailable rather than substituting a different dataset.
+    if (!aggregate) return;
 
-    try {
-      const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
-      const json = await res.json();
+    store.totalRunningApps = aggregate.totalContainers - aggregate.watchtowerContainers;
+    store.streamrRunningApps = aggregate.streamrNodes;
+    store.presearchRunningApps = aggregate.presearchNodes;
+    store.wordpressCount = aggregate.wordpressContainers;
 
-      const imageCounts = new Map();
-      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
-        totalRunningApps += item?.apps?.runningapps?.length;
-        if (JSON.stringify(item?.apps?.runningapps).includes(streamr)) streamrCount++;
-        if (JSON.stringify(item?.apps?.runningapps).includes(presearch)) presearchCount++;
-        if (JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower:latest') || JSON.stringify(item?.apps?.runningapps).includes('containrrr/watchtower'))
-          watchtowerCount++;
-        for (const app of item?.apps?.runningapps || []) {
-          const img = app.Image || '';
-          if (!img) continue;
-          imageCounts.set(img, (imageCounts.get(img) || 0) + 1);
-        }
-      });
+    const imageEntries = Object.entries(aggregate.imageCounts);
 
-      store.totalRunningApps = (totalRunningApps - watchtowerCount);
-      store.streamrRunningApps = streamrCount;
-      store.presearchRunningApps = presearchCount;
-      store.topRunningImages = [...imageCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([image, nodeCount]) => ({ image, nodeCount }));
+    store.topRunningImages = [...imageEntries]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([image, nodeCount]) => ({ image, nodeCount }));
 
-      // Category breakdown from actual running containers (more accurate than spec data)
-      const categoryMap = {};
-      for (const [image, count] of imageCounts.entries()) {
-        const cat = categorizeApp(image.toLowerCase());
-        categoryMap[cat] = (categoryMap[cat] || 0) + count;
-      }
-      store.runningCategoryMap = categoryMap;
-    } catch (error) {
-      console.log('error', error);
+    // Category breakdown from actual running containers (more accurate than spec data)
+    const categoryMap = {};
+    // Per-category image tallies, keyed on the image name with the tag stripped
+    // so feather:1.0.13 and feather:1.0.14 count as one app rather than two.
+    // Genuinely different images stay separate — minecraft-server and
+    // minecraft-bedrock-server are two apps, not two versions of one.
+    const categoryImages = {};
+
+    for (const [image, count] of imageEntries) {
+      // Git-deployed apps all run the same wrapper image, which says nothing
+      // about the workload inside — keep them uncategorized rather than
+      // reporting 175 containers of "DevOps".
+      const cat = isOpaqueRuntimeImage(image) ? 'other' : categorizeApp(image.toLowerCase());
+      categoryMap[cat] = (categoryMap[cat] || 0) + count;
+
+      const base = image.split(':')[0];
+      categoryImages[cat] = categoryImages[cat] || {};
+      categoryImages[cat][base] = (categoryImages[cat][base] || 0) + count;
     }
+
+    store.runningCategoryMap = categoryMap;
+
+    /*
+     * Top 3 apps per category, for the category tooltips. Several categories
+     * are effectively a single app — Computing is 99% Folding@Home, Monitoring
+     * 94% Globalping — which the bar chart alone does not convey.
+     *
+     * Ties are broken alphabetically: Media currently has three apps on 3
+     * containers each, so sorting by count alone reshuffles them on every
+     * refresh.
+     */
+    store.runningCategoryTop = buildCategoryTop(categoryImages);
+
+    // Carried on the store so fetch_total_network_utils can build the Workhorse
+    // showcase without asking for the aggregate a second time.
+    store.topNodesByApps = aggregate.topNodesByApps || [];
   };
 
   const fetchUniqueWalletAddresses = async () => {
     try {
       const res = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
       const json = await res.json();
+      const nodeList = Array.isArray(json?.data) ? json.data : [];
       const uniquePaymentAddresses = new Set();
-      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
+      nodeList.forEach((item) => {
         uniquePaymentAddresses.add(item.payment_address);
       });
       store.uniqueWalletAddressesCount = Array.from(uniquePaymentAddresses).length;
+
+      // Retained so the Workhorse showcase can link a node to its wallet
+      // without a second trip for the same list.
+      store.nodePaymentAddresses = nodeList;
     } catch (error) {
       console.log('error', error);
     }
   };
 
-  const fetchWordpressInstancesCount = async () => {
-    try {
-      const res = await fetch('https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image');
-      const json = await res.json();
-      
-      let wordpressCount = 0;
-
-      if (json.status !== 'error' && Array.isArray(json?.data)) {
-        json.data.forEach((item) => {
-          if (item?.apps?.runningapps) {
-            // Check each running app for WordPress images
-            item.apps.runningapps.forEach((app) => {
-              if (app.Image) {
-                const imageName = app.Image.toLowerCase();
-                // Match runonflux/wp-nginx with any tag variation or no tag
-                if (imageName === 'runonflux/wp-nginx' || imageName.startsWith('runonflux/wp-nginx:')) {
-                  wordpressCount++;
-                }
-              }
-            });
-          }
-        });
-      }
-
-      store.wordpressCount = wordpressCount;
-      console.log('WordPress instances count:', wordpressCount);
-    } catch (error) {
-      console.log('Error fetching WordPress instances:', error);
-      // Set to 0 on error to prevent breaking the frontend
-      store.wordpressCount = 0;
-    }
-  };
-
-  const getFluxBlockInfo = async () => {
-    try {
-      const res = await fetch('https://api.runonflux.io/daemon/getinfo');
-      const json = await res.json();
-      store.fluxBlockHeight = json?.data?.blocks ?? 0;
-    } catch (error) {
-      console.log('error', error);
-    }
-  };
+  // NOTE: fetchWordpressInstancesCount used to live here and issued a second,
+  // byte-identical request to stats.runonflux.io/fluxinfo alongside
+  // fetchTotalDeployedApps. store.wordpressCount is now derived from the shared
+  // aggregate, with the same matching rule (exact runonflux/wp-nginx, any tag).
 
   await Promise.all([
     fetchCurrency(),
@@ -507,12 +582,10 @@ export async function fetch_global_stats(walletAddress = null) {
     fetchNode(),
     fetchBenchVer(),
     fetchFluxVer(),
-    fetchBlockHeight(),
+    fetchDaemonInfo(),
     fetchRichList(),
     fetchTotalDeployedApps(),
-    fetchUniqueWalletAddresses(),
-    fetchWordpressInstancesCount(),
-    getFluxBlockInfo()
+    fetchUniqueWalletAddresses()
   ]);
 
   fill_rewards(store);
@@ -852,48 +925,10 @@ export async function getDemoWallet() {
 }
 
 // Fetch USD Latest currency rate
-const usdCurrencyRate = async ()=> {
-  let response = await fetch('https://api.frankfurter.app/latest?to=USD');
-  const resData = await response.json();
-  return resData.rates;
-}
+// Currency rates now live in client/src/currency.js so they can be unit
+// tested. Re-exported here to keep existing import paths working.
+export { lazy_load_currency_rate, SUPPORTED_CURRENCIES } from 'currency';
 
-
-const CURRENCY_RATE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-// Fetch other currencies and store
-export async function lazy_load_currency_rate() {
-
-  const supportedCurrencies = ['USD', 'EUR', 'AUD'];
-  const cached = await appStore.getItem(StoreKeys.CURRENCY_RATES);
-  const isFresh = cached && cached.timestamp && (Date.now() - cached.timestamp < CURRENCY_RATE_TTL_MS);
-  if (isFresh) {
-    return cached.rates;
-  }
-
-  try {
-    const res = await fetch('https://api.frankfurter.app/latest?to=' + supportedCurrencies.join(',') + '&base=USD');
-    const json = await res.json();
-    const currencyRates = json.rates;
-
-    const usd = await usdCurrencyRate();
-    const currencies = {...usd, ...currencyRates}
-    console.log('rates:', currencies);
-
-    if(res.ok){
-      await appStore.setItem(StoreKeys.CURRENCY_RATES, { rates: currencies, timestamp: Date.now() });
-      return currencies;
-    }else{
-      return null
-    }
-
-  } catch (error) {
-    console.log(error);
-    // Return stale data if available rather than nothing
-    if (cached && cached.rates) return cached.rates;
-  }
-  return null;
-}
 /* ======================================================================= */
 /* ======================================================================= */
 /* =========================== Fractus Count =========================== */
@@ -1092,16 +1127,18 @@ export async function fetch_global_performance_rankings() {
   } catch {}
 
   try {
-    const [nodesRes, benchRes, geoRes, countRes] = await Promise.all([
+    // benchmark and geolocation come from the shared fetchers so they are not
+    // pulled a second time by fetch_total_network_utils / fetch_country_node_counts
+    const [nodesRes, benchData, geoData, countRes] = await Promise.all([
       fetch(API_FLUX_NODES_ALL_URL),
-      fetch(API_NODE_BENCHMARKS),
-      fetch(API_NODE_GEOLOCATION),
+      fetch_node_benchmarks(),
+      fetch_node_geolocation(),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     ]);
 
     const nodesJson = await nodesRes.json();
-    const benchJson = await benchRes.json();
-    const geoJson = await geoRes.json();
+    const benchJson = { data: benchData };
+    const geoJson = { data: geoData };
     const countJson = await countRes.json();
 
     // Official enabled node counts — same source as the dashboard header
@@ -1251,11 +1288,34 @@ export async function fetch_global_performance_rankings() {
 /* =================== GLOBAL APP SPECIFICATIONS ================= */
 /* ================================================================ */
 
-const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v1';
+// v2: enterprise apps now report null (unknown) resources instead of 0, so the
+// cached shape changed. Older code does spec.cpuPerInst.toFixed(2) unguarded
+// and would crash on a v1-keyed cache written by this version — bumping the key
+// keeps a rollback safe.
+const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v2';
+
+/*
+ * Keys this module used to write. sessionStorage runs ~85% full on a normal
+ * load (globalPerfRankings_v3 alone is ~2.9 MB of a ~5 MB quota), so leaving a
+ * ~1.3 MB orphan behind after a key bump is enough to push the new write over
+ * the limit. setItem is wrapped in a silent catch, so that failure is invisible
+ * and caching just quietly stops working.
+ */
+const HOME_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v1'];
+
+function _prune_stale_app_spec_caches() {
+  for (const key of HOME_APP_SPECS_STALE_KEYS) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+  }
+}
 const HOME_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const BLOCKS_PER_DAY = 2880; // 30 sec/block
 
 export async function fetch_global_app_specs(gstore) {
+  _prune_stale_app_spec_caches();
+
   try {
     const raw = sessionStorage.getItem(HOME_APP_SPECS_CACHE_KEY);
     if (raw) {
@@ -1281,30 +1341,15 @@ export async function fetch_global_app_specs(gstore) {
     const categoryMap = {};
 
     for (const spec of specs) {
-      const isCompose = Array.isArray(spec.compose);
       const instances = spec.instances || 1;
 
-      // Resource per instance — compose specs sum across components, flat specs read directly
-      let cpuPerInst, ramGBPerInst, ssdGBPerInst;
-      if (isCompose) {
-        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
-        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
-        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
-      } else {
-        cpuPerInst = spec.cpu || 0;
-        ramGBPerInst = (spec.ram || 0) / 1024;
-        ssdGBPerInst = spec.hdd || 0;
-      }
+      // Resource per instance — see specResources: enterprise specs report null
+      // rather than a misleading zero.
+      const { cpuPerInst, ramGBPerInst, ssdGBPerInst } = specResources(spec);
 
-      // Categorize by compose image names first (more accurate than app name)
-      let cat = 'other';
-      if (isCompose) {
-        for (const component of spec.compose) {
-          const imageCat = categorizeApp((component.repotag || '').toLowerCase());
-          if (imageCat !== 'other') { cat = imageCat; break; }
-        }
-      }
-      if (cat === 'other') cat = categorizeApp((spec.repotag || spec.name || '').toLowerCase());
+      // Categorize by compose image names first (more accurate than app name),
+      // and give encrypted enterprise specs their own bucket instead of Other.
+      const cat = categorizeAppSpec(spec);
       categoryMap[cat] = (categoryMap[cat] || 0) + instances;
 
       // Deployed / expiring — spec.height is lowercase in the API
@@ -1373,8 +1418,7 @@ export async function fetch_country_node_counts() {
   } catch {}
 
   try {
-    const res = await fetch(API_NODE_GEOLOCATION);
-    const json = await res.json();
+    const json = { data: await fetch_node_geolocation() };
     const countryMap = {};
     for (const entry of json.data || []) {
       const geo = entry.geolocation;

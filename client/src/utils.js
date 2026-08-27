@@ -1,5 +1,9 @@
-import * as dayjs from 'dayjs';
-import * as duration from 'dayjs/plugin/duration';
+// Default imports, not namespace imports. `import * as dayjs` only works
+// because webpack's CJS interop hands back module.exports directly; under
+// Jest it yields a Module namespace object, so dayjs.extend is undefined and
+// any test importing this file dies before reaching the code under test.
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
 dayjs.extend(duration);
 
 const ds = dayjs;
@@ -184,4 +188,12 @@ export function calculate_float_number(amount) {
   }
 
   return Math.round(amount * 100) / 100;
+}
+
+/** "ghcr.io/girderworks/feather:1.0.14" -> "girderworks/feather" */
+export function shortImageName(image) {
+  return (image || '')
+    .replace(/^(docker\.io\/|registry\.hub\.docker\.com\/|ghcr\.io\/|quay\.io\/)/, '')
+    .replace(/^library\//, '')
+    .split(':')[0];
 }

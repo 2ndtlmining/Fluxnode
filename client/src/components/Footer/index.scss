@@ -1,94 +1,256 @@
+@import 'styles/functional';
+
 .v-footer {
+  // Light is the base, dark is the override — matching the rest of the app.
+  // The footer used to be hardcoded #101823, so it stayed dark in light mode
+  // (issue #55).
+  background-color: #eceef1;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+
+  @include rule-mode-dark() {
     background-color: #101823;
-
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
+    border-top-color: rgba(255, 255, 255, 0.06);
+  }
 }
 
-.container-fluid {
-    width: 100%;
-    padding-right: 15px;
-    padding-left: 15px;
-    margin-right: auto;
-    margin-left: auto;
+.footer-inner {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 14px 24px;
 }
 
-.footer-heading {
-    font-size: 18px;
-    margin-bottom: 20px;
-    font-weight: 400;
-    letter-spacing: normal;
-    line-height: 1.5;
-
-    color: #fff;
+/* One band: identity + links on the left, donations on the right.
+   Wraps to a stacked layout on narrow screens rather than overflowing. */
+.footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
 }
+
+.footer-bar__left,
+.footer-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.footer-bar__right {
+  justify-content: flex-end;
+}
+
+/* ── Social icons ─────────────────────────────────────────────────────────── */
 
 .v-footer .links-list {
-    li {
-        list-style: none;
-        margin: 0 10px 0 0;
-        display: inline-block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 
-        a {
-            height: 40px;
-            width: 40px;
-            display: block;
-            border-radius: 50%;
-            position: relative;
+  li {
+    margin: 0;
+    display: block;
+  }
 
-            // background: rgba(0, 0, 0, 0.05);
-            background-color: rgba(210, 230, 210, 0.075);
-        }
+  a {
+    height: 34px;
+    width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.05);
+    transition: background-color 120ms ease, transform 120ms ease;
 
-        .footer-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            -webkit-transform: translate(-50%, -50%);
-            -ms-transform: translate(-50%, -50%);
-            transform: translate(-50%, -50%);
-        }
+    @include rule-mode-dark() {
+      background-color: rgba(210, 230, 210, 0.075);
     }
+
+    &:hover,
+    &:focus-visible {
+      background-color: rgba(18, 204, 148, 0.18);
+      transform: translateY(-1px);
+    }
+  }
 }
 
-.v-footer {
-    .hl-addr-name,
-    p {
-        color: rgba(232, 230, 227, 0.5);
-        font-size: 1rem;
-    }
+/* ── Version / build meta ─────────────────────────────────────────────────── */
 
-    .donate-list {
-        list-style: none;
-    }
+.footer-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: rgba(28, 32, 38, 0.6);
+  min-width: 0;
 
-    .hl-addr-name {
-        font-weight: 500;
-    }
-    .hl-addr-val {
-        color: rgb(181, 175, 166);
-    }
-
-    .hl-app-version {
-        font-weight: 500;
-    }
+  @include rule-mode-dark() {
+    color: rgba(232, 230, 227, 0.55);
+  }
 }
 
-.v-footer .donation-heading {
-    font-size: 24px;
-    margin-bottom: 10px;
-    position: relative;
-    top: -5px;
+.footer-meta .hl-app-version {
+  font-weight: 600;
+  color: rgba(20, 24, 30, 0.85);
+
+  @include rule-mode-dark() {
+    color: rgba(232, 230, 227, 0.8);
+  }
 }
 
-.v-footer p.donation-info {
-    font-weight: 500;
-    color: #fff;
-    font-size: 18px;
-    margin-bottom: 14px;
+.footer-meta__sep {
+  opacity: 0.4;
 }
 
-.line {
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+.footer-meta__updated {
+  white-space: nowrap;
+}
+
+/* ── Donation chips ───────────────────────────────────────────────────────── */
+
+.footer-donate-label {
+  font-size: 0.8rem;
+  color: rgba(28, 32, 38, 0.6);
+  white-space: nowrap;
+
+  @include rule-mode-dark() {
+    color: rgba(232, 230, 227, 0.55);
+  }
+}
+
+.footer-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.footer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+  color: rgb(72, 78, 88);
+  font-size: 0.76rem;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(18, 204, 148, 0.5);
+    background: rgba(18, 204, 148, 0.08);
+  }
+
+  @include rule-mode-dark() {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgb(181, 175, 166);
+  }
+}
+
+.footer-chip--copied {
+  border-color: rgba(18, 204, 148, 0.7);
+  color: #12cc94;
+}
+
+.footer-chip__label {
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: rgba(20, 24, 30, 0.8);
+
+  @include rule-mode-dark() {
+    color: rgba(232, 230, 227, 0.75);
+  }
+}
+
+.footer-chip--copied .footer-chip__label {
+  color: #12cc94;
+}
+
+.footer-chip__addr {
+  opacity: 0.85;
+}
+
+.footer-chip__icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.footer-addr-tooltip {
+  .bp4-popover2-content {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    word-break: break-all;
+    max-width: 280px;
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .footer-bar {
+    justify-content: center;
+  }
+
+  .footer-bar__left,
+  .footer-bar__right {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .footer-meta {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-inner {
+    padding: 12px 14px;
+  }
+
+  .v-footer .links-list {
+    gap: 6px;
+
+    a {
+      height: 32px;
+      width: 32px;
+    }
+  }
+
+  .footer-meta {
+    font-size: 0.72rem;
+  }
+
+  .footer-donate-label {
+    width: 100%;
+    text-align: center;
+  }
+
+  .footer-chips {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .footer-chip {
+    font-size: 0.7rem;
+    padding: 5px 8px;
+  }
 }

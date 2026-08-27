@@ -656,6 +656,20 @@
   }
 }
 
+.hov-eco-stale {
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: help;
+}
+
 .hov-empty {
   font-size: 0.8rem;
   color: var(--text-tertiary);

@@ -1,13 +1,14 @@
 {
   "name": "flux-app",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "homepage": ".",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "formatter": "prettier --config-precedence cli-override --ignore-unknown --config \".prettierrc.toml\"",
-    "format": "yarn run formatter --write ."
+    "format": "yarn run formatter --write .",
+    "test": "react-scripts test"
   },
   "dependencies": {
     "@blueprintjs/core": "^4.5.1",

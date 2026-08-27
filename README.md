@@ -128,6 +128,104 @@ Now you can start the frontend app as usual in a separate terminal. Also make su
 
 To revert the change and use the official APIs in dev mode, set the value of `REACT_APP_FLUXNODE_INFO_API_MODE` back to `debug`.
 
+## App Categories
+
+Every app on the network is placed in exactly one category. Categorisation runs on the
+**Docker image name (repotag)**, never on the user-chosen app name — app names are freeform
+and collide badly (an app called `FoldingAtFluxCloud...` is Folding@Home, not a blockchain
+node). The logic lives in `client/src/main/Gamification/appCategories.js`, and the labels,
+colours and icons in `client/src/content/appCategoryMeta.js`.
+
+Categories are matched by keyword substring, **first match wins**, in the order listed below.
+
+| Category | What belongs here | Example images |
+|---|---|---|
+| **Computing** | Volunteer & distributed computing | `yurinnick/folding-at-home`, `beastob/foldingathome-arm64`, `runonflux/rosetta-server` |
+| **Gaming** | Game servers and browser games | `itzg/minecraft-server`, `thijsvanloef/palworld-server-docker`, `lloesche/valheim-server`, `spritsail/fivem`, `littlestache/abioticfactorserver`, `rouhim/arma-reforger-server` |
+| **Communication** | Chat, messaging & voice servers | `simplexchat/smp-server`, `teamspeaksystems/teamspeak6-server`, `vectorim/element-web`, `streamr/node` |
+| **Web / CMS** | Websites, CMS & alternative frontends | `runonflux/wp-nginx`, `ghost:alpine`, `nextcloud`, `benbusby/whoogle-search`, `littlestache/cors-anywhere` |
+| **Blockchain** | Chain nodes, explorers & DeFi | `kaspanet/rusty-kaspad`, `ruimarinho/bitcoin-core`, `runonflux/blockbook-docker`, `runonflux/fironode`, `alephium/explorer`, `ghcr.io/girderworks/edge` |
+| **Database** | Database & queue servers | `mysql`, `postgres`, `runonflux/shared-db`, `runonflux/flux-pg-cluster`, `mvertes/alpine-mongo` |
+| **DevOps / CI** | Build, automation & remote access tools | `n8nio/n8n`, `budibase/budibase`, `linuxserver/code-server`, `rustdesk/rustdesk-server`, `vaultwarden/server` |
+| **Media** | Media servers & downloaders | `gabekangas/owncast`, `linuxserver/qbittorrent`, `jellyfin/jellyfin`, `wirewrex/yt-dl` |
+| **AI / ML** | Model serving & ML tooling | `ollama/ollama`, `doccano/doccano`, `rasa/duckling`, `vllm/vllm-openai` |
+| **VPN / Privacy** | VPN, proxy & bandwidth-sharing agents | `siomiz/softethervpn`, `presearch/node`, `ghcr.io/runonflux/cumulusvpn-gateway`, `iproyal/pawns-cli`, `sandmanshiri/shadowsocks` |
+| **Monitoring** | Observability & network probes | `grafana/grafana`, `louislam/uptime-kuma`, `globalping/globalping-probe`, `travelping/nettools` |
+| **Enterprise** | Apps whose specification is encrypted | *(no image visible — see below)* |
+| **Other** | Image not recognised, or deliberately not classified | `busybox`, `alpine`, `runonflux/orbit` |
+
+### Three rules that override keyword matching
+
+**1. A dedicated website is Web, not the app it advertises.**
+`runonflux/minecraft-server-website` is the landing page that sells Minecraft hosting — it is
+not a Minecraft server. Any image containing `website` is categorised as **Web / CMS** before
+keyword matching runs. Without this, Gaming was inflated by pages hosting no game at all.
+
+> This matches the rest of the Flux tooling: [Fluxtracker](https://github.com/2ndtlmining/Fluxtracker)
+> carries an explicit `CATEGORY_EXCLUDE` for `-server-website` (added after 47 phantom gaming
+> instances were traced to it), and [fluxview](https://github.com/RunOnFlux/fluxview) renamed
+> its Gaming page to "Dedicated Websites".
+
+**2. Git-deployed apps stay in Other.**
+Every app deployed from a git repository runs the same wrapper image, `runonflux/orbit`. The
+wrapper says nothing about the workload inside it, so these are deliberately left
+uncategorised rather than being reported as a DevOps tool. They appear in the Apps table with
+a GitHub icon in the **Type** column.
+
+**3. Enterprise apps get their own bucket.**
+Enterprise apps ship an encrypted `compose` block, so no image name is ever visible. They are
+categorised as **Enterprise** rather than Other — "we are not permitted to see this" is a
+different fact from "we do not recognise this". Their CPU / RAM / SSD columns show `—` because
+those figures are genuinely unknown.
+
+**Bonus: when the image name tells you nothing, read its labels.**
+`ghcr.io/girderworks/edge` and `/feather` gave no clue from the name and account for ~790
+containers. Pulling the image settled it in seconds:
+
+```bash
+docker pull ghcr.io/girderworks/edge:1.0.13
+docker inspect ghcr.io/girderworks/edge:1.0.13 --format '{{json .Config.Labels}}'
+docker history --no-trunc ghcr.io/girderworks/edge:1.0.13 | grep LABEL
+```
+
+```
+org.opencontainers.image.title=beldex-node
+org.opencontainers.image.description=Beldex master node (beldexd + storage + belnet + telemetry API) for Flux
+```
+
+They bundle `beldexd` 7.0.2, `beldex-storage` 2.4.0 and `belnet` 0.9.8, and run in `MODE`
+A/B/C with +0/+100/+200 port offsets so a single Flux node can host up to three master nodes.
+That is why one operator shows ~790 containers. They are categorised as **Blockchain**.
+
+### Where the numbers come from
+
+The **App Ecosystem** panel on the home page counts **running containers**, reported by the
+nodes themselves via `stats.runonflux.io/fluxinfo`. A multi-component app contributes one
+count per component.
+
+This is deliberately the only source. `api.runonflux.io/apps/globalappsspecifications` counts
+what was *ordered* rather than what is running, so it always reads higher and must never be
+used as a silent fallback — doing so made the whole panel change numbers and row order at
+random ([#144](https://github.com/2ndtlmining/Fluxnode/issues/144)). When fluxinfo is
+unreachable the app retries, then serves the last good reading marked with a **STALE** badge,
+and only reports the panel as unavailable if there is nothing cached.
+
+### Adding a keyword
+
+Add it to the relevant array in `appCategories.js`, then run the tests:
+
+```bash
+cd client
+yarn test
+```
+
+Keep keywords long enough to avoid substring collisions — `llm` used to match the "llm" inside
+`fu`**`llm`**`ent-engine` and put a fulfilment service in AI / ML. `client/src/main/Gamification/appCategories.test.js`
+pins both the intended matches and the collisions already fixed, so a careless keyword fails
+the suite rather than quietly skewing the chart.
+
+---
+
 ## Gamification & Achievements
 
 The Achievements panel is accessible via the trophy icon (🏆) in the Nodes Overview header. It tracks milestones earned by your Flux node fleet and updates automatically whenever your wallet is loaded.
