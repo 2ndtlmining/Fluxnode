@@ -171,15 +171,19 @@ function NodeCard({ node, specsByName }) {
 
       <div className="whp-col whp-col--apps">
         <div className="whp-col__title">Apps ({apps.length})</div>
-        <div className="whp-spec-head">
-          <span>Name</span>
-          <span>Cat</span>
-          <span>Inst</span>
-          <span className="whp-spec-num">CPU</span>
-          <span className="whp-spec-num">RAM</span>
-          <span className="whp-spec-num">SSD</span>
-        </div>
+        {/* Inside the scroll container, so header and rows share one content
+            width — outside it, the scrollbar and gutter pushed the header
+            about 16px wider and the columns drifted apart. */}
         <div className="whp-apps">
+          <div className="whp-spec-head">
+            <span>Name</span>
+            <span>Repo</span>
+            <span className="whp-spec-cat">Cat</span>
+            <span className="whp-spec-inst">Inst</span>
+            <span className="whp-spec-num">CPU</span>
+            <span className="whp-spec-num">RAM</span>
+            <span className="whp-spec-num">SSD</span>
+          </div>
           {apps.map(({ name, components, spec }) => {
             const cat = spec?.category || 'other';
             const meta = APP_CATEGORY_META[cat] || APP_CATEGORY_META.other;
@@ -187,6 +191,12 @@ function NodeCard({ node, specsByName }) {
             return (
               <div key={name} className="whp-spec-row">
                 <span className="whp-spec-name" title={name}>{name}</span>
+                {/* Truncation is left to CSS so the cut adapts to the column
+                    width rather than a guessed character count; the full value
+                    is on the title. */}
+                <span className="whp-spec-repo" title={spec?.repotag || undefined}>
+                  {spec?.repotag || '—'}
+                </span>
                 <Tooltip2
                   content={<CategoryTooltip category={cat} />}
                   placement="top"
@@ -197,7 +207,9 @@ function NodeCard({ node, specsByName }) {
                     <CatIcon size={11} />
                   </span>
                 </Tooltip2>
-                <span className="whp-badge">{components}×</span>
+                <span className="whp-spec-inst">
+                  <span className="whp-badge">{components}×</span>
+                </span>
                 <span className="whp-spec-num">{fmtSpec(spec?.cpuPerInst, 'c')}</span>
                 <span className="whp-spec-num">{fmtSpec(spec?.ramGBPerInst, 'GB')}</span>
                 <span className="whp-spec-num">{fmtSpec(spec?.ssdGBPerInst, 'GB')}</span>

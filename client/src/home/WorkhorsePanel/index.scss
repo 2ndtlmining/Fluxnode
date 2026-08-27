@@ -257,12 +257,22 @@
 .whp-spec-head,
 .whp-spec-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 16px 30px 46px 52px 52px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) 16px 34px 44px 50px 50px;
   align-items: center;
   gap: 6px;
 }
 
 .whp-spec-head {
+  // Header cells carry the same alignment classes as the data cells so the
+  // columns line up; they just should not inherit the help cursor.
+  .whp-spec-cat { cursor: default; }
+
+  // Stays put while the list scrolls beneath it.
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-primary);
+
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -305,7 +315,23 @@
 .whp-spec-cat {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   cursor: help;
+}
+
+.whp-spec-inst {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.whp-spec-repo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.66rem;
 }
 
 .whp-spec-num {
@@ -315,7 +341,6 @@
 }
 
 .whp-badge {
-  justify-self: start;
   font-size: 0.6rem;
   font-weight: 700;
   padding: 1px 5px;
