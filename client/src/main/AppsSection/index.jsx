@@ -10,6 +10,7 @@ import { LayoutContext } from 'contexts/LayoutContext';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
 import { categorizeAppSpec } from 'main/Gamification/appCategories';
+import { specResources } from 'appSpecs';
 import { fetch_global_app_specs } from 'main/apidata';
 import { hide_sensitive_number, blocksToHumanLong } from 'utils';
 
@@ -41,26 +42,9 @@ export function AppsSection({ walletNodes, gstore }) {
     for (const spec of appSpecs.rawSpecs) {
       const isCompose = Array.isArray(spec.compose);
 
-      let cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag;
-      if (isCompose && spec.compose.length === 0) {
-        // Enterprise apps ship an encrypted compose — the resource figures are
-        // genuinely unknown, so keep them null and render an em dash. Summing
-        // an empty array gave a misleading 0.00 for cores/RAM/SSD.
-        cpuPerInst = null;
-        ramGBPerInst = null;
-        ssdGBPerInst = null;
-        repotag = '';
-      } else if (isCompose) {
-        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
-        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
-        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
-        repotag = spec.compose[0]?.repotag || '';
-      } else {
-        cpuPerInst = spec.cpu || 0;
-        ramGBPerInst = (spec.ram || 0) / 1024;
-        ssdGBPerInst = spec.hdd || 0;
-        repotag = spec.repotag || '';
-      }
+      // Shared with fetch_global_app_specs and the Workhorse showcase; the two
+      // copies this replaced both carried the enterprise 0.00 bug.
+      const { cpuPerInst, ramGBPerInst, ssdGBPerInst, repotag } = specResources(spec);
 
       const specHeight = spec.height || 0;
       let expiresInBlocks = null;

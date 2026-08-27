@@ -16,6 +16,7 @@ import CountUp from 'components/CountUp';
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
+import { WorkhorsePanel } from 'home/WorkhorsePanel';
 import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
 import { shortImageName } from 'utils';
 
@@ -810,6 +811,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, 
         <ExpiringTodayPanel appSpecs={appSpecs} />
         <DeployedTodayPanel appSpecs={appSpecs} />
       </div>
+      <WorkhorsePanel gstore={gstore} appSpecs={appSpecs} />
       <TopDogsPanel globalRankings={globalRankings} />
       <FluxAIPanel gpuPrices={gpuPrices} />
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />

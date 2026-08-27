@@ -1,0 +1,402 @@
+@import 'styles/functional';
+
+/*
+ * Flux Workhorse — the busiest nodes on the network, rotated.
+ *
+ * Built from the same tokens as the other home panels rather than a new visual
+ * language. The one place it spends any boldness is the utilisation bars: they
+ * are the point of the card, so they are thicker than the ecosystem bars and
+ * change colour with pressure (green comfortable, amber busy, red near full).
+ */
+
+.hov-panel--workhorse {
+  border-left: 2px solid #14b8a6;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.whp-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.whp-rank {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #14b8a6;
+}
+
+.whp-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.whp-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--border-hover);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+
+  &:hover { transform: scale(1.25); }
+  &:focus-visible { outline: 2px solid #14b8a6; outline-offset: 2px; }
+}
+
+.whp-dot--on {
+  background: #14b8a6;
+  transform: scale(1.15);
+}
+
+/* ── Rotation ───────────────────────────────────────────────────────────── */
+
+.whp-stage--enter {
+  animation: whp-in 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes whp-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whp-stage--enter { animation: none; }
+  .whp-util__fill { transition: none; }
+}
+
+/* ── Three-zone layout ──────────────────────────────────────────────────── */
+
+.whp-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.62fr) minmax(250px, 1.15fr) minmax(215px, 1.05fr);
+  gap: 18px;
+}
+
+.whp-col {
+  min-width: 0;   // let long node names and image names ellipsize, not overflow
+}
+
+.whp-col--load,
+.whp-col--apps {
+  border-left: 1px solid var(--border-secondary);
+  padding-left: 18px;
+}
+
+.whp-col__title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.whp-col__title--spaced { margin-top: 14px; }
+
+/* ── Identity ───────────────────────────────────────────────────────────── */
+
+.whp-ip {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whp-ip--link {
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover,
+  &:focus-visible {
+    color: #14b8a6;
+    border-bottom-color: #14b8a6;
+  }
+}
+
+.whp-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 7px 0 14px;
+}
+
+.whp-tier {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border: 1px solid;
+  border-radius: 3px;
+}
+
+.whp-country {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.whp-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  max-width: 200px;   // stats read as a block, not stretched across the column
+}
+
+.whp-stats--absent {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.whp-stat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.74rem;
+}
+
+.whp-stat__icon {
+  display: inline-flex;
+  color: var(--text-tertiary);
+}
+
+.whp-stat__label {
+  color: var(--text-tertiary);
+  min-width: 38px;
+}
+
+.whp-stat__value {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Utilisation — the signature element ────────────────────────────────── */
+
+.whp-util {
+  display: grid;
+  grid-template-columns: 34px 1fr auto 34px;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+  font-size: 0.72rem;
+}
+
+.whp-util__label {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.whp-util__track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+
+.whp-util__fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.whp-util__value {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.whp-util__pct {
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Categories ─────────────────────────────────────────────────────────── */
+
+.whp-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.whp-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  cursor: help;
+
+  b {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── App list — mirrors the Deployed Today spec rows ────────────────────── */
+
+.whp-spec-head,
+.whp-spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) 16px 34px 44px 50px 50px;
+  align-items: center;
+  gap: 6px;
+}
+
+.whp-spec-head {
+  // Header cells carry the same alignment classes as the data cells so the
+  // columns line up; they just should not inherit the help cursor.
+  .whp-spec-cat { cursor: default; }
+
+  // Stays put while the list scrolls beneath it.
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-primary);
+
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.whp-apps {
+  max-height: 168px;
+  overflow-y: auto;
+
+  // The instance and size columns used to sit under the scrollbar; this keeps
+  // the track clear of them.
+  padding-right: 10px;
+
+  scrollbar-width: thin;
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-hover);
+    border-radius: 3px;
+  }
+}
+
+.whp-spec-row {
+  font-size: 0.7rem;
+  line-height: 1.9;
+  color: var(--text-secondary);
+}
+
+.whp-spec-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whp-spec-cat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.whp-spec-inst {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.whp-spec-repo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.66rem;
+}
+
+.whp-spec-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.whp-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(20, 184, 166, 0.14);
+  color: #14b8a6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .whp-card {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .whp-col--apps {
+    grid-column: 1 / -1;
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border-secondary);
+    padding-top: 14px;
+  }
+
+  // Roomier than desktop, but still bounded — an unbounded list pushed the
+  // card past 700px, a whole phone screen for one showcase card.
+  .whp-apps { max-height: 240px; }
+}
+
+@media (max-width: 700px) {
+  .whp-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .whp-col--load {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border-secondary);
+    padding-top: 14px;
+  }
+
+  // Benchmark figures read better two-up than as a tall stack on a phone
+  .whp-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+  }
+
+  .whp-util {
+    grid-template-columns: 30px 1fr auto;
+    gap: 7px;
+  }
+
+  .whp-util__pct { display: none; }   // the bar already carries the reading
+
+  .whp-nav { margin-right: 8px; }
+
+  .whp-apps { max-height: 190px; }
+}

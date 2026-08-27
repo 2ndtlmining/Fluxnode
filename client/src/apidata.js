@@ -4,6 +4,13 @@ import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
 import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { fetch_fluxinfo_aggregate, buildCategoryTop } from 'fluxinfo';
+import { specResources } from 'appSpecs';
+import {
+  fetch_node_benchmarks,
+  fetch_node_resources,
+  fetch_node_geolocation,
+  buildWorkhorseNodes
+} from 'networkNodes';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -104,6 +111,9 @@ export function create_global_store() {
     topRunningImages: [],
     runningCategoryMap: {},
     runningCategoryTop: {},
+    topNodesByApps: [],
+    nodePaymentAddresses: [],
+    workhorseNodes: [],
     // Provenance for the running-app figures above. `runningAppsStatus` is one
     // of 'live' | 'stale' | 'unavailable' so the UI can say what it is showing
     // instead of silently swapping in a different dataset (see issue #144).
@@ -304,56 +314,78 @@ export async function fetch_arcane_os_stats(gstore) {
 export async function fetch_total_network_utils(gstore) {
   const store = gstore;
 
-  const [resFluxNetworkUtils, resNodeBenchmarks] = await Promise.allSettled([
-    fetch(API_FLUX_NETWORK_UTILISATION),
-    fetch(API_NODE_BENCHMARKS)
+  /*
+   * Both of these projections were also being fetched by
+   * fetch_global_performance_rankings, so benchmark (~3.45 MB) and geolocation
+   * were each pulled twice per home-page load. They now go through shared
+   * in-flight fetchers, so whichever caller asks first wins and the other
+   * joins the same request.
+   */
+  const [resourceData, benchmarkData] = await Promise.all([
+    fetch_node_resources(),
+    fetch_node_benchmarks()
   ]);
 
-  if (resFluxNetworkUtils.status == 'fulfilled') {
-    const res = resFluxNetworkUtils.value;
-    const json = await res.json();
+  store.nodeResources = resourceData;
+  store.nodeBenchmarks = benchmarkData;
 
-    if (json.status !== 'error') {
-      const emptyNodes = json.data.filter((data) => data.apps.resources.appsRamLocked === 0).length;
+  if (resourceData.length > 0) {
+    const emptyNodes = resourceData.filter((data) => data.apps.resources.appsRamLocked === 0).length;
 
-      store.utilized.nodes = store.node_count.total - emptyNodes;
+    store.utilized.nodes = store.node_count.total - emptyNodes;
 
-      // Total locked resources
-      store.utilized.ram =
-        json.data.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
-      store.utilized.cores = json.data.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
-      store.utilized.ssd = json.data.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000; // GB to TB;
+    // Total locked resources
+    store.utilized.ram =
+      resourceData.reduce((prev, current) => prev + current.apps.resources.appsRamLocked, 0) / 1000000; // MB to TB;
+    store.utilized.cores = resourceData.reduce((prev, current) => prev + current.apps.resources.appsCpusLocked, 0);
+    store.utilized.ssd = resourceData.reduce((prev, current) => prev + current.apps.resources.appsHddLocked, 0) / 1000; // GB to TB;
 
-      // Utilised Node Percentage
-      store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
-    }
+    // Utilised Node Percentage
+    store.utilized.nodes_percentage = (store.utilized.nodes / store.node_count.total) * 100;
   }
 
-  if (resNodeBenchmarks.status == 'fulfilled') {
+  if (benchmarkData.length > 0) {
     let totalRam = 0,
       totalSsd = 0,
       totalCores = 0;
-    const res = resNodeBenchmarks.value;
-    const json = await res.json();
-    if (json.status !== 'error') {
-      for (const data of json.data) {
-        totalRam = totalRam + data.benchmark.bench.ram;
-        totalSsd = totalSsd + data.benchmark.bench.ssd;
-        totalCores = totalCores + data.benchmark.bench.cores;
-      }
 
-      // Covert from GB to TB
-      store.total.ram = totalRam / 1000;
-      store.total.ssd = totalSsd / 1000;
-
-      store.total.cores = totalCores;
-
-      // Utilized Resources Percentage
-      store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
-      store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
-      store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
-      //store.node_count.fractus = await lazy_load_fractus_count(json.data);
+    for (const data of benchmarkData) {
+      totalRam = totalRam + data.benchmark.bench.ram;
+      totalSsd = totalSsd + data.benchmark.bench.ssd;
+      totalCores = totalCores + data.benchmark.bench.cores;
     }
+
+    // Covert from GB to TB
+    store.total.ram = totalRam / 1000;
+    store.total.ssd = totalSsd / 1000;
+
+    store.total.cores = totalCores;
+
+    // Utilized Resources Percentage
+    store.utilized.ram_percentage = (store.utilized.ram / store.total.ram) * 100;
+    store.utilized.ssd_percentage = (store.utilized.ssd / store.total.ssd) * 100;
+    store.utilized.cores_percentage = (store.utilized.cores / store.total.cores) * 100;
+  }
+
+  /*
+   * Workhorse showcase: the busiest nodes on the network, joined against data
+   * already in hand. topNodesByApps rides on the ecosystem panel's fetch,
+   * benchmarks and resources are the ones just awaited above, and geolocation
+   * is shared with the rankings panel — so this costs no extra request.
+   */
+  try {
+    if (store.topNodesByApps?.length) {
+      const geoData = await fetch_node_geolocation();
+      store.workhorseNodes = buildWorkhorseNodes(
+        store.topNodesByApps,
+        benchmarkData,
+        geoData,
+        resourceData,
+        store.nodePaymentAddresses
+      );
+    }
+  } catch (error) {
+    console.warn('[workhorse] could not build showcase:', error?.message);
   }
 
   // Fetch ArcaneOS stats
@@ -514,17 +546,26 @@ export async function fetch_global_stats(walletAddress = null) {
      * refresh.
      */
     store.runningCategoryTop = buildCategoryTop(categoryImages);
+
+    // Carried on the store so fetch_total_network_utils can build the Workhorse
+    // showcase without asking for the aggregate a second time.
+    store.topNodesByApps = aggregate.topNodesByApps || [];
   };
 
   const fetchUniqueWalletAddresses = async () => {
     try {
       const res = await fetch('https://api.runonflux.io/daemon/viewdeterministiczelnodelist');
       const json = await res.json();
+      const nodeList = Array.isArray(json?.data) ? json.data : [];
       const uniquePaymentAddresses = new Set();
-      (Array.isArray(json?.data) ? json.data : []).forEach((item) => {
+      nodeList.forEach((item) => {
         uniquePaymentAddresses.add(item.payment_address);
       });
       store.uniqueWalletAddressesCount = Array.from(uniquePaymentAddresses).length;
+
+      // Retained so the Workhorse showcase can link a node to its wallet
+      // without a second trip for the same list.
+      store.nodePaymentAddresses = nodeList;
     } catch (error) {
       console.log('error', error);
     }
@@ -1086,16 +1127,18 @@ export async function fetch_global_performance_rankings() {
   } catch {}
 
   try {
-    const [nodesRes, benchRes, geoRes, countRes] = await Promise.all([
+    // benchmark and geolocation come from the shared fetchers so they are not
+    // pulled a second time by fetch_total_network_utils / fetch_country_node_counts
+    const [nodesRes, benchData, geoData, countRes] = await Promise.all([
       fetch(API_FLUX_NODES_ALL_URL),
-      fetch(API_NODE_BENCHMARKS),
-      fetch(API_NODE_GEOLOCATION),
+      fetch_node_benchmarks(),
+      fetch_node_geolocation(),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     ]);
 
     const nodesJson = await nodesRes.json();
-    const benchJson = await benchRes.json();
-    const geoJson = await geoRes.json();
+    const benchJson = { data: benchData };
+    const geoJson = { data: geoData };
     const countJson = await countRes.json();
 
     // Official enabled node counts — same source as the dashboard header
@@ -1298,27 +1341,11 @@ export async function fetch_global_app_specs(gstore) {
     const categoryMap = {};
 
     for (const spec of specs) {
-      const isCompose = Array.isArray(spec.compose);
       const instances = spec.instances || 1;
 
-      // Resource per instance — compose specs sum across components, flat specs read directly
-      let cpuPerInst, ramGBPerInst, ssdGBPerInst;
-      if (isCompose && spec.compose.length === 0) {
-        // Enterprise app: compose is encrypted, so the resource figures are
-        // unknown rather than zero. Summing the empty array reported 0.00
-        // cores / 0.00 GB in the Expiring and Deployed panels.
-        cpuPerInst = null;
-        ramGBPerInst = null;
-        ssdGBPerInst = null;
-      } else if (isCompose) {
-        cpuPerInst = spec.compose.reduce((s, c) => s + (c.cpu || 0), 0);
-        ramGBPerInst = spec.compose.reduce((s, c) => s + (c.ram || 0), 0) / 1024;
-        ssdGBPerInst = spec.compose.reduce((s, c) => s + (c.hdd || 0), 0);
-      } else {
-        cpuPerInst = spec.cpu || 0;
-        ramGBPerInst = (spec.ram || 0) / 1024;
-        ssdGBPerInst = spec.hdd || 0;
-      }
+      // Resource per instance — see specResources: enterprise specs report null
+      // rather than a misleading zero.
+      const { cpuPerInst, ramGBPerInst, ssdGBPerInst } = specResources(spec);
 
       // Categorize by compose image names first (more accurate than app name),
       // and give encrypted enterprise specs their own bucket instead of Other.
@@ -1391,8 +1418,7 @@ export async function fetch_country_node_counts() {
   } catch {}
 
   try {
-    const res = await fetch(API_NODE_GEOLOCATION);
-    const json = await res.json();
+    const json = { data: await fetch_node_geolocation() };
     const countryMap = {};
     for (const entry of json.data || []) {
       const geo = entry.geolocation;
