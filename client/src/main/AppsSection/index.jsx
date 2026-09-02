@@ -133,32 +133,28 @@ export function AppsSection({ walletNodes, gstore }) {
     });
   }, [filteredRows, sortKey, sortDir]);
 
+  // Each row is one (node, app) instance, so counting every row — rather
+  // than deduping by app name — keeps chip/header totals matching the
+  // table's actual row count. Two nodes hosting an app with the same name
+  // must both count (GH #162).
   const categoryChips = useMemo(() => {
     const catMap = {};
-    const seenApps = {};
     for (const row of sortedRows) {
-      if (!seenApps[row.appName]) {
-        seenApps[row.appName] = true;
-        catMap[row.category] = (catMap[row.category] || 0) + 1;
-      }
+      catMap[row.category] = (catMap[row.category] || 0) + 1;
     }
     return Object.entries(catMap)
       .map(([cat, count]) => ({ cat, count }))
       .sort((a, b) => b.count - a.count);
   }, [sortedRows]);
 
-  const uniqueAppCount = useMemo(() => {
-    const seen = new Set();
-    for (const row of sortedRows) seen.add(row.appName);
-    return seen.size;
-  }, [sortedRows]);
+  const totalAppCount = sortedRows.length;
 
   const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
 
   return (
     <div className="apps-section">
       <div className="apps-summary">
-        <span className="apps-summary__title adp-text-muted">Apps ({uniqueAppCount}):</span>
+        <span className="apps-summary__title adp-text-muted">Apps ({totalAppCount}):</span>
         <div className="apps-summary__chips">
           {categoryChips.map(({ cat, count }) => {
             const meta = APP_CATEGORY_META[cat] || APP_CATEGORY_META.other;
