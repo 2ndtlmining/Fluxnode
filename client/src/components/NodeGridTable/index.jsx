@@ -43,15 +43,12 @@ export const NodeGridTable = ({
   const [ipFilter, setIpFilter] = useState('');
   const [activeTab, setActiveTab] = useState('nodes');
 
-  const uniqueAppCount = useMemo(() => {
+  // Raw count of app instances across the wallet's nodes. Two different
+  // nodes can each host an app with the same name — those must both count
+  // (GH #162), so this sums installedApps.length rather than deduping names.
+  const totalAppCount = useMemo(() => {
     if (!data || data.length === 0) return 0;
-    const seen = new Set();
-    for (const node of data) {
-      for (const app of (node.installedApps || [])) {
-        seen.add(app.name);
-      }
-    }
-    return seen.size;
+    return data.reduce((sum, node) => sum + (node.installedApps?.length || 0), 0);
   }, [data]);
 
   const { earnedCount, totalCount } = useMemo(() => {
@@ -257,8 +254,8 @@ export const NodeGridTable = ({
             >
               <FiPackage className='chrome-tab__icon' />
               <span className='chrome-tab__label'>Apps</span>
-              {uniqueAppCount > 0 && (
-                <span className='chrome-tab__badge chrome-tab__badge--green'>{uniqueAppCount}</span>
+              {totalAppCount > 0 && (
+                <span className='chrome-tab__badge chrome-tab__badge--green'>{totalAppCount}</span>
               )}
             </button>
           </div>
