@@ -1,4 +1,5 @@
-import { DONOR_THRESHOLD_FLUX, DONOR_WINDOW_DAYS } from 'donor/config';
+import { ADDRESS_FLUX } from 'content/index';
+import { DONOR_THRESHOLD_FLUX, DONOR_WINDOW_DAYS, DONOR_MAX_PAGES_FETCHED, DONOR_STATUS_CACHE_TTL_MS } from 'donor/config';
 
 const WINDOW_MS = DONOR_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
@@ -37,4 +38,98 @@ export function computeDonorStatus(records, nowMs = Date.now()) {
 
   const daysLeft = Math.max(0, Math.ceil((expiresAt - nowMs) / (24 * 60 * 60 * 1000)));
   return { isDonor: true, totalInWindow, expiresAt, daysLeft };
+}
+
+const TXS_BY_ADDRESS_ENDPOINT = 'https://explorer.runonflux.io/api/txs';
+const DONOR_STATUS_CACHE_KEY = 'donorStatus_v1';
+
+async function safeFetchJson(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// Sums every vout in `tx` paid to `address` — a tx can pay the same address
+// more than once, so this is a sum, not a find-first.
+function sumVoutToAddress(tx, address) {
+  return (tx.vout || []).reduce((sum, vout) => {
+    const addresses = vout.scriptPubKey?.addresses || [];
+    return addresses.includes(address) ? sum + Number(vout.value) : sum;
+  }, 0);
+}
+
+function readDonorStatusCache(address) {
+  try {
+    const raw = localStorage.getItem(DONOR_STATUS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.address !== address) return null;
+    if (Date.now() - parsed.timestamp >= DONOR_STATUS_CACHE_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeDonorStatusCache(address, data) {
+  try {
+    localStorage.setItem(DONOR_STATUS_CACHE_KEY, JSON.stringify({ address, data, timestamp: Date.now() }));
+  } catch {
+    // localStorage unavailable/full — non-fatal, just skip caching this result
+  }
+}
+
+/*
+ * Pages through the donation address's own transaction history (same
+ * endpoint apidata.js's fetch_total_donations already uses), stopping as
+ * soon as a transaction older than the DONOR_WINDOW_DAYS window is reached
+ * — confirmed 2026-09-05 that this API returns newest-first, so early-stop
+ * is safe. Unlike fetch_total_donations (which only counts matching tx
+ * occurrences), this sums the real FLUX amount paid to the donation address
+ * by `walletAddress` specifically.
+ */
+export async function fetch_donor_status(walletAddress) {
+  const cached = readDonorStatusCache(walletAddress);
+  if (cached) return cached;
+
+  const nowMs = Date.now();
+  const windowStartSec = Math.floor(nowMs / 1000) - 365 * 24 * 60 * 60;
+  const baseUrl = `${TXS_BY_ADDRESS_ENDPOINT}?address=${ADDRESS_FLUX}`;
+
+  const records = [];
+  let pageNum = 0;
+  let pagesTotal = 1;
+  let hitWindowEdge = false;
+
+  while (!hitWindowEdge && pageNum < pagesTotal && pageNum < DONOR_MAX_PAGES_FETCHED) {
+    const url = pageNum === 0 ? baseUrl : `${baseUrl}&pageNum=${pageNum}`;
+    const json = await safeFetchJson(url);
+    if (!json) break; // explorer unreachable — use whatever was gathered so far
+
+    pagesTotal = json.pagesTotal || 1;
+    const txs = Array.isArray(json.txs) ? json.txs : [];
+
+    for (const tx of txs) {
+      if (tx.time < windowStartSec) {
+        hitWindowEdge = true;
+        break;
+      }
+      const sentByWallet = (tx.vin || []).some((v) => v.addr === walletAddress);
+      if (!sentByWallet) continue;
+      const amount = sumVoutToAddress(tx, ADDRESS_FLUX);
+      if (amount > 0) records.push({ date: tx.time * 1000, amount });
+    }
+
+    pageNum += 1;
+  }
+
+  const result = computeDonorStatus(records, nowMs);
+  writeDonorStatusCache(walletAddress, result);
+  return result;
 }

@@ -1,4 +1,4 @@
-import { computeDonorStatus } from './donorStatus';
+import { computeDonorStatus, fetch_donor_status } from './donorStatus';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-09-05T00:00:00Z').getTime();
@@ -61,5 +61,127 @@ describe('computeDonorStatus', () => {
     const newer = { date: NOW - 50 * DAY_MS, amount: 5 };
     const result = computeDonorStatus([older, newer], NOW);
     expect(result.expiresAt).toBe(older.date + 365 * DAY_MS);
+  });
+});
+
+describe('fetch_donor_status', () => {
+  const WALLET = 't1SenderRealWalletAddressXXXXXXXXX';
+  const DONATION_ADDR = window.gContent.ADDRESS_FLUX;
+
+  // Full Insight-API tx shape, same convention as live/apidata.test.js's
+  // realTransparentTx() — the extra fields (n, scriptSig, confirmations, fees)
+  // real /api/txs responses carry, not a hand-trimmed minimal fixture.
+  function realDonationTx({ blockheight, time, amount, fromWallet = WALLET }) {
+    return {
+      txid: `tx-${blockheight}`,
+      version: 4,
+      locktime: 0,
+      blockheight,
+      confirmations: 1000,
+      time,
+      blocktime: time,
+      vin: [{
+        txid: 'prevtx', vout: 0, sequence: 4294967295, n: 0,
+        scriptSig: { hex: '...', asm: '...' },
+        addr: fromWallet, valueSat: 0, value: 0,
+      }],
+      vout: [
+        {
+          value: amount.toFixed(8), n: 0,
+          scriptPubKey: { hex: '...', asm: '...', addresses: [DONATION_ADDR], type: 'pubkeyhash' },
+          spentTxId: null,
+        },
+        {
+          value: '0.01000000', n: 1,
+          scriptPubKey: { hex: '...', asm: '...', addresses: [fromWallet], type: 'pubkeyhash' }, // change
+          spentTxId: null,
+        },
+      ],
+      isCoinBase: false,
+    };
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function mockJsonResponse(body) {
+    return {
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+    };
+  }
+
+  it('sums donations from the wallet across a single page', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [
+        realDonationTx({ blockheight: 100, time: nowSec - 10 * 86400, amount: 6 }),
+        realDonationTx({ blockheight: 99, time: nowSec - 20 * 86400, amount: 6 }),
+      ],
+    }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(result.isDonor).toBe(true);
+    expect(result.totalInWindow).toBeCloseTo(12);
+  });
+
+  it('ignores a transaction sent by a different wallet', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 100, time: nowSec - 10 * 86400, amount: 50, fromWallet: 'someone-else' })],
+    }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(result.isDonor).toBe(false);
+    expect(result.totalInWindow).toBe(0);
+  });
+
+  it('stops paginating once it reaches a transaction older than the window, without fetching further pages', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 3,
+      txs: [
+        realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 20 }),
+        realDonationTx({ blockheight: 50, time: nowSec - 400 * 86400, amount: 999 }), // past the window — stop here
+      ],
+    }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1); // never fetched page 2 or 3
+    expect(result.totalInWindow).toBeCloseTo(20); // the 999 past the window never counted
+  });
+
+  it('caches a result and serves it without a second network call within the TTL', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 100, time: nowSec - 10 * 86400, amount: 15 })],
+    }));
+
+    const first = await fetch_donor_status(WALLET);
+    const second = await fetch_donor_status(WALLET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+  });
+
+  it('fails soft — not a donor, not a throw — when the explorer is unreachable', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('network down'));
+
+    await expect(fetch_donor_status(WALLET)).resolves.toEqual(
+      expect.objectContaining({ isDonor: false })
+    );
   });
 });
