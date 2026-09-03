@@ -184,4 +184,16 @@ describe('fetch_donor_status', () => {
       expect.objectContaining({ isDonor: false })
     );
   });
+
+  it('does not cache a result from a failed fetch — retry will re-attempt the network call', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('network down'));
+    global.fetch.mockRejectedValueOnce(new Error('network down'));
+
+    const first = await fetch_donor_status(WALLET);
+    const second = await fetch_donor_status(WALLET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(2); // both calls fetch, no cache from failure
+    expect(first).toEqual(expect.objectContaining({ isDonor: false }));
+    expect(second).toEqual(expect.objectContaining({ isDonor: false }));
+  });
 });

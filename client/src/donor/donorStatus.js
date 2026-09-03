@@ -106,12 +106,14 @@ export async function fetch_donor_status(walletAddress) {
   let pageNum = 0;
   let pagesTotal = 1;
   let hitWindowEdge = false;
+  let fetchedAtLeastOnePage = false;
 
   while (!hitWindowEdge && pageNum < pagesTotal && pageNum < DONOR_MAX_PAGES_FETCHED) {
     const url = pageNum === 0 ? baseUrl : `${baseUrl}&pageNum=${pageNum}`;
     const json = await safeFetchJson(url);
     if (!json) break; // explorer unreachable — use whatever was gathered so far
 
+    fetchedAtLeastOnePage = true;
     pagesTotal = json.pagesTotal || 1;
     const txs = Array.isArray(json.txs) ? json.txs : [];
 
@@ -130,6 +132,8 @@ export async function fetch_donor_status(walletAddress) {
   }
 
   const result = computeDonorStatus(records, nowMs);
-  writeDonorStatusCache(walletAddress, result);
+  if (fetchedAtLeastOnePage) {
+    writeDonorStatusCache(walletAddress, result);
+  }
   return result;
 }
