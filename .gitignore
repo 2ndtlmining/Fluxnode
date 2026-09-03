@@ -11,3 +11,6 @@ client/build/
 .claude/
 CLAUDE.md
 
+
+# Git worktrees (superpowers:using-git-worktrees scratch space)
+.worktrees/
