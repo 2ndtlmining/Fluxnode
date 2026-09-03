@@ -1,0 +1,248 @@
+// Compound selector (not just .live-chain-rail) so this reliably beats the
+// base .live-panel rule's own --panel-accent default regardless of which
+// component's CSS happens to load first.
+.live-panel.live-chain-rail {
+  --panel-accent: #3b82f6;
+}
+
+.live-chain-hint {
+  font-size: var(--live-fs-xs);
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.live-chain-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 6px 4px 10px;
+}
+
+.live-feed-empty {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  padding: 24px 4px;
+  text-align: center;
+}
+
+.live-chain-connector {
+  flex: 0 0 28px;
+  height: 2px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--panel-accent) 0,
+    var(--panel-accent) 5px,
+    transparent 5px,
+    transparent 9px
+  );
+  background-size: 18px 2px;
+  opacity: 0.45;
+  animation: live-chain-connector-flow 1.4s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// A slow crawl along the dashes reads as "the chain is live" without being
+// distracting — purely a background-position shift, cheap to composite.
+// Right-to-left, matching the chain's own flow (newest block enters on the
+// left, the rest drift right and off toward the oldest/dissolving end).
+@keyframes live-chain-connector-flow {
+  from { background-position-x: 0; }
+  to { background-position-x: 18px; }
+}
+
+.live-chain-block {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 122px;
+  padding: 16px 10px 13px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-base), transform var(--transition-base);
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  &--selected {
+    border-color: #3b82f6;
+    background: color-mix(in srgb, #3b82f6 9%, var(--surface-inset));
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 6px 16px rgba(59, 130, 246, 0.22);
+    transform: translateY(-2px);
+  }
+
+  // Newest block appears at the left; entering it and pushing everything
+  // already there over by one slot are the exact same motion — see
+  // live/blockAnimation.js for why phase is assigned this way.
+  &--entering {
+    animation: live-chain-entering 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  &--pushed {
+    animation: live-chain-pushed 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  // Falls off the oldest (rightmost) end of the visible window: dissolves
+  // and collapses away rather than just vanishing.
+  &--leaving {
+    animation: live-chain-leaving 0.5s ease-in both;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &--entering,
+    &--pushed,
+    &--leaving {
+      animation: none;
+    }
+  }
+}
+
+// One block's worth of horizontal travel — matches the card's own width
+// closely enough for a convincing "chain shifting over" feel without real
+// DOM measurement.
+$live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
+
+// A light tumble, not a literal multi-face cube: rotating the whole flat
+// card around its vertical axis while it slides in reads as "rolling in
+// from the left" without the complexity/risk of building actual cube faces.
+// rotateY (not rotateX) matches the horizontal direction of travel — this is
+// a roll around a vertical axis, the same way a wheel rolling along the
+// ground rotates around a horizontal axis perpendicular to its direction of
+// travel. -80deg rather than a full -90deg so the card is never perfectly
+// edge-on (a literal zero-width instant) at any animation frame.
+@keyframes live-chain-entering {
+  from { opacity: 0; transform: perspective(500px) rotateY(-80deg) translateX(-#{$live-chain-slot-shift}); }
+  to { opacity: 1; transform: perspective(500px) rotateY(0deg) translateX(0); }
+}
+
+@keyframes live-chain-pushed {
+  from { transform: translateX(-#{$live-chain-slot-shift}); }
+  to { transform: translateX(0); }
+}
+
+@keyframes live-chain-leaving {
+  from { opacity: 1; filter: blur(0); transform: scale(1); max-width: 122px; }
+  to { opacity: 0; filter: blur(6px); transform: scale(0.85); max-width: 0; padding-left: 0; padding-right: 0; }
+}
+
+// Houses the real Flux mark (see live/FluxMark) — it carries its own blue
+// circle + white facets, so unlike the plain lucide icon this replaced,
+// nothing here needs its own background fill; a busier block reads busier
+// via a size/glow lift on the mark itself instead.
+.live-chain-block-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  transition: transform var(--transition-base), filter var(--transition-base);
+
+  &--busy {
+    transform: scale(1.08);
+  }
+
+  &--hot {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 4px rgba(43, 97, 209, 0.55));
+  }
+}
+
+// The four facets "snap" into the circle as a block enters — staggered
+// opacity, each appearing slightly after the last, rather than the whole
+// mark just fading in as one flat unit. See live/FluxMark for why each
+// keeps its own numbered class. Deliberately opacity-only on the facets:
+// each facet path already carries its own large SVG `transform` attribute
+// (positioning it within the mark), and composing that with an animated
+// CSS translate/scale risks an unpredictable pivot — not worth the risk for
+// a cosmetic flourish. The circle has no such offset, so it gets the fuller
+// scale-in treatment safely.
+.flux-mark-circle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.live-chain-block--entering {
+  .flux-mark-circle {
+    animation: flux-mark-circle-in 0.35s ease-out both;
+  }
+
+  .flux-mark-facet {
+    animation: flux-mark-facet-in 0.25s ease-out both;
+  }
+
+  .flux-mark-facet--1 { animation-delay: 0.08s; }
+  .flux-mark-facet--2 { animation-delay: 0.14s; }
+  .flux-mark-facet--3 { animation-delay: 0.20s; }
+  .flux-mark-facet--4 { animation-delay: 0.26s; }
+}
+
+@keyframes flux-mark-circle-in {
+  from { opacity: 0; scale: 0.7; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes flux-mark-facet-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-mark-circle,
+  .flux-mark-facet {
+    animation: none;
+  }
+}
+
+.live-chain-block-height {
+  font-size: var(--live-fs-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.live-chain-block-time {
+  font-size: var(--live-fs-xs);
+  color: var(--text-tertiary);
+}
+
+.live-chain-block-chips {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 16px;
+}
+
+.live-chain-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--chip-color, var(--text-secondary));
+  background: color-mix(in srgb, var(--chip-color, #888) 14%, transparent);
+
+  &--empty {
+    color: var(--text-tertiary);
+    background: transparent;
+  }
+}

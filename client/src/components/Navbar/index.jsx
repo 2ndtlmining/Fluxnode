@@ -28,8 +28,8 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
 
   let homeBtnProps = useMatch('/home') == null ? inActiveProps : activeProps;
   let nodesBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
-  let guidesBtnProps = useMatch('/guide') == null ? inActiveProps : activeProps;
   let demoBtnProps = useMatch('/demo') == null ? inActiveProps : activeProps;
+  let liveBtnProps = useMatch('/live') == null ? inActiveProps : activeProps;
 
   if (onThemeSwitch == undefined) onThemeSwitch = no_op;
 
@@ -46,8 +46,8 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
       <Navbar.Group align={Alignment.RIGHT} className='me-3'>
         <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/home')} />
         <Button className='margin-r-s' icon='layout-auto' text='Nodes' {...nodesBtnProps} onClick={() => navigate('/nodes')} />
-        <Button icon='manual' text='Guides' {...guidesBtnProps} onClick={() => navigate('/guide')} />
         <Button icon='build' text='Demo' {...demoBtnProps} onClick={() => navigate('/demo')} />
+        <Button className='margin-r-s' icon='pulse' text='Live' {...liveBtnProps} onClick={() => navigate('/live')} />
         <Navbar.Divider />
         <Button
           large

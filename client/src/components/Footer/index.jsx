@@ -8,7 +8,7 @@ import { LayoutContext } from 'contexts/LayoutContext';
 import { IoLogoTwitter, IoMailUnread, IoLogoYoutube } from 'react-icons/io5';
 import { BsGithub, BsBugFill, BsCheckLg, BsClipboard } from 'react-icons/bs';
 
-import { URL_YOUTUBE, URL_TWITTER, URL_GITHUB, EMAIL, ADDRESS_FLUX, ADDRESS_BTC } from 'content/index';
+import { URL_YOUTUBE, URL_TWITTER, URL_GITHUB, EMAIL, ADDRESS_FLUX } from 'content/index';
 
 import { IS_TEST_BUILD, IS_DEV, APP_VERSION } from 'app-buildinfo';
 
@@ -134,7 +134,6 @@ export function Footer() {
             <span className="footer-donate-label">Support development</span>
             <div className="footer-chips">
               <DonateChip label="FLUX" address={ADDRESS_FLUX} />
-              <DonateChip label="BTC" address={ADDRESS_BTC} />
             </div>
           </div>
         </div>

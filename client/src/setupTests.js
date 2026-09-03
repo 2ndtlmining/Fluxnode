@@ -23,8 +23,7 @@ window.gContent = {
   URL_GITHUB: 'https://github.com/2ndtlmining/Fluxnode',
   EMAIL: '2ndtlmining@gmail.com',
 
-  ADDRESS_FLUX: 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG',
-  ADDRESS_BTC: '1MjMuVLEaAd8HJd3mh94L8qQe4cE6tH87V',
+  ADDRESS_FLUX: 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt',
 
   REQUIREMENTS: {
     threads: { C: 4, N: 8, S: 16, F: 4 },
@@ -49,7 +48,4 @@ window.gContent = {
   CC_FLUX_REWARD_FRACTUS: 7.142,
 
   CC_PA_REWARD: 100.0,
-
-  SETUP_VIDEOS: [],
-  GUIDE_VIDEOS: [],
 };

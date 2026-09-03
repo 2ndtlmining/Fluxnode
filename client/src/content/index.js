@@ -8,7 +8,6 @@ export const URL_TWITTER = window.gContent.URL_TWITTER;
 export const URL_GITHUB = window.gContent.URL_GITHUB;
 export const EMAIL = window.gContent.EMAIL;
 export const ADDRESS_FLUX = window.gContent.ADDRESS_FLUX;
-export const ADDRESS_BTC = window.gContent.ADDRESS_BTC;
 
 // prettier-ignore
 
@@ -36,9 +35,6 @@ export const CC_FLUX_REWARD_STRATUS = window.gContent.CC_FLUX_REWARD_STRATUS;
 export const CC_PA_REWARD = window.gContent.CC_PA_REWARD;
 
 // export const LATEST_FLUX_VERSION_DESC = fluxos_version_desc_parse(window.gContent.LATEST_FLUX_VERSION);
-
-export const setupVideos = window.gContent.SETUP_VIDEOS;
-export const guideVideos = window.gContent.GUIDE_VIDEOS;
 
 export const tierMapping = {
   CUMULUS: {

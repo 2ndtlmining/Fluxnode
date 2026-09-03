@@ -1112,7 +1112,8 @@ const GLOBAL_RANKINGS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
  * ~8000 Flux nodes. Builds per-tier and per-country performance rankings.
  * Results are cached in sessionStorage for 10 minutes.
  *
- * Returns: { tierRankings, countryRankings, nodeGeoMap } or null on failure.
+ * Returns: { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts,
+ * countryDominance, addressGeoMap } or null on failure.
  */
 export async function fetch_global_performance_rankings() {
   // Return cached data if fresh
@@ -1175,7 +1176,15 @@ export async function fetch_global_performance_rankings() {
 
     // Country dominance: count all nodes per wallet per country to find the leader in each country.
     // Uses payment_address from the tier endpoint (same source as wallet node lookup).
+    //
+    // The same loop also builds addressGeoMap (payment_address -> geo): the
+    // Live page resolves a block reward's real payout address to a country
+    // this way, since geo elsewhere is only ever keyed by IP. A wallet with
+    // nodes in more than one country just gets whichever this loop sees last
+    // — a reasonable "somewhere this operator runs" answer, not a claim of
+    // precision.
     const countryDominance = {};
+    const addressGeoMap = {};
     {
       const countryWalletCounts = {}; // cc → { country, counts: { addr → count } }
       for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
@@ -1189,6 +1198,7 @@ export async function fetch_global_performance_rankings() {
         }
         const addr = node.payment_address;
         countryWalletCounts[cc].counts[addr] = (countryWalletCounts[cc].counts[addr] || 0) + 1;
+        addressGeoMap[addr] = geo;
       }
       for (const [cc, data] of Object.entries(countryWalletCounts)) {
         const leaderCount = Math.max(0, ...Object.values(data.counts));
@@ -1268,7 +1278,7 @@ export async function fetch_global_performance_rankings() {
       }
     }
 
-    const data = { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts, countryDominance };
+    const data = { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts, countryDominance, addressGeoMap };
 
     try {
       sessionStorage.setItem(

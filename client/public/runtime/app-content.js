@@ -8,9 +8,8 @@ window.gContent.URL_GITHUB = 'https://github.com/2ndtlmining/Fluxnode';
 /* Email */
 window.gContent.EMAIL = '2ndtlmining@gmail.com';
 
-/* Addresses for donations */
-window.gContent.ADDRESS_FLUX = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
-window.gContent.ADDRESS_BTC = '1MjMuVLEaAd8HJd3mh94L8qQe4cE6tH87V';
+/* Address for donations (FLUX only) */
+window.gContent.ADDRESS_FLUX = 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt';
 
 
 // prettier-ignore
@@ -62,60 +61,3 @@ window.gContent.CC_FLUX_REWARD_FRACTUS = 7.142;
  * Parallel Asset reward. It is also in percentage ( 50 means 50 % = 0.5 )
  **/
 window.gContent.CC_PA_REWARD = 100.0;
-
-
-/* ========================================== */
-
-window.gContent.SETUP_VIDEOS = [
-  {
-    title: 'Flux LightNode Wallet',
-    url: 'https://www.youtube.com/embed/RT1uaSrurv4'
-  },
-  {
-    title: 'FluxNode Setup for Raspberry Pi4B',
-    url: 'https://www.youtube.com/embed/-lJJyuliR38'
-  },
-  {
-    title: 'Self-Hosted Flux Node Setup Guide',
-    url: 'https://www.youtube.com/embed/FITPHv52Fyo'
-  },
-  {
-    title: 'Raspberry Pi FluxNode Setup Guide',
-    url: 'https://www.youtube.com/embed/n2CMwfahUBI'
-  },
-  {
-    title: 'Cumulus Mini-PC and other alternatives',
-    url: 'https://www.youtube.com/embed/akfV5WhmE-g'
-  },
-  {
-    title: 'FluxNode NVIDIA Jetson Nano',
-    url: 'https://www.youtube.com/embed/0gZ89Ppw0dw'
-  }
-];
-
-window.gContent.GUIDE_VIDEOS = [
-  {
-    title: `Top 5 Flux Node questions answered`,
-    url: 'https://www.youtube.com/embed/44SHKcD1wHY'
-  },
-  {
-    title: `Flux Node Setup Guide (VPS)`,
-    url: 'https://www.youtube.com/embed/0mA6d4YZOcA'
-  },
-  {
-    title: `How to setup Flux Watchdog`,
-    url: 'https://www.youtube.com/embed/VryPE_kje5k'
-  },
-  {
-    title: `How to perform Flux Node patching`,
-    url: 'https://www.youtube.com/embed/puL0W0s9eG4'
-  },
-  {
-    title: `10 Tips and Tricks to Help Setup your First Flux Node | Flux Node Setup Guide`,
-    url: 'https://www.youtube.com/embed/8RsRfggaVlg'
-  },
-  {
-    title: `Flux Node security`,
-    url: 'https://www.youtube.com/embed/QoMxIQ7co70'
-  }
-];

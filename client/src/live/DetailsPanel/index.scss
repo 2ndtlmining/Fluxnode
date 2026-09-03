@@ -1,0 +1,253 @@
+// Compound selector — see ChainRail's index.scss for why.
+.live-panel.live-details-panel {
+  --panel-accent: #64748b;
+  min-height: 320px;
+}
+
+.live-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-primary);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: var(--live-fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+
+  &--active {
+    background: rgba(234, 179, 8, 0.14);
+    border-color: #eab308;
+    color: #eab308;
+  }
+}
+
+.live-feed-empty {
+  color: var(--text-tertiary);
+  font-size: var(--live-fs-base);
+  padding: 24px 4px;
+  text-align: center;
+}
+
+.live-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.live-detail-section {
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+}
+
+.live-detail-section-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--section-accent, #888) 10%, transparent) 0%, transparent 65%);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--section-accent, #888) 16%, transparent) 0%, transparent 70%);
+  }
+}
+
+.live-detail-section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--section-accent, #888) 16%, transparent);
+}
+
+.live-detail-section-label {
+  font-size: var(--live-fs-md);
+  font-weight: 600;
+}
+
+.live-detail-section-count {
+  font-size: var(--live-fs-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  background: var(--surface-primary);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.live-detail-chevron {
+  color: var(--text-tertiary);
+  transition: transform var(--transition-fast);
+
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+.live-detail-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px 14px 12px;
+  animation: live-detail-expand-in 0.15s ease-out;
+}
+
+@keyframes live-detail-expand-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.live-detail-empty {
+  color: var(--text-tertiary);
+  font-size: var(--live-fs-base);
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+.live-detail-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--surface-primary);
+  font-size: var(--live-fs-base);
+
+  // A dense list (P2P transfers especially) stays scannable with a faint
+  // alternating tint rather than every row looking identical.
+  &:nth-child(even) {
+    background: color-mix(in srgb, var(--surface-primary) 55%, var(--surface-inset));
+  }
+}
+
+.live-detail-tier {
+  font-weight: 700;
+  font-size: var(--live-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.live-detail-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.live-detail-addr {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--live-fs-sm);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-detail-arrow {
+  color: var(--text-tertiary);
+}
+
+.live-detail-unknown-geo {
+  opacity: 0.5;
+  font-size: 0.85em;
+}
+
+.live-detail-row--deploy,
+.live-detail-row--confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.live-detail-deploy-head,
+.live-detail-confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-detail-confirm-head .live-detail-addr {
+  flex: 1;
+  min-width: 0;
+}
+
+.live-detail-appname {
+  font-weight: 700;
+  font-size: var(--live-fs-md);
+  color: var(--text-primary);
+}
+
+.live-detail-badge {
+  font-size: var(--live-fs-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: var(--surface-inset);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.live-detail-repos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.live-detail-repo {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--live-fs-xs);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.live-detail-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+}
+
+.live-detail-category {
+  text-transform: capitalize;
+  font-size: var(--live-fs-xs);
+  color: var(--text-tertiary);
+  background: var(--surface-inset);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.live-detail-description {
+  font-size: var(--live-fs-base);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.live-detail-owner {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  margin-left: auto;
+}
