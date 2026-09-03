@@ -6,7 +6,7 @@ import { Tooltip2 } from '@blueprintjs/popover2';
 import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaGamepad, FaTrophy } from 'react-icons/fa';
 import { LuBrainCircuit } from 'react-icons/lu';
-import { Gpu } from 'lucide-react';
+import { Gpu, ChevronDown } from 'lucide-react';
 import ReactCountryFlag from 'react-country-flag';
 // The project's own wrapper, which honours REACT_APP_ENABLE_NUMBER_SPINNING.
 // HomeOverview was the only file importing react-countup directly, so the home
@@ -302,9 +302,20 @@ function NetworkResourcesPanel({ gstore }) {
 
 // ── Panel 3: App Ecosystem ─────────────────────────────────────────────────────
 
+// Discrete size steps (not a continuous scale, which reads as noisy) so a
+// category's row visually communicates roughly how big it is relative to the
+// network's largest category, instead of every row looking identical.
+function ecoWeightClass(totalInstances, maxVal) {
+  const ratio = maxVal > 0 ? totalInstances / maxVal : 0;
+  if (ratio >= 0.5) return 'hov-eco-row--lg';
+  if (ratio >= 0.15) return 'hov-eco-row--md';
+  return 'hov-eco-row--sm';
+}
+
 function AppEcosystemPanel({ gstore }) {
   const { runningCategoryMap, runningCategoryTop, node_count, runningAppsStatus, runningAppsFetchedAt } = gstore;
   const hasRunning = Object.keys(runningCategoryMap).length > 0;
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   // Still loading if no node data at all
   if (!hasRunning && node_count.total === 0) {
@@ -390,27 +401,55 @@ function AppEcosystemPanel({ gstore }) {
           const { label, Icon, color } = meta;
           const barPct = (totalInstances / maxVal) * 100;
           const sharePct = ((totalInstances / grandTotal) * 100).toFixed(0);
-          const tooltip = <CategoryTooltip category={category} breakdown={runningCategoryTop?.[category]} />;
+          const breakdown = runningCategoryTop?.[category];
+          const tooltip = <CategoryTooltip category={category} breakdown={breakdown} />;
+          const isExpanded = expandedCategory === category;
+          const weightClass = ecoWeightClass(totalInstances, maxVal);
+
+          const toggleExpanded = () => setExpandedCategory(isExpanded ? null : category);
 
           return (
-            <div key={category} className="hov-eco-row">
-              <span className="hov-eco-icon" style={{ color }}>
-                <Icon size={11} />
-              </span>
-              <Tooltip2
-                content={tooltip}
-                placement="top"
-                hoverOpenDelay={250}
-                transitionDuration={80}
-                popoverClassName="hov-cat-tooltip"
+            <div key={category} className="hov-eco-item">
+              <div
+                className={`hov-eco-row ${weightClass}${isExpanded ? ' hov-eco-row--expanded' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
+                onClick={toggleExpanded}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleExpanded();
+                  }
+                }}
               >
-                <span className="hov-eco-label">{label}</span>
-              </Tooltip2>
-              <div className="hov-eco-bar-wrap">
-                <div className="hov-eco-bar-fill" style={{ width: `${barPct}%`, background: color }} />
+                <span className="hov-eco-icon" style={{ color }}>
+                  <Icon size={11} />
+                </span>
+                <Tooltip2
+                  content={tooltip}
+                  placement="top"
+                  hoverOpenDelay={250}
+                  transitionDuration={80}
+                  popoverClassName="hov-cat-tooltip"
+                >
+                  <span className="hov-eco-label">{label}</span>
+                </Tooltip2>
+                <div className="hov-eco-bar-wrap">
+                  <div className="hov-eco-bar-fill" style={{ width: `${barPct}%`, background: color }} />
+                </div>
+                <span className="hov-eco-count">{fmtNum(totalInstances)}</span>
+                <span className="hov-eco-pct">{sharePct}%</span>
+                <ChevronDown
+                  size={12}
+                  className={`hov-eco-chevron${isExpanded ? ' hov-eco-chevron--open' : ''}`}
+                />
               </div>
-              <span className="hov-eco-count">{fmtNum(totalInstances)}</span>
-              <span className="hov-eco-pct">{sharePct}%</span>
+              {isExpanded && (
+                <div className="hov-eco-expand">
+                  <CategoryTooltip category={category} breakdown={breakdown} />
+                </div>
+              )}
             </div>
           );
         })}
@@ -701,6 +740,12 @@ function TopDogsPanel({ globalRankings }) {
 
 // ── FluxAI GPU Panel ──────────────────────────────────────────────────────────
 
+// Content decision, not a user preference: the panel duplicates numbers already
+// shown in NetworkStatsPanel and reads as a low-value bolt-on table. Flip this
+// back to true to re-enable it — the component, its data fetch, and its CSS are
+// left fully intact.
+const SHOW_FLUX_AI_PANEL = false;
+
 function FluxAIPanel({ gpuPrices }) {
   const [sortKey, setSortKey] = useState('number_of_gpus');
   const [sortDir, setSortDir] = useState('desc');
@@ -813,7 +858,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, 
       </div>
       <WorkhorsePanel gstore={gstore} appSpecs={appSpecs} />
       <TopDogsPanel globalRankings={globalRankings} />
-      <FluxAIPanel gpuPrices={gpuPrices} />
+      {SHOW_FLUX_AI_PANEL && <FluxAIPanel gpuPrices={gpuPrices} />}
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />
     </div>
   );
