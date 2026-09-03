@@ -16,10 +16,10 @@ import { FocusStyleManager } from '@blueprintjs/core';
 import { lazy_load_currency_rate } from 'main/apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
 
-const AppGuidesView = React.lazy(() => import('guides/GuidesView'));
 const MainApp = React.lazy(() => import('main/MainApp'));
 const Home = React.lazy(() => import('home/Home'));
 const Demo = React.lazy(() => import('demo/Demo'));
+const Live = React.lazy(() => import('live/Live'));
 const NotFoundView = React.lazy(() => import('notfound/index'));
 
 // Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
@@ -111,6 +111,7 @@ class Application extends React.Component {
                 onThemeSwitch={() => this.setDarkMode(!darkMode)}
                 currencyRates={currencyRates}
               />
+              <div className='app-routed-content'>
               <Routes>
                 <Route exact path='/' element={<Navigate to='/home' replace />} />
 
@@ -135,21 +136,21 @@ class Application extends React.Component {
                   }
                 />
                 <Route
-                  path='/guide'
-                  element={
-                    <ErrorBoundary>
-                      <React.Suspense fallback={<PageLoader />}>
-                        <AppGuidesView />
-                      </React.Suspense>
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
                   path='/demo'
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
                         <Demo theme={darkMode ? 'dark' : 'light'} />
+                      </React.Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path='/live'
+                  element={
+                    <ErrorBoundary>
+                      <React.Suspense fallback={<PageLoader />}>
+                        <Live />
                       </React.Suspense>
                     </ErrorBoundary>
                   }
@@ -163,6 +164,7 @@ class Application extends React.Component {
                   }
                 />
               </Routes>
+              </div>
               {FooterRendered}
           </div>
         </LayoutConfigurationProvider>
