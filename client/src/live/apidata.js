@@ -180,15 +180,15 @@ export function lookupNodeInfo(ip, tier, { nodeGeoMap, tierRankings } = {}) {
  * derived count: we already fetch the full transaction list to get the
  * coinbase, so this comes from the same call.
  *
- * In practice this often comes back empty: most of a block's non-coinbase
- * transactions are "Confirming a fluxnode" specials (see
- * buildConfirmationEvents above) — a genuine transparent send/receive tx has
- * vin/vout at all, a confirming tx has neither, so this naturally skips them
- * rather than misreading them as transfers. Verified live against the
- * current chain: several consecutive real blocks and the live mempool were
- * 100% confirmations with zero non-confirmation transactions — a real P2P
- * transfer is much rarer than block activity in general, not a sign this is
- * broken when the section is empty.
+ * In practice this often comes back empty. Node confirmations are NOT the
+ * reason — they're a protocol-level special tx stored outside the normal
+ * Merkle tree (see fetch_block_confirmations above), so the explorer's own
+ * /api/txs/ endpoint this function's input comes from never returns them in
+ * the first place; `otherTxs` can't contain confirmation noise to filter out.
+ * The real explanation is simpler: genuine transparent wallet-to-wallet sends
+ * are just rare relative to block cadence on this chain (most non-coinbase,
+ * non-confirmation activity tends to be app-funding rather than a personal
+ * send) — an empty section is not a sign this is broken.
  */
 export function extractP2pTransfers(otherTxs) {
   const transfers = [];
@@ -253,6 +253,22 @@ export function diffDeployedForEvents(prevDeployedToday, nextDeployedToday, attr
   }
 
   return events;
+}
+
+/*
+ * Live.jsx's own wiring around diffDeployedForEvents: the very first slow
+ * refresh of a session has no previous snapshot to diff against, and must
+ * establish a baseline only, never emit events for it (see
+ * diffDeployedForEvents' own comment — the whole point is a "first list = no
+ * events" rule, which diffDeployedForEvents itself does NOT enforce on its
+ * own: called directly with a null prevSpecs it treats every entry as new,
+ * per its "treats a first-ever list as all-new" test). Pulled out as its own
+ * function so that policy is unit-testable without standing up Live.jsx's
+ * full polling/timer machinery.
+ */
+export function deployEventsForSlowRefresh(prevSpecs, nextSpecs, attributionHeight) {
+  if (prevSpecs == null) return [];
+  return diffDeployedForEvents(prevSpecs.deployedToday, nextSpecs.deployedToday, attributionHeight);
 }
 
 // Apps carry either a multi-component `compose` array (each with its own

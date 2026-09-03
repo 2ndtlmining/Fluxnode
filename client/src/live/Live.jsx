@@ -12,7 +12,7 @@ import {
   buildConfirmationEvents,
   extractP2pTransfers,
   attachEventsToBlocks,
-  diffDeployedForEvents,
+  deployEventsForSlowRefresh,
 } from 'live/apidata';
 import { mergeIncomingBlocks, removeLeavingBlock } from 'live/blockAnimation';
 
@@ -134,11 +134,9 @@ export default function Live() {
     // The very first fetch establishes a baseline only — deployedToday covers
     // the last 24h network-wide, so treating that whole backlog as "new" here
     // would flood the current tip with every app deployed all day. Only a
-    // genuine delta against a previous poll counts as a fresh event.
-    if (appSpecsRef.current != null) {
-      const deployEvents = diffDeployedForEvents(appSpecsRef.current.deployedToday, specs.deployedToday, currentHeight);
-      rememberEvents(deployEvents);
-    }
+    // genuine delta against a previous poll counts as a fresh event (see
+    // deployEventsForSlowRefresh for the null-baseline rule this enforces).
+    rememberEvents(deployEventsForSlowRefresh(appSpecsRef.current, specs, currentHeight));
     appSpecsRef.current = specs;
   }, [rememberEvents]);
 

@@ -5,6 +5,7 @@ import {
   lookupNodeInfo,
   extractP2pTransfers,
   diffDeployedForEvents,
+  deployEventsForSlowRefresh,
   attachEventsToBlocks,
 } from './apidata';
 
@@ -200,6 +201,72 @@ describe('extractP2pTransfers', () => {
     expect(() => extractP2pTransfers([tx])).not.toThrow();
     expect(extractP2pTransfers([tx])).toEqual([]);
   });
+
+  // Full Insight-API tx shape (the real response envelope this function's
+  // input is sliced from, not a hand-trimmed minimal fixture) — carries the
+  // extra fields (n, scriptSig, spentTxId, confirmations, fees, etc.) real
+  // /api/txs/ responses include, to guard against relying on a field that
+  // only exists in the smaller fixtures above.
+  function realTransparentTx(overrides = {}) {
+    return {
+      txid: 'e3b0c1a2f9d84e6b9c1a2f9d84e6b9c1a2f9d84e6b9c1a2f9d84e6b9c1a2f9d8',
+      version: 4,
+      locktime: 0,
+      vin: [
+        {
+          txid: 'aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
+          vout: 1,
+          sequence: 4294967295,
+          n: 0,
+          scriptSig: { hex: '473044...', asm: '3044... [ALL]' },
+          addr: 't1SenderRealWalletAddressXXXXXXXXX',
+          valueSat: 250000000,
+          value: 2.5,
+        },
+      ],
+      vout: [
+        {
+          value: '2.00000000',
+          n: 0,
+          scriptPubKey: { hex: '76a914...88ac', asm: 'OP_DUP OP_HASH160 ... OP_CHECKSIG', addresses: ['t1RecipientRealWalletAddressYYYYYY'], type: 'pubkeyhash' },
+          spentTxId: null,
+        },
+        {
+          value: '0.49990000',
+          n: 1,
+          scriptPubKey: { hex: '76a914...88ac', asm: 'OP_DUP OP_HASH160 ... OP_CHECKSIG', addresses: ['t1SenderRealWalletAddressXXXXXXXXX'], type: 'pubkeyhash' },
+          spentTxId: null,
+        },
+      ],
+      blockhash: '00000000abcdef0123456789abcdef0123456789abcdef0123456789abcdef01',
+      confirmations: 1,
+      time: 1700000000,
+      blocktime: 1700000000,
+      valueOut: 2.4999,
+      valueIn: 2.5,
+      fees: 0.0001,
+      isCoinBase: false,
+      ...overrides,
+    };
+  }
+
+  it('extracts a transfer from a full, realistic explorer tx response shape', () => {
+    const transfers = extractP2pTransfers([realTransparentTx()]);
+
+    expect(transfers).toEqual([
+      {
+        id: expect.stringContaining('p2p-'),
+        type: 'p2p',
+        txid: expect.any(String),
+        from: 't1SenderRealWalletAddressXXXXXXXXX',
+        to: 't1RecipientRealWalletAddressYYYYYY',
+        amount: 2,
+      },
+    ]);
+    // The change output (back to the sender) is correctly excluded even
+    // amid all the extra real-response fields.
+    expect(transfers).toHaveLength(1);
+  });
 });
 
 describe('diffDeployedForEvents', () => {
@@ -269,6 +336,33 @@ describe('diffDeployedForEvents', () => {
     const [event2] = diffDeployedForEvents(null, withNeither);
     expect(event2.description).toBeNull();
     expect(event2.expireBlocks).toBeNull();
+  });
+});
+
+describe('deployEventsForSlowRefresh', () => {
+  it('emits nothing on the first-ever call, even though the fetched list already has entries', () => {
+    // This is Live.jsx's real session-start sequence: appSpecsRef.current
+    // starts null, so the first slow refresh must establish a baseline only.
+    // (Contrast with diffDeployedForEvents' own "treats a first-ever list as
+    // all-new" behavior when called directly with a null prevSpecs — that
+    // rule exists for other callers/tests, Live.jsx deliberately avoids it.)
+    const nextSpecs = { deployedToday: [{ name: 'appA', height: 100 }, { name: 'appB', height: 105 }] };
+    expect(deployEventsForSlowRefresh(null, nextSpecs)).toEqual([]);
+  });
+
+  it('diffs against the previous snapshot on every call after the first', () => {
+    const prevSpecs = { deployedToday: [{ name: 'appA', height: 100 }] };
+    const nextSpecs = { deployedToday: [{ name: 'appA', height: 100 }, { name: 'appB', height: 105 }] };
+
+    const events = deployEventsForSlowRefresh(prevSpecs, nextSpecs, 999);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ appName: 'appB', blockHeight: 999, deployedAtHeight: 105 });
+  });
+
+  it('emits nothing on a later call when nothing new has deployed since the last poll', () => {
+    const specs = { deployedToday: [{ name: 'appA', height: 100 }] };
+    expect(deployEventsForSlowRefresh(specs, specs)).toEqual([]);
   });
 });
 

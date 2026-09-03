@@ -125,7 +125,7 @@ function Section({ def, events, expanded, onToggle, globalRankings }) {
       {expanded && (
         <div className="live-detail-section-body">
           {items.length === 0 ? (
-            <div className="live-detail-empty">None this block</div>
+            <div className="live-detail-empty">{def.emptyLabel || 'None this block'}</div>
           ) : (
             items.map((e) => <RowComponent key={e.id} event={e} globalRankings={globalRankings} />)
           )}
@@ -136,6 +136,10 @@ function Section({ def, events, expanded, onToggle, globalRankings }) {
 }
 
 const ALL_SECTION_KEYS = new Set(DETAIL_SECTIONS.map((s) => s.key));
+// Node Confirmations is reliably the noisiest, least-interesting-per-block
+// section (see live/apidata.js) — start it collapsed to save vertical space;
+// every other section starts open.
+const DEFAULT_COLLAPSED_KEYS = new Set(['confirm']);
 
 /*
  * Shows the currently displayed block's activity grouped into four
@@ -146,7 +150,9 @@ const ALL_SECTION_KEYS = new Set(DETAIL_SECTIONS.map((s) => s.key));
  * cheap country/rank enrichment (see live/apidata.js's lookupNodeInfo).
  */
 export function DetailsPanel({ block, locked, onToggleLock, globalRankings }) {
-  const [expandedKeys, setExpandedKeys] = useState(() => new Set(ALL_SECTION_KEYS));
+  const [expandedKeys, setExpandedKeys] = useState(
+    () => new Set([...ALL_SECTION_KEYS].filter((k) => !DEFAULT_COLLAPSED_KEYS.has(k)))
+  );
 
   const toggle = (key) => {
     setExpandedKeys((prev) => {

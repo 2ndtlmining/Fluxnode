@@ -25,10 +25,26 @@ export const CATEGORY_META = {
   },
 };
 
-// The Details panel's four sections, in display order.
+// The Details panel's four sections, in display order. `emptyLabel` overrides
+// the generic "None this block" message for sections where a block-by-block
+// zero is the common case rather than a sign something's broken — see
+// Live.jsx / apidata.js for why P2P sends and deploy scans are naturally rare
+// per block.
 export const DETAIL_SECTIONS = [
   { key: 'reward', label: 'Node Rewards', color: '#3b82f6', Icon: Coins },
-  { key: 'p2p', label: 'P2P Transfers', color: '#8b93a6', Icon: ArrowLeftRight },
-  { key: 'deploy', label: 'Cloud Deployments', color: '#22c55e', Icon: Rocket },
+  {
+    key: 'p2p',
+    label: 'P2P Transfers',
+    color: '#8b93a6',
+    Icon: ArrowLeftRight,
+    emptyLabel: 'No P2P transfers this block — most blocks carry none',
+  },
+  {
+    key: 'deploy',
+    label: 'Cloud Deployments',
+    color: '#22c55e',
+    Icon: Rocket,
+    emptyLabel: 'None yet — deployments are scanned network-wide every 5 min, not every block',
+  },
   { key: 'confirm', label: 'Node Confirmations', color: '#eab308', Icon: ShieldCheck },
 ];
