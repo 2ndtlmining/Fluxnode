@@ -11,6 +11,17 @@ window.gContent.EMAIL = '2ndtlmining@gmail.com';
 /* Address for donations (FLUX only) */
 window.gContent.ADDRESS_FLUX = 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt';
 
+/*
+ * Testing-only bypass for premium features (see client/src/donor/config.js
+ * and PREMIUM_FEATURES_PLAN.md). Always false here — this is the source
+ * file, baked into every build. For a Docker deployment this line is
+ * patched in place at container start by service/container-entrypoint.sh
+ * when the PREMIUM_TESTING_MODE environment variable is set, no rebuild
+ * needed. For local `yarn start` testing, flip the value on this line
+ * directly instead.
+ */
+window.gContent.PREMIUM_TESTING_MODE = false;
+
 
 // prettier-ignore
 {
