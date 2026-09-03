@@ -1,0 +1,162 @@
+@import 'styles/functional';
+
+// This page is intentionally self-contained: it does not import anything
+// from home/HomeOverview, whose CSS only ships in the /home lazy chunk. All
+// shared visual language here (surface tokens, radii, shadows) comes from
+// the always-loaded global tokens in styles/_global.scss instead.
+
+.live-page {
+  // A small, deliberate type scale shared by this page and its two
+  // subcomponents (ChainRail, DetailsPanel both live under this element) —
+  // replaces what were previously ad hoc font-sizes picked independently
+  // per element.
+  --live-fs-lg: 1.15rem;    // page title
+  --live-fs-md: 0.88rem;    // block height, section labels
+  --live-fs-base: 0.8rem;   // primary row content (amounts, addresses)
+  --live-fs-sm: 0.72rem;    // secondary/meta text
+  --live-fs-xs: 0.66rem;    // micro labels, hints
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 20px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.live-page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-page-title {
+  font-size: var(--live-fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-page-subtitle {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+}
+
+.live-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #22c55e;
+  text-transform: uppercase;
+}
+
+.live-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: live-pulse-dot 1.6s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes live-pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+
+// ── Shared panel shell (Live's own — not the /home .hov-panel, which lives in
+// a different lazy chunk) ────────────────────────────────────────────────────
+
+.live-panel {
+  // Set per-panel via a modifier class (.live-chain-rail, .live-details-panel)
+  // so each reads as its own thing instead of one flat card recipe repeated
+  // — same idea as Home's .hov-panel accent strips, just one shared variable
+  // here so the border and the header wash below always agree.
+  --panel-accent: transparent;
+
+  border-radius: var(--radius-md);
+  padding: 14px 16px 16px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--panel-accent);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+
+  // A faint wash behind the header, clipped to the panel's rounded corners —
+  // purely decorative, sits behind the header content (z-index below).
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 64px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--panel-accent) 9%, transparent) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  @include rule-mode-dark() {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.live-panel-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.live-panel-title {
+  font-size: var(--live-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+// Everything below the header should sit above the decorative wash too.
+.live-chain-track,
+.live-detail-sections {
+  position: relative;
+  z-index: 1;
+}
+
+// ── Page stack: the interactive chain rail on top, block details below ───────
+
+.live-main-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+// ── Unavailable / degraded state ─────────────────────────────────────────────
+
+.live-unavailable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: var(--live-fs-base);
+}
+
+.live-unavailable-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}

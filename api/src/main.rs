@@ -75,6 +75,10 @@ pub mod api_v1 {
             )
             .route("/demo", get(self::node_demo::handler))
             .route("/bench-version", get(self::bench_version::handler))
+            .route(
+                "/live/current-winners",
+                post(self::live_winners::handler),
+            )
     }
 
     async fn root() -> String {
@@ -208,6 +212,51 @@ pub mod api_v1 {
                     ))),
                 ),
             }
+        }
+    }
+
+    pub mod live_winners {
+        use super::*;
+
+        #[derive(Debug, Deserialize)]
+        pub struct LiveWinnersPayload {
+            candidates: Vec<String>,
+        }
+
+        // Endpoint's response returned back
+        #[derive(Debug, Serialize)]
+        pub struct LiveWinnersResultBody {
+            success: bool,
+            winners: Option<services::live_winners::CurrentWinners>,
+            error: Option<String>,
+        }
+
+        impl LiveWinnersResultBody {
+            // Body when the request failed
+            fn make_err(error: String) -> Self {
+                Self {
+                    success: false,
+                    winners: None,
+                    error: Some(error),
+                }
+            }
+            // Body when the request succeeded
+            fn make_winners(winners: services::live_winners::CurrentWinners) -> Self {
+                Self {
+                    success: true,
+                    winners: Some(winners),
+                    error: None,
+                }
+            }
+        }
+
+        pub async fn handler(Json(payload): Json<LiveWinnersPayload>) -> impl IntoResponse {
+            let result = match services::live_winners::get_current_winners(&payload.candidates).await
+            {
+                Ok(winners) => LiveWinnersResultBody::make_winners(winners),
+                Err(err) => LiveWinnersResultBody::make_err(err),
+            };
+            (StatusCode::OK, Json(result))
         }
     }
 

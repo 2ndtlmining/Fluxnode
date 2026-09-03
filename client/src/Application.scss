@@ -15,3 +15,11 @@
 @import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 
 @import 'styles/global';
+
+// Grows to fill any leftover space in the .App flex column so the footer
+// sticks to the bottom on a short page instead of trailing straight after
+// the content. See styles/_global.scss for the .App side of this.
+.app-routed-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
