@@ -3,8 +3,10 @@ import './index.scss';
 
 import { Alignment, Button, Menu, Navbar, Switch } from '@blueprintjs/core';
 
-import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
+import { MenuItem2, Popover2, Tooltip2 } from '@blueprintjs/popover2';
+import { Lock } from 'lucide-react';
 import { LayoutContext } from 'contexts/LayoutContext';
+import { useDonorStatus } from 'contexts/DonorContext';
 import { matchPath, useMatch } from 'react-router';
 import { useNavigate } from 'react-router-dom';
 import { CurrencyMenuItem } from 'components/Navbar/CurrencyMenuItem';
@@ -30,6 +32,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
   let nodesBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
   let demoBtnProps = useMatch('/demo') == null ? inActiveProps : activeProps;
   let liveBtnProps = useMatch('/live') == null ? inActiveProps : activeProps;
+  const { isUnlocked: premiumUnlocked } = useDonorStatus();
 
   if (onThemeSwitch == undefined) onThemeSwitch = no_op;
 
@@ -47,7 +50,16 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
         <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/home')} />
         <Button className='margin-r-s' icon='layout-auto' text='Nodes' {...nodesBtnProps} onClick={() => navigate('/nodes')} />
         <Button icon='build' text='Demo' {...demoBtnProps} onClick={() => navigate('/demo')} />
-        <Button className='margin-r-s' icon='pulse' text='Live' {...liveBtnProps} onClick={() => navigate('/live')} />
+        <Tooltip2 content={premiumUnlocked ? 'Real-time block activity' : 'Premium feature — donor unlocking coming soon'}>
+          <Button
+            className={'margin-r-s' + (premiumUnlocked ? '' : ' navbar-btn--locked')}
+            icon={premiumUnlocked ? 'pulse' : undefined}
+            rightIcon={premiumUnlocked ? undefined : <Lock size={13} />}
+            text='Live'
+            {...liveBtnProps}
+            onClick={() => navigate('/live')}
+          />
+        </Tooltip2>
         <Navbar.Divider />
         <Button
           large
