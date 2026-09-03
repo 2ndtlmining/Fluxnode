@@ -117,9 +117,17 @@
 // DOM measurement.
 $live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
 
+// A light tumble, not a literal multi-face cube: rotating the whole flat
+// card around its vertical axis while it slides in reads as "rolling in
+// from the left" without the complexity/risk of building actual cube faces.
+// rotateY (not rotateX) matches the horizontal direction of travel — this is
+// a roll around a vertical axis, the same way a wheel rolling along the
+// ground rotates around a horizontal axis perpendicular to its direction of
+// travel. -80deg rather than a full -90deg so the card is never perfectly
+// edge-on (a literal zero-width instant) at any animation frame.
 @keyframes live-chain-entering {
-  from { opacity: 0; transform: translateX(-#{$live-chain-slot-shift}); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: perspective(500px) rotateY(-80deg) translateX(-#{$live-chain-slot-shift}); }
+  to { opacity: 1; transform: perspective(500px) rotateY(0deg) translateX(0); }
 }
 
 @keyframes live-chain-pushed {
@@ -132,26 +140,71 @@ $live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
   to { opacity: 0; filter: blur(6px); transform: scale(0.85); max-width: 0; padding-left: 0; padding-right: 0; }
 }
 
+// Houses the real Flux mark (see live/FluxMark) — it carries its own blue
+// circle + white facets, so unlike the plain lucide icon this replaced,
+// nothing here needs its own background fill; a busier block reads busier
+// via a size/glow lift on the mark itself instead.
 .live-chain-block-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  background: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
-  transition: background var(--transition-base), box-shadow var(--transition-base);
+  transition: transform var(--transition-base), filter var(--transition-base);
 
-  // A busier block's icon reads a little more "lit up" — a light touch, not
-  // a size change, so the row stays uniform and legible.
   &--busy {
-    background: rgba(59, 130, 246, 0.22);
+    transform: scale(1.08);
   }
 
   &--hot {
-    background: rgba(59, 130, 246, 0.32);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 4px rgba(43, 97, 209, 0.55));
+  }
+}
+
+// The four facets "snap" into the circle as a block enters — staggered
+// opacity, each appearing slightly after the last, rather than the whole
+// mark just fading in as one flat unit. See live/FluxMark for why each
+// keeps its own numbered class. Deliberately opacity-only on the facets:
+// each facet path already carries its own large SVG `transform` attribute
+// (positioning it within the mark), and composing that with an animated
+// CSS translate/scale risks an unpredictable pivot — not worth the risk for
+// a cosmetic flourish. The circle has no such offset, so it gets the fuller
+// scale-in treatment safely.
+.flux-mark-circle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.live-chain-block--entering {
+  .flux-mark-circle {
+    animation: flux-mark-circle-in 0.35s ease-out both;
+  }
+
+  .flux-mark-facet {
+    animation: flux-mark-facet-in 0.25s ease-out both;
+  }
+
+  .flux-mark-facet--1 { animation-delay: 0.08s; }
+  .flux-mark-facet--2 { animation-delay: 0.14s; }
+  .flux-mark-facet--3 { animation-delay: 0.20s; }
+  .flux-mark-facet--4 { animation-delay: 0.26s; }
+}
+
+@keyframes flux-mark-circle-in {
+  from { opacity: 0; scale: 0.7; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes flux-mark-facet-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-mark-circle,
+  .flux-mark-facet {
+    animation: none;
   }
 }
 

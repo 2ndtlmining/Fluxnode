@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box } from 'lucide-react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
+import { FluxMark } from 'live/FluxMark';
 import './index.scss';
 
 function sectionKeyFor(event) {
@@ -57,7 +57,7 @@ function ChainBlock({ block, isSelected, onSelect }) {
       title={`Block #${block.height} — click to inspect`}
     >
       <span className={`live-chain-block-icon ${activityWeightClass(block.events)}`}>
-        <Box size={18} />
+        <FluxMark />
       </span>
       <span className="live-chain-block-height">#{block.height}</span>
       <span className="live-chain-block-time">{relativeTime(block.at)}</span>
