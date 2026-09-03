@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 use std::time::Duration;
 
 use reqwest::{header, Client, ClientBuilder, Url};
@@ -102,6 +104,32 @@ fn create_client() -> Client {
         .expect("live_winners::create_client() => Failed to configure client")
 }
 
+/*
+ * SSRF guard: `candidates` comes straight from the client's POST body (see
+ * main.rs's LiveWinnersPayload) — this server-side fetch must never be
+ * pointed anywhere the client asks. Requiring a bare, syntactically valid
+ * IPv4 address rules out hostnames entirely (no DNS involved, so no
+ * DNS-rebinding angle either), and rejecting the private/loopback/
+ * link-local/multicast/broadcast/documentation/unspecified ranges blocks
+ * the internal-network and cloud-metadata (169.254.169.254 falls under
+ * link-local) pivots a real Flux node's public IP would never fall into
+ * anyway.
+ */
+fn is_valid_public_candidate(candidate: &str) -> bool {
+    match Ipv4Addr::from_str(candidate) {
+        Ok(ip) => {
+            !(ip.is_private()
+                || ip.is_loopback()
+                || ip.is_link_local()
+                || ip.is_multicast()
+                || ip.is_broadcast()
+                || ip.is_documentation()
+                || ip.is_unspecified())
+        }
+        Err(_) => false,
+    }
+}
+
 // Takes an owned IP rather than `&str`: each call in get_current_winners()
 // below borrows a different, differently-lived slice element, and an async
 // fn's opaque return type can't be unified across a varying per-call
@@ -135,14 +163,26 @@ pub async fn get_current_winners(candidates: &[String]) -> Result<CurrentWinners
         return Err("No candidate nodes supplied".to_string());
     }
 
+    // Filter BEFORE taking MAX_CANDIDATES_TRIED — otherwise a payload
+    // front-loaded with junk could crowd out every real candidate from the
+    // attempted batch without even tripping the "none valid" error below.
+    let valid_candidates: Vec<String> = candidates
+        .iter()
+        .filter(|c| is_valid_public_candidate(c.as_str()))
+        .cloned()
+        .collect();
+
+    if valid_candidates.is_empty() {
+        return Err("No valid public-IPv4 candidate nodes supplied".to_string());
+    }
+
     let client = create_client();
     let client = &client;
 
     let mut attempts = tokio_stream::iter(
-        candidates
-            .iter()
+        valid_candidates
+            .into_iter()
             .take(MAX_CANDIDATES_TRIED)
-            .cloned()
             .map(|ip| try_candidate(client, ip)),
     )
     .buffer_unordered(MAX_CANDIDATES_TRIED);
