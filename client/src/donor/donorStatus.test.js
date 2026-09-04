@@ -132,6 +132,7 @@ describe('fetch_donor_status', () => {
 
     expect(result.isDonor).toBe(true);
     expect(result.totalInWindow).toBeCloseTo(12);
+    expect(result.verified).toBe(true);
   });
 
   it('ignores a transaction sent by a different wallet', async () => {
@@ -145,6 +146,28 @@ describe('fetch_donor_status', () => {
 
     expect(result.isDonor).toBe(false);
     expect(result.totalInWindow).toBe(0);
+    expect(result.verified).toBe(true);
+  });
+
+  it('sums donations across multiple pages and fetches the second page with pageNum=1', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch
+      .mockResolvedValueOnce(mockJsonResponse({
+        pagesTotal: 2,
+        txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 6 })],
+      }))
+      .mockResolvedValueOnce(mockJsonResponse({
+        pagesTotal: 2,
+        txs: [realDonationTx({ blockheight: 199, time: nowSec - 6 * 86400, amount: 6 })],
+      }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch.mock.calls[1][0]).toContain('&pageNum=1');
+    expect(result.totalInWindow).toBeCloseTo(12);
+    expect(result.isDonor).toBe(true);
+    expect(result.verified).toBe(true);
   });
 
   it('stops paginating once it reaches a transaction older than the window, without fetching further pages', async () => {
@@ -161,6 +184,7 @@ describe('fetch_donor_status', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1); // never fetched page 2 or 3
     expect(result.totalInWindow).toBeCloseTo(20); // the 999 past the window never counted
+    expect(result.verified).toBe(true); // hit the window edge — a complete, trustworthy scan
   });
 
   it('caches a result and serves it without a second network call within the TTL', async () => {
@@ -175,6 +199,7 @@ describe('fetch_donor_status', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(second).toEqual(first);
+    expect(first.verified).toBe(true);
   });
 
   it('fails soft — not a donor, not a throw — when the explorer is unreachable', async () => {
@@ -196,4 +221,47 @@ describe('fetch_donor_status', () => {
     expect(first).toEqual(expect.objectContaining({ isDonor: false }));
     expect(second).toEqual(expect.objectContaining({ isDonor: false }));
   });
+
+  it('a scan that fails partway through a multi-page fetch is not verified and not cached', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    // Page 1 succeeds but the donation total stays below threshold, so
+    // computeDonorStatus alone would say isDonor: false — the only thing
+    // that should keep this from being reported/cached as a confident
+    // "not a donor" is the page-2 failure below.
+    global.fetch
+      .mockResolvedValueOnce(mockJsonResponse({
+        pagesTotal: 3,
+        txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
+      }))
+      .mockRejectedValueOnce(new Error('network down'));
+
+    const first = await fetch_donor_status(WALLET);
+
+    expect(first.isDonor).toBe(false);
+    expect(first.verified).toBe(false);
+
+    // Not cached — a retry re-attempts the network call rather than serving
+    // the unverified partial result.
+    global.fetch
+      .mockResolvedValueOnce(mockJsonResponse({
+        pagesTotal: 3,
+        txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
+      }))
+      .mockRejectedValueOnce(new Error('network down'));
+
+    await fetch_donor_status(WALLET);
+
+    expect(global.fetch).toHaveBeenCalledTimes(4); // 2 calls per attempt, both attempts hit the network
+  });
+
+  // Page-cap truncation (pageNum reaches DONOR_MAX_PAGES_FETCHED without
+  // hitWindowEdge or exhausting pagesTotal) is intentionally not covered by
+  // a dedicated test here — mocking DONOR_MAX_PAGES_FETCHED (20) sequential
+  // page responses to exercise it end-to-end would be a large, low-signal
+  // fixture. The same `scanComplete = hitWindowEdge || pageNum >= pagesTotal`
+  // boundary is already exercised from both sides by the tests above (hit via
+  // hitWindowEdge in "stops paginating...", hit via pageNum >= pagesTotal in
+  // "sums donations...single page" and "ignores a transaction..."), and the
+  // cap only changes which of those two conditions is reached, not the logic
+  // that decides verified from them.
 });

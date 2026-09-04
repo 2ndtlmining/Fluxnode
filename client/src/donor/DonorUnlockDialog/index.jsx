@@ -8,7 +8,7 @@ import { DonateChip } from 'components/Footer';
 import { ADDRESS_FLUX } from 'content/index';
 import './index.scss';
 
-const STATUS = { IDLE: 'idle', CHECKING: 'checking', SUCCESS: 'success', FAILURE: 'failure', INVALID: 'invalid' };
+const STATUS = { IDLE: 'idle', CHECKING: 'checking', SUCCESS: 'success', FAILURE: 'failure', INVALID: 'invalid', UNVERIFIED: 'unverified' };
 
 /*
  * The only place a wallet address is entered to unlock premium features.
@@ -39,6 +39,8 @@ export function DonorUnlockDialog({ isOpen, onClose }) {
     if (donorResult.isDonor) {
       setDonorWallet(trimmed, donorResult);
       setStatus(STATUS.SUCCESS);
+    } else if (!donorResult.verified) {
+      setStatus(STATUS.UNVERIFIED);
     } else {
       setStatus(STATUS.FAILURE);
     }
@@ -85,6 +87,12 @@ export function DonorUnlockDialog({ isOpen, onClose }) {
         {status === STATUS.SUCCESS && result && (
           <div className="donor-unlock-message donor-unlock-message--success">
             Unlocked — donor status active, {result.daysLeft} days left.
+          </div>
+        )}
+
+        {status === STATUS.UNVERIFIED && (
+          <div className="donor-unlock-message donor-unlock-message--error">
+            Couldn't reach the Flux explorer right now — try again in a moment.
           </div>
         )}
 

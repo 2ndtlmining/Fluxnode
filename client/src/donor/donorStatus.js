@@ -99,21 +99,19 @@ export async function fetch_donor_status(walletAddress) {
   if (cached) return cached;
 
   const nowMs = Date.now();
-  const windowStartSec = Math.floor(nowMs / 1000) - 365 * 24 * 60 * 60;
+  const windowStartSec = Math.floor((nowMs - WINDOW_MS) / 1000);
   const baseUrl = `${TXS_BY_ADDRESS_ENDPOINT}?address=${ADDRESS_FLUX}`;
 
   const records = [];
   let pageNum = 0;
   let pagesTotal = 1;
   let hitWindowEdge = false;
-  let fetchedAtLeastOnePage = false;
 
   while (!hitWindowEdge && pageNum < pagesTotal && pageNum < DONOR_MAX_PAGES_FETCHED) {
     const url = pageNum === 0 ? baseUrl : `${baseUrl}&pageNum=${pageNum}`;
     const json = await safeFetchJson(url);
-    if (!json) break; // explorer unreachable — use whatever was gathered so far
+    if (!json) break; // explorer unreachable partway through — incomplete scan, see scanComplete below
 
-    fetchedAtLeastOnePage = true;
     pagesTotal = json.pagesTotal || 1;
     const txs = Array.isArray(json.txs) ? json.txs : [];
 
@@ -131,8 +129,18 @@ export async function fetch_donor_status(walletAddress) {
     pageNum += 1;
   }
 
-  const result = computeDonorStatus(records, nowMs);
-  if (fetchedAtLeastOnePage) {
+  // A scan only counts as a trustworthy answer if it either reached the
+  // window boundary (hitWindowEdge) or genuinely exhausted every page the
+  // explorer reports (pageNum >= pagesTotal). Anything else — a fetch
+  // failing partway through, or hitting the page cap — is incomplete and
+  // must never be cached or reported as a confident "not a donor". A
+  // positive result is always trustworthy even from a partial scan, since
+  // more data can only raise totalInWindow, never lower it.
+  const scanComplete = hitWindowEdge || pageNum >= pagesTotal;
+  const computed = computeDonorStatus(records, nowMs);
+  const result = { ...computed, verified: scanComplete || computed.isDonor };
+
+  if (result.verified) {
     writeDonorStatusCache(walletAddress, result);
   }
   return result;

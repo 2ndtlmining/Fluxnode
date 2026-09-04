@@ -13,9 +13,13 @@ export const DONOR_MAX_PAGES_FETCHED = 20;
 
 /*
  * The full donor-gate mechanism (wallet -> chain-donation check -> unlock)
- * is specced in PREMIUM_FEATURES_PLAN.md but not built yet. Until it is,
- * this flag is the ONLY way premium features (currently just /live) unlock
- * — real users see the locked state unconditionally.
+ * is built: DonorContext verifies a wallet's real on-chain donations via
+ * fetch_donor_status and gates premium features (currently just /live) on
+ * the result. This flag is a dev/QA override that sits ON TOP OF that real
+ * verification, not a replacement for it — DonorContext's `isUnlocked` is
+ * `isPremiumTestingUnlocked() || donorStatus?.isDonor`, so flipping this on
+ * unlocks premium features without needing a real donor wallet, while real
+ * users are still gated by actual verified donations when it's off.
  *
  * Set via the PREMIUM_TESTING_MODE Docker environment variable at container
  * start (see service/container-entrypoint.sh, which patches this value into

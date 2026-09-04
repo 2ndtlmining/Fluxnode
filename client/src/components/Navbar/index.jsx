@@ -50,7 +50,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
         <Button className='margin-r-s' icon='home' text='Home' {...homeBtnProps} onClick={() => navigate('/home')} />
         <Button className='margin-r-s' icon='layout-auto' text='Nodes' {...nodesBtnProps} onClick={() => navigate('/nodes')} />
         <Button icon='build' text='Demo' {...demoBtnProps} onClick={() => navigate('/demo')} />
-        <Tooltip2 content={premiumUnlocked ? 'Real-time block activity' : 'Premium feature — donor unlocking coming soon'}>
+        <Tooltip2 content={premiumUnlocked ? 'Real-time block activity' : 'Premium feature — unlock by donating FLUX'}>
           <Button
             className={'margin-r-s' + (premiumUnlocked ? '' : ' navbar-btn--locked')}
             icon={premiumUnlocked ? 'pulse' : undefined}
