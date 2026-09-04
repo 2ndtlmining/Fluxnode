@@ -1,13 +1,14 @@
 import { Tabs, Tab } from '@blueprintjs/core';
 import { Helmet } from 'react-helmet';
 import { AppsTab } from 'analytics/AppsTab';
+import { NetworkTab } from 'analytics/NetworkTab';
 import './Analytics.scss';
 
 /*
- * One tab exists today (Apps). Network/Donor/Chain Activity tabs land in
- * later sessions — add each as one more <Tab> entry here, not a
- * restructure. Gated by PremiumGate at the route level (Application.jsx),
- * same as /live — this component only renders once already unlocked.
+ * Two tabs exist today (Apps, Network). Donor/Chain Activity land in later
+ * sessions — add each as one more <Tab> entry here, not a restructure.
+ * Gated by PremiumGate at the route level (Application.jsx), same as
+ * /live — this component only renders once already unlocked.
  */
 export default function Analytics() {
   return (
@@ -25,6 +26,7 @@ export default function Analytics() {
 
       <Tabs id="analytics-tabs" className="analytics-tabs" renderActiveTabPanelOnly>
         <Tab id="apps" title="Apps" panel={<AppsTab />} />
+        <Tab id="network" title="Network" panel={<NetworkTab />} />
       </Tabs>
     </div>
   );

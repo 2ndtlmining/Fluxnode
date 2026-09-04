@@ -54,8 +54,11 @@ something demoable. Update the checkboxes as sessions land.
   into shared components, plus new top-node-operator and top-app-owner rankings and a
   Flux-team-sponsored % stat), all built on data already fetched elsewhere in the app —
   no new sourcing. Establishes the page/tab/panel pattern the other three tabs follow.
-- [ ] **Session 3 — Network tab.** Continent rollup (new aggregation) + world map (new
-  component, reusing already-written-but-unwired projector code). No backend.
+- [x] **Session 3 — Network tab.** Done. Continent rollup
+  (`analytics/continentDistribution.js`, a new aggregation over geolocation data already
+  fetched elsewhere) + a hand-rolled world map (`analytics/WorldMap`) built on the
+  promoted `geo/countryCentroids.js` projector — country bubbles over a graticule, no
+  new npm dependency, no sourced map asset. No backend.
 - [ ] **Session 4 — Donor tab.** Depends on Session 1 (real `donorWallet`). Reuses
   `PayoutTimer`'s prediction logic, the wallet's existing node-list fetch, and
   per-node running-apps data. No backend.
@@ -211,20 +214,23 @@ Uses only data already fetched elsewhere in the app — no new sourcing.
   the largest *third-party* operator). Compute `teamInstances / totalInstances` from the
   same owner-aggregation above. New: `client/src/analytics/teamSponsored.js` (+test).
 
-### Network tab (Session 3)
+### Network tab (Session 3) — Built
 
-- **Continent/country centralization risk** — country-level data already exists
-  (`fetch_country_node_counts`, `apidata.js:1407`), but there's **no continent-level
-  rollup today** even though `continent` is already fetched and simply never grouped.
-  New: `client/src/analytics/continentDistribution.js` (+test).
-- **World map** — `client/src/live/countryCentroids.js` (country→lat/lon centroids +
-  an equirectangular `projectToPercent()` projector) **already exists and is completely
-  unwired** — nothing imports it. Promote it to a shared location (e.g.
-  `client/src/geo/countryCentroids.js`, since it'll now serve two features) and build
-  `client/src/analytics/WorldMap/index.jsx` on top of it: country-sized dots/bubbles over
-  a static world-outline SVG asset. Avoids pulling in a full mapping library
-  (`react-simple-maps` + topojson) — none exists in this codebase today. Fallback to
-  `react-simple-maps` if the hand-rolled version doesn't clear the polish bar in review.
+- **Continent/country centralization risk** — Built. `client/src/analytics/continentDistribution.js`
+  (+test): `rollupByContinent()`, a pure aggregation over the raw geolocation payload
+  `fetch_node_geolocation()` already returns network-wide (that payload already carries
+  `continent` per node — `apidata.js:1172` — nothing grouped by it before this).
+- **World map** — Built. `client/src/live/countryCentroids.js` (country→lat/lon centroids +
+  an equirectangular `projectToPercent()` projector) was completely unwired — confirmed
+  zero importers before this session. Promoted to `client/src/geo/countryCentroids.js`.
+  `client/src/analytics/WorldMap/index.jsx` is fully hand-rolled: a graticule + country
+  bubbles sized by node count, no sourced world-outline asset and no new npm dependency
+  (decided over `react-simple-maps`/topojson and over sourcing a coastline SVG — this
+  data is already explicitly "decorative, not for navigation" per `countryCentroids.js`'s
+  own comment, so hand-rolled stayed consistent with the rest of this app's CSS/div
+  panels rather than reaching for a mapping library). `NetworkTab` derives both the map's
+  country counts and the continent rollup from one shared `fetch_node_geolocation()` call
+  so the two panels can't read from different cached datasets.
 
 ### Donor tab (Session 4)
 
@@ -256,12 +262,13 @@ wallet, not the current hardcoded `null`.
 `analytics/topOwners.js` (+test), `analytics/teamSponsored.js` (+test), promoted
 `geo/countryCentroids.js`.
 
-### Charting library — decide before Session 3
+### Charting library — resolved, Session 3
 
-No charting library exists in this codebase today (Home's bars are hand-rolled
-CSS/divs). Recommended: **Recharts** (composable, SVG-based, tree-shakeable, easy to
-theme dark). Not yet confirmed with the user — flag this at the start of Session 3
-rather than assuming it.
+Decided during Session 3: no charting library. The Network tab's world map and
+continent-rollup panel are both hand-rolled CSS/divs, matching every other panel in
+this app (Home's bars included) — same reasoning as the World map bullet above. Still
+nothing installed; still open again for Session 4/5 if either later tab's content
+genuinely needs a chart, but don't default to Recharts without re-confirming the need.
 
 ### Polish
 

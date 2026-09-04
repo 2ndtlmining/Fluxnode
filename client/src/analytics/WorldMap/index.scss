@@ -1,0 +1,136 @@
+@import 'styles/functional';
+
+// One more independent copy of the shared panel chrome — see the header
+// comment in components/TopHostedApps/index.scss for why this is
+// duplicated per component rather than imported cross-file. This copy
+// deliberately omits .hov-panel-center/@keyframes shimmer — this component
+// never renders that class; NetworkTab/index.scss owns it since NetworkTab
+// is its only consumer (flagged in the final branch review — the previous
+// version defined it here unused while NetworkTab borrowed it as a
+// side effect of import order).
+.hov-panel {
+  border-radius: var(--radius-md);
+  padding: 14px 16px 16px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+
+  &:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+  }
+
+  @include rule-mode-dark() {
+    background: var(--surface-primary);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-md);
+
+    &:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-hover);
+    }
+  }
+}
+
+.wm-panel {
+  border-left: 2px solid #0ea5e9;
+}
+
+.hov-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -14px -16px 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.hov-header-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hov-header-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(100, 100, 100, 0.1);
+  color: var(--text-secondary);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.hov-empty {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  padding: 12px 0;
+  text-align: center;
+}
+
+// ── The map itself ──────────────────────────────────────────────────────────
+
+.wm-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #dbeafe;
+
+  @include rule-mode-dark() {
+    background: #0b1f33;
+  }
+}
+
+.wm-graticule {
+  position: absolute;
+  background: rgba(30, 64, 120, 0.1);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &--h {
+    left: 0;
+    right: 0;
+    height: 1px;
+  }
+
+  &--v {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+  }
+}
+
+.wm-bubble {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(38, 134, 208, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  cursor: default;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: rgba(38, 134, 208, 0.85);
+  }
+}
+
+.wm-caption {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-align: right;
+}
