@@ -1,3 +1,38 @@
+/*
+ * Blueprint's Dialog renders into a portal attached to document.body — it
+ * sits entirely outside .App's .app-mode-dark/.bp4-dark class, so without
+ * this it falls back to Blueprint's plain light chrome regardless of the
+ * site's theme. Styled directly against FluxNode's own tokens (not
+ * Blueprint's generic dark theme) so it actually matches the surrounding
+ * panels rather than a library default.
+ */
+.donor-unlock-dialog.bp4-dialog {
+  background: var(--surface-elevated);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hover);
+}
+
+.donor-unlock-dialog .bp4-dialog-header {
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-primary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: none;
+}
+
+.donor-unlock-dialog .bp4-dialog-header .bp4-heading {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.donor-unlock-dialog .bp4-dialog-close-button .bp4-icon {
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast);
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
 .donor-unlock-body {
   display: flex;
   flex-direction: column;
@@ -15,6 +50,25 @@
   display: flex;
   gap: 8px;
   align-items: center;
+
+  // Same portal-detachment issue as the dialog chrome above — the input
+  // otherwise renders with Blueprint's plain white background.
+  .bp4-input {
+    background: var(--surface-inset);
+    color: var(--text-primary);
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+  }
+
+  // The button's own text was wrapping to two lines at this width — hold
+  // it to one, and stop it from being squeezed as the input (which fills
+  // available space) grows.
+  .bp4-button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 .donor-unlock-message {
