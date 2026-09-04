@@ -1,0 +1,270 @@
+@import 'styles/functional';
+
+// ── Panel card (one of three independent copies of this shared chrome — the
+// other two are home/HomeOverview/index.scss and
+// components/TopHostedApps/index.scss. All three must be kept in sync by
+// hand. On /home, this copy loads AFTER Home's own stylesheet
+// (HomeOverview/index.jsx imports its own ./index.scss before it imports
+// AppEcosystemBreakdown), so on equal specificity THIS copy wins the cascade
+// for shared selectors, not Home's — the opposite of what you'd guess from
+// file layout. Kept as a full copy (not a shared partial/import) so this
+// component doesn't depend on Home's stylesheet being loaded on pages that
+// aren't /home.) ──────────────────────────────────────────────────────────
+
+.hov-panel {
+  border-radius: var(--radius-md);
+  padding: 14px 16px 16px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+
+  &:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+  }
+
+  @include rule-mode-dark() {
+    background: var(--surface-primary);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-md);
+
+    &:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-hover);
+    }
+  }
+
+  // Per-panel accent strip on left edge
+  &--ecosystem  { border-left: 2px solid #f59e0b; }
+}
+
+.hov-panel-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--surface-inset) 40%,
+      var(--surface-secondary) 50%,
+      var(--surface-inset) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Panel header ──────────────────────────────────────────────────────────────
+
+.hov-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -14px -16px 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+// Per-panel accent gradient tint behind header (reduced opacity for subtlety)
+.hov-panel--ecosystem .hov-header { background: linear-gradient(90deg, rgba(245, 158, 11, 0.04) 0%, transparent 60%); }
+
+.hov-header-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hov-header-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(100, 100, 100, 0.1);
+  color: var(--text-secondary);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &--hero {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    padding: 0 2px;
+    background: none;
+    border-radius: 0;
+    color: var(--text-primary);
+
+    @include rule-mode-dark() {
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+}
+
+.hov-empty {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  padding: 12px 0;
+  text-align: center;
+}
+
+// ── Category tooltip (popover className, used via Tooltip2 popoverClassName) ──
+
+.hov-cat-tooltip {
+  .bp4-tooltip2 {
+    max-width: 220px;
+    font-size: 0.75rem;
+  }
+}
+
+// ── App Ecosystem panel ────────────────────────────────────────────────────────
+
+.hov-eco-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hov-eco-row {
+  display: grid;
+  align-items: center;
+  gap: 5px;
+  grid-template-columns: 14px 80px 1fr 40px 30px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-inset);
+    outline: none;
+  }
+
+  &--expanded {
+    background: var(--surface-inset);
+  }
+
+  // Discrete weight steps — a big category reads bigger, a tiny one reads
+  // smaller, instead of every row sharing identical type/icon size.
+  &--lg .hov-eco-label { font-size: 0.86rem; font-weight: 600; }
+  &--lg .hov-eco-icon svg { width: 13px; height: 13px; }
+  &--lg .hov-eco-count { font-size: 0.8rem; }
+
+  &--sm .hov-eco-label { font-size: 0.72rem; opacity: 0.85; }
+  &--sm .hov-eco-icon svg { width: 10px; height: 10px; }
+  &--sm .hov-eco-count { font-size: 0.7rem; opacity: 0.85; }
+}
+
+.hov-eco-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.hov-eco-label {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.35);
+}
+
+.hov-eco-chevron {
+  color: var(--text-tertiary);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+.hov-eco-expand {
+  padding: 6px 8px 10px 19px;
+  animation: hov-eco-expand-in 0.15s ease-out;
+
+  // CategoryTooltip is normally only ever seen inside Blueprint's dark
+  // Tooltip2 popover, where its fixed light border/opacity read fine. Placed
+  // inline on the panel's own themed surface instead, give it theme-aware
+  // colors so it doesn't nearly vanish in light mode.
+  .cat-tooltip {
+    max-width: none;
+    color: var(--text-secondary);
+  }
+
+  .cat-tooltip__list {
+    border-top-color: var(--border-primary);
+  }
+}
+
+@keyframes hov-eco-expand-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hov-eco-bar-wrap {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+
+.hov-eco-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.85;
+}
+
+.hov-eco-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hov-eco-pct {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.hov-eco-stale {
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: help;
+}

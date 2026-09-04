@@ -1,0 +1,272 @@
+@import 'styles/functional';
+
+// ── Panel card (one of three independent copies of this shared chrome — the
+// other two are home/HomeOverview/index.scss and
+// components/AppEcosystemBreakdown/index.scss. All three must be kept in
+// sync by hand. On /home, this copy loads AFTER Home's own stylesheet
+// (HomeOverview/index.jsx imports its own ./index.scss before it imports
+// TopHostedApps), so on equal specificity THIS copy wins the cascade for
+// shared selectors, not Home's — the opposite of what you'd guess from file
+// layout. Kept as a full copy (not a shared partial/import) so this
+// component doesn't depend on Home's stylesheet being loaded on pages that
+// aren't /home.) ──────────────────────────────────────────────────────────
+
+.hov-panel {
+  border-radius: var(--radius-md);
+  padding: 14px 16px 16px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+
+  &:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+  }
+
+  @include rule-mode-dark() {
+    background: var(--surface-primary);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-md);
+
+    &:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-hover);
+    }
+  }
+
+  // Per-panel accent strip on left edge
+  &--top-apps   { border-left: 2px solid #10b981; }
+}
+
+.hov-panel-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--surface-inset) 40%,
+      var(--surface-secondary) 50%,
+      var(--surface-inset) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Panel header ──────────────────────────────────────────────────────────────
+
+.hov-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -14px -16px 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+// Per-panel accent gradient tint behind header (reduced opacity for subtlety)
+.hov-panel--top-apps  .hov-header { background: linear-gradient(90deg, rgba(16, 185, 129, 0.04) 0%, transparent 60%); }
+
+.hov-header-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hov-header-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(100, 100, 100, 0.1);
+  color: var(--text-secondary);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &--hero {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    padding: 0 2px;
+    background: none;
+    border-radius: 0;
+    color: var(--text-primary);
+
+    @include rule-mode-dark() {
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+}
+
+.hov-empty {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  padding: 12px 0;
+  text-align: center;
+}
+
+// ── Ranked list (top hosted apps) ─────────────────────────────────────────────
+
+.hov-ranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hov-ranked-row {
+  display: grid;
+  align-items: center;
+  gap: 6px;
+  grid-template-columns: 20px 1fr 60px 36px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.07);
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--surface-inset);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hov-rank {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+
+  &--gold {
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.12);
+  }
+  &--silver {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.12);
+  }
+  &--bronze {
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.12);
+  }
+}
+
+.hov-ranked-name {
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.hov-ranked-bar-wrap {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+
+.hov-ranked-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #2686d0, #5eb8ff);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ── Badge ──────────────────────────────────────────────────────────────────────
+// (base rule only — this component never renders the --warn/--green
+// modifiers; those stay defined in home/HomeOverview/index.scss where
+// ExpiringTodayPanel/DeployedTodayPanel use them.)
+
+.hov-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(38, 134, 208, 0.12);
+  color: #2686d0;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+
+  @include rule-mode-dark() {
+    background: rgba(38, 134, 208, 0.22);
+    color: #5eb8ff;
+  }
+}
+
+// ── Bottom row: fixed 10-row height panel ─────────────────────────────────────
+// (duplicated from home/HomeOverview/index.scss's shared bottom-row rule,
+// which also covers ExpiringTodayPanel/DeployedTodayPanel via .hov-list —
+// this is the .hov-panel--top-apps / .hov-ranked-list slice of that rule.
+// The scrollbar rules are inlined rather than @extend-ing the %slim-scrollbar
+// placeholder defined in Home's stylesheet, since Sass placeholders don't
+// resolve across independently-compiled component stylesheets — same pattern
+// already used in home/WorkhorsePanel/index.scss's .whp-apps.)
+
+.hov-panel--top-apps {
+  display: flex;
+  flex-direction: column;
+
+  .hov-ranked-list {
+    height: 380px;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128, 128, 128, 0.22) transparent;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(128, 128, 128, 0.22);
+      border-radius: 2px;
+
+      &:hover {
+        background: rgba(128, 128, 128, 0.45);
+      }
+    }
+  }
+}

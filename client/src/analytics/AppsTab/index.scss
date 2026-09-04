@@ -1,0 +1,55 @@
+@import 'styles/functional';
+
+.apps-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.apps-tab-stat-row {
+  display: flex;
+}
+
+.apps-tab-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+}
+
+.apps-tab-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.apps-tab-stat-caption {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+}
+
+.apps-tab-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.apps-tab-ranked-panel {
+  min-width: 0;
+}
+
+.apps-tab-team-flag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #2b61d1;
+  background: rgba(43, 97, 209, 0.12);
+
+  @include rule-mode-dark() {
+    background: rgba(43, 97, 209, 0.22);
+    color: #5b9bf5;
+  }
+}

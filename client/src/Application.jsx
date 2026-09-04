@@ -23,6 +23,7 @@ const MainApp = React.lazy(() => import('main/MainApp'));
 const Home = React.lazy(() => import('home/Home'));
 const Demo = React.lazy(() => import('demo/Demo'));
 const Live = React.lazy(() => import('live/Live'));
+const Analytics = React.lazy(() => import('analytics/Analytics'));
 const NotFoundView = React.lazy(() => import('notfound/index'));
 
 // Omit round border of switches - https://blueprintjs.com/docs/#core/accessibility.focus-management
@@ -160,6 +161,18 @@ class Application extends React.Component {
                       <React.Suspense fallback={<PageLoader />}>
                         <PremiumGate feature='Live'>
                           <Live />
+                        </PremiumGate>
+                      </React.Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path='/analytics'
+                  element={
+                    <ErrorBoundary>
+                      <React.Suspense fallback={<PageLoader />}>
+                        <PremiumGate feature='Analytics'>
+                          <Analytics />
                         </PremiumGate>
                       </React.Suspense>
                     </ErrorBoundary>
