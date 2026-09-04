@@ -54,7 +54,18 @@ export function DonorUnlockDialog({ isOpen, onClose }) {
   }, [onClose]);
 
   return (
-    <Dialog isOpen={isOpen} onClose={handleClose} title="Unlock premium features" className="donor-unlock-dialog">
+    <Dialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Unlock premium features"
+      className="donor-unlock-dialog"
+      // Blueprint portals dialogs to document.body by default — a sibling
+      // of .App, not a descendant, so neither Blueprint's own .bp4-dark
+      // theme nor this app's dark-mode CSS custom properties (both set on
+      // .App) would reach it. Rendering inline instead keeps it a real
+      // descendant, so both inherit correctly with no extra plumbing.
+      usePortal={false}
+    >
       <div className="donor-unlock-body">
         <p className="donor-unlock-intro">
           Send at least {DONOR_THRESHOLD_FLUX} FLUX to our donation address within the
