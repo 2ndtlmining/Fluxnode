@@ -1,3 +1,5 @@
+@import 'styles/functional';
+
 .apps-tab {
   display: flex;
   flex-direction: column;
@@ -45,4 +47,9 @@
   font-weight: 700;
   color: #2b61d1;
   background: rgba(43, 97, 209, 0.12);
+
+  @include rule-mode-dark() {
+    background: rgba(43, 97, 209, 0.22);
+    color: #5b9bf5;
+  }
 }

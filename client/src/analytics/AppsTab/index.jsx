@@ -3,7 +3,7 @@ import { Spinner } from '@blueprintjs/core';
 import { fetch_global_app_specs, fetch_global_stats, fetch_total_network_utils } from 'apidata';
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
-import { rankNodeOperators, fetch_top_node_operators, aggregateOwnerTotals } from 'analytics/topOwners';
+import { rankNodeOperators, aggregateOwnerTotals, DEFAULT_TOP_N } from 'analytics/topOwners';
 import { FLUX_TEAM_OWNER_ZELIDS, computeTeamSponsoredShare } from 'analytics/teamSponsored';
 import './index.scss';
 
@@ -66,13 +66,10 @@ export function AppsTab() {
       if (cancelled) return;
       setGstore(builtGstore);
 
-      const [operators, specsResult] = await Promise.all([
-        fetch_top_node_operators(),
-        fetch_global_app_specs(builtGstore),
-      ]);
+      const specsResult = await fetch_global_app_specs(builtGstore);
       if (cancelled) return;
 
-      setNodeOperators(operators);
+      setNodeOperators(rankNodeOperators(builtGstore.nodePaymentAddresses));
       setOwnerTotals(aggregateOwnerTotals(specsResult.rawSpecs));
       setLoading(false);
     })();
@@ -92,7 +89,7 @@ export function AppsTab() {
   const { sharePct } = computeTeamSponsoredShare(owners, networkTotalInstances);
 
   const nodeOperatorRows = nodeOperators.map((o) => ({ key: o.address, value: o.nodeCount }));
-  const ownerRows = owners.slice(0, 20).map((o) => ({ key: o.owner, value: o.totalInstances }));
+  const ownerRows = owners.slice(0, DEFAULT_TOP_N).map((o) => ({ key: o.owner, value: o.totalInstances }));
 
   return (
     <div className="apps-tab">
@@ -100,7 +97,9 @@ export function AppsTab() {
         <div className="hov-panel apps-tab-stat-card">
           <span className="hov-header-title">FLUX-TEAM-SPONSORED</span>
           <span className="apps-tab-stat-value">{sharePct.toFixed(1)}%</span>
-          <span className="apps-tab-stat-caption">of network app instances run under the Flux team's own owner ID</span>
+          <span className="apps-tab-stat-caption">
+            of {fmtNum(networkTotalInstances)} ordered app instances run under the Flux team's own owner ID
+          </span>
         </div>
       </div>
 

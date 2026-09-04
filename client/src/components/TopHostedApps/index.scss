@@ -1,9 +1,15 @@
 @import 'styles/functional';
 
-// ── Panel card (duplicated from home/HomeOverview/index.scss — that file
-// keeps the authoritative copy for every other Home panel; this is a
-// self-contained copy so this component doesn't depend on Home's stylesheet
-// being loaded) ──────────────────────────────────────────────────────────────
+// ── Panel card (one of three independent copies of this shared chrome — the
+// other two are home/HomeOverview/index.scss and
+// components/AppEcosystemBreakdown/index.scss. All three must be kept in
+// sync by hand. On /home, this copy loads AFTER Home's own stylesheet
+// (HomeOverview/index.jsx imports its own ./index.scss before it imports
+// TopHostedApps), so on equal specificity THIS copy wins the cascade for
+// shared selectors, not Home's — the opposite of what you'd guess from file
+// layout. Kept as a full copy (not a shared partial/import) so this
+// component doesn't depend on Home's stylesheet being loaded on pages that
+// aren't /home.) ──────────────────────────────────────────────────────────
 
 .hov-panel {
   border-radius: var(--radius-md);

@@ -1,5 +1,5 @@
 const NODE_LIST_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
-const DEFAULT_TOP_N = 20;
+export const DEFAULT_TOP_N = 20;
 
 /*
  * Pure: network-wide node-operator concentration, NOT the per-country max
