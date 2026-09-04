@@ -49,10 +49,11 @@ something demoable. Update the checkboxes as sessions land.
   all built and merged. `/live` is genuinely donor-gated for real visitors now, not just
   testing-flag-gated. `DonorContext.donorWallet` is real — Session 4 (Donor tab) is
   unblocked.
-- [ ] **Session 2 — Analytics page shell + Apps tab.** Route, tab navigation component,
-  locked-state reuse from `/live`. Apps tab first because it needs zero new data
-  sourcing — pure aggregation over data already fetched elsewhere in the app. Establishes
-  the page/tab/panel pattern the other three tabs follow.
+- [x] **Session 2 — Analytics page shell + Apps tab.** Done. `/analytics` route +
+  Blueprint `Tabs` shell, Apps tab (App Ecosystem + Top Hosted Apps extracted from Home
+  into shared components, plus new top-node-operator and top-app-owner rankings and a
+  Flux-team-sponsored % stat), all built on data already fetched elsewhere in the app —
+  no new sourcing. Establishes the page/tab/panel pattern the other three tabs follow.
 - [ ] **Session 3 — Network tab.** Continent rollup (new aggregation) + world map (new
   component, reusing already-written-but-unwired projector code). No backend.
 - [ ] **Session 4 — Donor tab.** Depends on Session 1 (real `donorWallet`). Reuses
@@ -190,7 +191,12 @@ Gated by `DonorContext.isUnlocked`, same as `/live`. Four tabs: **Network**, **A
 Uses only data already fetched elsewhere in the app — no new sourcing.
 
 - **Migrate from Home**: the App Ecosystem panel's expandable per-category drill-down,
-  and Top Hosted Apps. Home keeps a slim category summary only.
+  and Top Hosted Apps. Built as an **extract, don't remove**: both panels moved to
+  shared components (`components/AppEcosystemBreakdown`, `components/TopHostedApps`)
+  that both `/home` and the new Apps tab import — Home's own rendering is unchanged
+  (verified byte-identical), not reduced to a slim summary as originally sketched here.
+  Ruling made during Session 2 Task 1: the "never regress Home" constraint outranks this
+  bullet's original wording.
 - **Top owners** — ambiguous phrase from the original ask, worth building both readings
   since the data for both already exists: **supply-side** (node operators running the
   most nodes/collateral — extend `countryDominance`'s `payment_address` grouping,
