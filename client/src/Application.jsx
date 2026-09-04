@@ -13,6 +13,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import { DonorProvider } from 'contexts/DonorContext';
+import { DonorContext } from 'contexts/DonorContext';
 import { FocusStyleManager } from '@blueprintjs/core';
 import { lazy_load_currency_rate } from 'main/apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
@@ -133,7 +134,11 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <MainApp theme={darkMode ? 'dark' : 'light'} />
+                        <DonorContext.Consumer>
+                          {({ donorWallet }) => (
+                            <MainApp theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} />
+                          )}
+                        </DonorContext.Consumer>
                       </React.Suspense>
                     </ErrorBoundary>
                   }

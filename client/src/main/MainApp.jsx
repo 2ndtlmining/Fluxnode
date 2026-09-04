@@ -39,6 +39,7 @@ import { appStore, StoreKeys } from 'persistance/store';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs, hide_sensitive_string } from 'utils';
 import { FaMedal } from 'react-icons/fa';
+import { DonorBadge } from 'donor/DonorBadge';
 //import { setGAEvent } from 'g-analytic';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
@@ -278,6 +279,16 @@ class MainApp extends React.Component {
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
       this.setState({ inputAddress: address });
+    } else if (this.props.donorWallet) {
+      // A wallet unlocked as a donor elsewhere (e.g. via the /live unlock
+      // dialog) but with no ?wallet= param on THIS page yet — surface it here
+      // too, the same way a URL-supplied wallet is processed above. Only
+      // engages when no URL wallet is present, so it never overrides an
+      // explicit navigation.
+      const address = this.props.donorWallet;
+      this.onProcessAddress(address);
+      this.addressInputRef.current.value = address;
+      this.setState({ inputAddress: address });
     } else {
       fetch_global_stats(null)
         .then((gstore) => {
@@ -438,6 +449,7 @@ class MainApp extends React.Component {
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
         <div className='d-flex gap-2'>
           <span>Current Wallet Address</span>
+          <DonorBadge />
           {this.state.totalDonations > 0 ? (
             <Tooltip2
               usePortal={true}
