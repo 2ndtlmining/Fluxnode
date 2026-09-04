@@ -39,7 +39,7 @@ function truncateAddress(address) {
   return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
-function DonateChip({ label, address }) {
+export function DonateChip({ label, address }) {
   const [copied, setCopied] = useState(false);
 
   const copy = useCallback(async () => {
