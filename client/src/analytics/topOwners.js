@@ -32,3 +32,30 @@ export async function fetch_top_node_operators(topN = DEFAULT_TOP_N) {
     return [];
   }
 }
+
+/*
+ * Pure: per-owner instance totals across the WHOLE network, unsliced. Deliberately
+ * not truncated to a top N here — teamSponsored.js needs the true network total
+ * and the team's real total even if the team isn't in whatever slice a caller
+ * displays (it should be, given ~51% share, but don't build in a truncation bug
+ * for a hypothetical future where it's smaller). Callers slice for display.
+ */
+export function aggregateOwnerTotals(specs) {
+  const perOwner = {};
+  let networkTotalInstances = 0;
+
+  for (const spec of specs || []) {
+    const instances = spec?.instances || 1;
+    networkTotalInstances += instances;
+
+    const owner = spec?.owner;
+    if (!owner) continue;
+    perOwner[owner] = (perOwner[owner] || 0) + instances;
+  }
+
+  const owners = Object.entries(perOwner)
+    .map(([owner, totalInstances]) => ({ owner, totalInstances }))
+    .sort((a, b) => b.totalInstances - a.totalInstances);
+
+  return { owners, networkTotalInstances };
+}
