@@ -9,6 +9,7 @@ import { Col, Container, Row } from 'react-grid-system';
 
 import { AppToaster } from 'components/AppToaster';
 import { HomeOverview } from 'home/HomeOverview';
+import { DonorBadge } from 'donor/DonorBadge';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
@@ -391,6 +392,7 @@ class Home extends React.Component {
       <div className='d-flex justify-content-between adp-bg-normal addrview'>
         <div className='d-flex gap-2'>
           <span>Current Wallet Address</span>
+          <DonorBadge />
           {this.state.totalDonations > 0 ? (
             <Tooltip2
               usePortal={true}
