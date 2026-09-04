@@ -12,9 +12,12 @@ import { Helmet } from 'react-helmet';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LayoutConfigurationProvider from 'contexts/LayoutContext';
+import { DonorProvider } from 'contexts/DonorContext';
+import { DonorContext } from 'contexts/DonorContext';
 import { FocusStyleManager } from '@blueprintjs/core';
 import { lazy_load_currency_rate } from 'main/apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
+import { PremiumGate } from 'donor/PremiumGate';
 
 const MainApp = React.lazy(() => import('main/MainApp'));
 const Home = React.lazy(() => import('home/Home'));
@@ -100,6 +103,7 @@ class Application extends React.Component {
     return (
       <ScreenClassProvider>
         <LayoutConfigurationProvider>
+        <DonorProvider>
           <Helmet defaultTitle='FluxNode' titleTemplate='%s | FluxNode'>
             <meta charSet='utf-8' />
             <meta name='description' content='Overview for flux node wallets' />
@@ -130,7 +134,11 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <MainApp theme={darkMode ? 'dark' : 'light'} />
+                        <DonorContext.Consumer>
+                          {({ donorWallet }) => (
+                            <MainApp theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} />
+                          )}
+                        </DonorContext.Consumer>
                       </React.Suspense>
                     </ErrorBoundary>
                   }
@@ -150,7 +158,9 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <Live />
+                        <PremiumGate feature='Live'>
+                          <Live />
+                        </PremiumGate>
                       </React.Suspense>
                     </ErrorBoundary>
                   }
@@ -167,6 +177,7 @@ class Application extends React.Component {
               </div>
               {FooterRendered}
           </div>
+        </DonorProvider>
         </LayoutConfigurationProvider>
       </ScreenClassProvider>
     );
