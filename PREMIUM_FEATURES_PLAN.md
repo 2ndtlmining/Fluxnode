@@ -1,9 +1,11 @@
 # Premium Features Plan — Donor Gate + Analytics
 
-> Status: **Part B is a testing-only skeleton (PR #165) — real donor verification not
-> built. Part C/D below are SCOPED, NOT BUILT.** Written 2026-09-04, revised 2026-09-05
-> with the Analytics tabbed IA and a session-by-session build order. Do not treat any
-> file path below as already present unless a "Built" note says otherwise.
+> Status: **Part B is BUILT and merged** (PR #170, #171 — real donor verification,
+> DonorContext, DonorUnlockDialog, DonorBadge, all live on `/live` today). Part C/D
+> below (Analytics — Sessions 2-5) are SCOPED, NOT BUILT. Written 2026-09-04, revised
+> 2026-09-05 with the Analytics tabbed IA and a session-by-session build order, revised
+> again 2026-09-05 to mark Session 1 complete. Do not treat any file path in Part C/D
+> as already present unless a "Built" note says otherwise.
 >
 > This is a separate document from `CODE_IMPROVEMENT_PLAN.md` (retired, see PR #168) —
 > don't resurrect that association.
@@ -42,12 +44,11 @@ Architecture decisions locked in so far:
 Realistic dependency order, not just a priority list — each session should leave
 something demoable. Update the checkboxes as sessions land.
 
-- [ ] **Session 1 — finish Part B for real.** The Donor tab (Session 4) needs an actual
-  wallet value, and today `DonorContext.donorWallet` is hardcoded `null` with a no-op
-  setter (PR #165 only wired the `PREMIUM_TESTING_MODE` bypass, not real verification).
-  Build `donorStatus.js`, `DonorUnlockDialog`, `DonorBadge` per Part B below. This also
-  means `/live` and the future `/analytics` become genuinely donor-gated for real
-  visitors, not just testing-flag-gated.
+- [x] **Session 1 — finish Part B for real.** Done (PR #170, real donor verification;
+  PR #171, dialog dark-theme fix). `donorStatus.js`, `DonorUnlockDialog`, `DonorBadge`
+  all built and merged. `/live` is genuinely donor-gated for real visitors now, not just
+  testing-flag-gated. `DonorContext.donorWallet` is real — Session 4 (Donor tab) is
+  unblocked.
 - [ ] **Session 2 — Analytics page shell + Apps tab.** Route, tab navigation component,
   locked-state reuse from `/live`. Apps tab first because it needs zero new data
   sourcing — pure aggregation over data already fetched elsewhere in the app. Establishes
