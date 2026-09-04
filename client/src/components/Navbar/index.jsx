@@ -32,6 +32,7 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
   let nodesBtnProps = useMatch('/nodes') == null ? inActiveProps : activeProps;
   let demoBtnProps = useMatch('/demo') == null ? inActiveProps : activeProps;
   let liveBtnProps = useMatch('/live') == null ? inActiveProps : activeProps;
+  let analyticsBtnProps = useMatch('/analytics') == null ? inActiveProps : activeProps;
   const { isUnlocked: premiumUnlocked } = useDonorStatus();
 
   if (onThemeSwitch == undefined) onThemeSwitch = no_op;
@@ -58,6 +59,16 @@ export function AppNavbar({ onThemeSwitch, theme, currencyRates }) {
             text='Live'
             {...liveBtnProps}
             onClick={() => navigate('/live')}
+          />
+        </Tooltip2>
+        <Tooltip2 content={premiumUnlocked ? 'Network-wide stats' : 'Premium feature — unlock by donating FLUX'}>
+          <Button
+            className={'margin-r-s' + (premiumUnlocked ? '' : ' navbar-btn--locked')}
+            icon={premiumUnlocked ? 'chart' : undefined}
+            rightIcon={premiumUnlocked ? undefined : <Lock size={13} />}
+            text='Analytics'
+            {...analyticsBtnProps}
+            onClick={() => navigate('/analytics')}
           />
         </Tooltip2>
         <Navbar.Divider />

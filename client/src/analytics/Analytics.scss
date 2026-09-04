@@ -1,0 +1,25 @@
+.analytics-page {
+  padding: 20px;
+}
+
+.analytics-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.analytics-page-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.analytics-page-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+}
+
+.analytics-tabs .bp4-tab-list {
+  margin-bottom: 16px;
+}
