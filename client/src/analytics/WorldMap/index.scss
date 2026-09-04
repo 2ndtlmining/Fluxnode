@@ -2,7 +2,12 @@
 
 // One more independent copy of the shared panel chrome — see the header
 // comment in components/TopHostedApps/index.scss for why this is
-// duplicated per component rather than imported cross-file.
+// duplicated per component rather than imported cross-file. This copy
+// deliberately omits .hov-panel-center/@keyframes shimmer — this component
+// never renders that class; NetworkTab/index.scss owns it since NetworkTab
+// is its only consumer (flagged in the final branch review — the previous
+// version defined it here unused while NetworkTab borrowed it as a
+// side effect of import order).
 .hov-panel {
   border-radius: var(--radius-md);
   padding: 14px 16px 16px;
@@ -52,43 +57,25 @@
   color: var(--text-tertiary);
 }
 
+.hov-header-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(100, 100, 100, 0.1);
+  color: var(--text-secondary);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
 .hov-empty {
   font-size: 0.8rem;
   color: var(--text-tertiary);
   padding: 12px 0;
   text-align: center;
-}
-
-.hov-panel-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100px;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--surface-inset) 40%,
-      var(--surface-secondary) 50%,
-      var(--surface-inset) 60%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: wm-shimmer 1.8s ease-in-out infinite;
-    border-radius: var(--radius-sm);
-    opacity: 0.6;
-    pointer-events: none;
-  }
-}
-
-@keyframes wm-shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 
 // ── The map itself ──────────────────────────────────────────────────────────
@@ -108,10 +95,10 @@
 
 .wm-graticule {
   position: absolute;
-  background: rgba(30, 64, 120, 0.12);
+  background: rgba(30, 64, 120, 0.1);
 
   @include rule-mode-dark() {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   &--h {
@@ -131,12 +118,19 @@
   position: absolute;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: rgba(38, 134, 208, 0.75);
+  background: rgba(38, 134, 208, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.65);
   cursor: default;
   transition: background var(--transition-fast);
 
   &:hover {
-    background: rgba(38, 134, 208, 0.95);
+    background: rgba(38, 134, 208, 0.85);
   }
+}
+
+.wm-caption {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-align: right;
 }

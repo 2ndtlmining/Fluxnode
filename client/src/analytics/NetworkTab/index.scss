@@ -76,11 +76,53 @@
   }
 }
 
+.nt-continent-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin: -4px 0 10px;
+}
+
 .hov-empty {
   font-size: 0.8rem;
   color: var(--text-tertiary);
   padding: 12px 0;
   text-align: center;
+}
+
+// .hov-panel-center is used by this file's own loading state
+// (<div className="network-tab hov-panel-center">) — owned here, not
+// borrowed from WorldMap's stylesheet the way it was before this fix
+// (WorldMap never renders this class; see the note in its own index.scss).
+.hov-panel-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--surface-inset) 40%,
+      var(--surface-secondary) 50%,
+      var(--surface-inset) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .hov-ranked-list {
