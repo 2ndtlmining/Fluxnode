@@ -47,4 +47,32 @@ describe('aggregateDonorUtilization', () => {
     const result = aggregateDonorUtilization(['1.2.3.4:16127'], undefined, undefined);
     expect(result.nodesWithCapacity).toBe(0);
   });
+
+  it('does not double-count a host\'s capacity when the donor runs two nodes on it (different ports)', () => {
+    const sharedHostBenchmarks = [
+      { benchmark: { bench: { ipaddress: '1.2.3.4:16127', cores: 8, ram: 32, totalstorage: 440 } } },
+      { benchmark: { bench: { ipaddress: '1.2.3.4:16227', cores: 8, ram: 32, totalstorage: 440 } } },
+    ];
+    const sharedHostResources = [
+      { ip: '1.2.3.4:16127', apps: { resources: { appsCpusLocked: 2, appsRamLocked: 2048, appsHddLocked: 20 } } },
+      { ip: '1.2.3.4:16227', apps: { resources: { appsCpusLocked: 1, appsRamLocked: 1024, appsHddLocked: 10 } } },
+    ];
+
+    const result = aggregateDonorUtilization(
+      ['1.2.3.4:16127', '1.2.3.4:16227'],
+      sharedHostBenchmarks,
+      sharedHostResources
+    );
+
+    // Capacity counted ONCE for the shared host, not once per node on it.
+    expect(result.nodesWithCapacity).toBe(1);
+    expect(result.cores.total).toBe(8);
+    expect(result.ram.total).toBe(32);
+    expect(result.ssd.total).toBe(440);
+
+    // Utilisation IS per-node — both nodes' reservations still sum.
+    expect(result.cores.utilized).toBe(3);
+    expect(result.ram.utilized).toBe(3); // (2048+1024)/1024
+    expect(result.ssd.utilized).toBe(30);
+  });
 });
