@@ -188,6 +188,8 @@ export function DonorTab() {
       return;
     }
 
+    setLoading(true);
+
     let cancelled = false;
 
     (async () => {
