@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
+use reqwest::{Client, ClientBuilder};
+use std::time::Duration;
 
 /*
  * Flux team's transparent payment address — a different identity space from the
@@ -31,6 +33,51 @@ pub const DATA_DIR: &str = "data";
 pub const DAILY_ROLLUP_FILE: &str = "chain_activity_daily.json";
 pub const TEAM_TX_FILE: &str = "chain_activity_team_tx.json";
 pub const CHECKPOINT_FILE: &str = "chain_activity_checkpoint.json";
+
+const EXPLORER_BASE: &str = "https://explorer.runonflux.io/api";
+const APP_SPECS_URL: &str = "https://api.runonflux.io/apps/globalappsspecifications";
+const HTTP_TIMEOUT_SECS: u64 = 15;
+
+fn create_client() -> Client {
+    ClientBuilder::new()
+        .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
+        .build()
+        .expect("chain_activity::create_client() => Failed to configure client")
+}
+
+#[derive(Debug, Deserialize)]
+struct BlockIndexResponse {
+    #[serde(rename = "blockHash")]
+    block_hash: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct TxsPageResponse {
+    #[serde(rename = "pagesTotal")]
+    pages_total: i64,
+    txs: Vec<RawTx>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RecentBlock {
+    height: i64,
+}
+
+#[derive(Debug, Deserialize)]
+struct RecentBlocksResponse {
+    blocks: Vec<RecentBlock>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AppSpec {
+    height: i64,
+}
+
+#[derive(Debug, Deserialize)]
+struct AppSpecsResponse {
+    status: String,
+    data: Option<Vec<AppSpec>>,
+}
 
 // ── Explorer API response shapes ─────────────────────────────────────────────
 
@@ -306,6 +353,97 @@ pub fn save_team_txs(team_txs: &[TeamTx]) -> std::io::Result<()> {
 
 pub fn save_checkpoint(last_scanned_height: i64) -> std::io::Result<()> {
     write_json_atomic(Path::new(DATA_DIR), CHECKPOINT_FILE, &Checkpoint { last_scanned_height })
+}
+
+pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
+    let url = format!("{}/blocks?limit=1", EXPLORER_BASE);
+    let res = client.get(&url).send().await.ok()?;
+    let parsed: RecentBlocksResponse = res.json().await.ok()?;
+    parsed.blocks.get(0).map(|b| b.height)
+}
+
+/*
+ * One-time sync of every app spec's real deploy height, re-fetched fresh each
+ * scan cycle rather than incrementally diffed — deliberately NOT a port of
+ * client/src/live/apidata.js's diffDeployedForEvents, which diffs successive
+ * "deployed today" snapshots and attributes to whatever block a live poll
+ * happened to notice it at (a live-display trick, not a stable historical
+ * fact). A backend batch scan doesn't need that: each spec's own `height`
+ * field is already the real, stable answer to "was a deploy attributed to
+ * this block."
+ */
+pub async fn fetch_deployment_heights(client: &Client) -> HashSet<i64> {
+    let res = match client.get(APP_SPECS_URL).send().await {
+        Ok(r) => r,
+        Err(_) => return HashSet::new(),
+    };
+    let parsed: AppSpecsResponse = match res.json().await {
+        Ok(p) => p,
+        Err(_) => return HashSet::new(),
+    };
+    if parsed.status == "error" {
+        return HashSet::new();
+    }
+    parsed.data.unwrap_or_default().into_iter().map(|s| s.height).collect()
+}
+
+async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
+    let url = format!("{}/block-index/{}", EXPLORER_BASE, height);
+    let res = client.get(&url).send().await.ok()?;
+    let parsed: BlockIndexResponse = res.json().await.ok()?;
+    Some(parsed.block_hash)
+}
+
+/*
+ * Fetches every page of a block's txs — not just page 0. Verified against the
+ * live API (see this plan's Global Constraints): node-confirmation txs can
+ * fill page 0 entirely, and pagination order isn't guaranteed to put a
+ * genuine P2P transfer ahead of them, so a "this block has zero P2P
+ * transfers" classification requires seeing every page. A failure partway
+ * through returns whatever was gathered so far rather than erroring the
+ * whole block — scan_one_block below still produces a result from partial
+ * data rather than losing the block entirely to one bad page fetch.
+ */
+async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Vec<RawTx> {
+    let mut all_txs = Vec::new();
+    let mut page_num = 0i64;
+    let mut pages_total = 1i64;
+
+    while page_num < pages_total {
+        let url = format!("{}/txs/?block={}&pageNum={}", EXPLORER_BASE, block_hash, page_num);
+        match client.get(&url).send().await {
+            Ok(res) => match res.json::<TxsPageResponse>().await {
+                Ok(page) => {
+                    pages_total = page.pages_total.max(1);
+                    all_txs.extend(page.txs);
+                }
+                Err(_) => break,
+            },
+            Err(_) => break,
+        }
+        page_num += 1;
+    }
+
+    all_txs
+}
+
+pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &HashSet<i64>) -> Option<BlockScanResult> {
+    let hash = resolve_block_hash(client, height).await?;
+    let txs = fetch_all_block_txs(client, &hash).await;
+    let transfers = extract_p2p_transfers(&txs);
+    let is_utility = is_block_utility(height, &transfers, deployment_heights);
+    let team_txs = extract_team_txs(height, &transfers);
+    // Every tx in a block shares (approximately) the same blocktime — prefer
+    // the coinbase's (always present, page 0, item 0 in practice) but fall
+    // back to any tx if that lookup ever comes up empty.
+    let block_time = txs
+        .iter()
+        .find(|t| t.is_coin_base)
+        .and_then(|t| t.time)
+        .or_else(|| txs.first().and_then(|t| t.time))
+        .unwrap_or(0);
+    let date = unix_to_utc_date(block_time);
+    Some(BlockScanResult { height, is_utility, date, team_txs })
 }
 
 #[cfg(test)]
