@@ -101,6 +101,23 @@ equivalents with matching *semantics*, not literal code reuse:
   `https://explorer.runonflux.io/api/txs/?block=<hash>`), and for every non-coinbase tx,
   any output address that isn't the first input's address counts as a transfer (skip
   change-back-to-self). Presence of ≥1 transfer in the block ⇒ utility.
+  **Verified against the live API 2026-09-06** (not just the JS comment, which turned
+  out stale on one point): height→hash resolution is
+  `GET /api/block-index/<height>` → `{"blockHash": ...}`; the txs endpoint is
+  **paginated**, `GET /api/txs/?block=<hash>&pageNum=<0-indexed>`, page size 10,
+  response carries `pagesTotal` from page 0 already. Contrary to the JS comment's claim
+  that node-confirmation txs (`type: "Confirming a fluxnode"`, no `vin`/`vout`) never
+  appear in this endpoint, they do — a block's page 0 can be mostly confirmations,
+  so **a full "no P2P transfer exists" classification requires fetching every page**,
+  not just page 0 (confirmed decision, user 2026-09-06 — correctness over the cheaper
+  page-0-only shortcut). Sampled pagination cost near the current chain tip:
+  1-2 pages/block typically (occasionally more) — average ~1.4 txs-pages/block observed
+  — so per-block cost is ~1 (block-index) + ~1.4 (txs pages) ≈ **2.4 calls/block
+  average**, not the earlier flat "1-2 calls" estimate. Across the full 23,040-block
+  cold backfill at `SCAN_CONCURRENCY = 8`, that's roughly tens of minutes, not just a
+  few — still a one-time bounded background pass, not a request-blocking operation.
+  `vout[].value` in this API is a **string** (e.g. `"18.75000000"`), not a JSON number —
+  parse it explicitly.
 - **App deployments — deliberately NOT a port of `diffDeployedForEvents`.** That
   function's "diff successive 'deployed today' snapshots, attribute to whatever block
   the poll happened to notice it at" is a *live-display* trick needed only because the
