@@ -25,10 +25,11 @@ pub const BLOCKS_PER_DAY: i64 = 2880;
 // so a bigger retention window buys nothing extra in durability, only cost).
 pub const RETENTION_DAYS: i64 = 8;
 pub const RETENTION_BLOCKS: i64 = BLOCKS_PER_DAY * RETENTION_DAYS; // 23,040
-// Matches live_winners.rs's MAX_CANDIDATES_TRIED — same concurrent-fan-out
-// pattern, same starting concurrency, tune later only if the explorer API
-// visibly tolerates more.
-pub const SCAN_CONCURRENCY: usize = 8;
+// Lowered from an initial 8 after live-testing the explorer API confirmed it
+// rate-limits bursts aggressively (HTTP 429, with a ban lasting 60+ seconds
+// once tripped) — 2 concurrent requests plus the retry-with-backoff wrapper
+// (get_with_backoff, below) is the safer default.
+pub const SCAN_CONCURRENCY: usize = 2;
 
 pub const DATA_DIR: &str = "data";
 pub const DAILY_ROLLUP_FILE: &str = "chain_activity_daily.json";
@@ -44,6 +45,36 @@ fn create_client() -> Client {
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
         .build()
         .expect("chain_activity::create_client() => Failed to configure client")
+}
+
+const MAX_RETRIES: u32 = 3;
+const RETRY_BASE_DELAY_MS: u64 = 1000;
+
+/*
+ * Wraps a single GET with exponential backoff specifically on HTTP 429 (Too
+ * Many Requests) — confirmed via live testing that this explorer API bans
+ * bursts of concurrent requests, with the ban outlasting a 60-second wait in
+ * at least one observed case. A transient trip now degrades to "slower, but
+ * still makes progress" rather than "every remaining request in this cycle
+ * fails instantly." Any other non-2xx status or network error is NOT
+ * retried — those are treated as this request's failure immediately, same
+ * as before this fix, since retrying a 404/500 isn't going to help.
+ */
+async fn get_with_backoff(client: &Client, url: &str) -> Option<reqwest::Response> {
+    for attempt in 0..=MAX_RETRIES {
+        match client.get(url).send().await {
+            Ok(res) if res.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                if attempt == MAX_RETRIES {
+                    return None;
+                }
+                let delay_ms = RETRY_BASE_DELAY_MS * 2u64.pow(attempt);
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+            }
+            Ok(res) => return Some(res),
+            Err(_) => return None,
+        }
+    }
+    None
 }
 
 #[derive(Debug, Deserialize)]
@@ -358,7 +389,7 @@ pub fn save_checkpoint(last_scanned_height: i64) -> std::io::Result<()> {
 
 pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
     let url = format!("{}/blocks?limit=1", EXPLORER_BASE);
-    let res = client.get(&url).send().await.ok()?;
+    let res = get_with_backoff(client, &url).await?;
     let parsed: RecentBlocksResponse = res.json().await.ok()?;
     parsed.blocks.get(0).map(|b| b.height)
 }
@@ -374,9 +405,9 @@ pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
  * this block."
  */
 pub async fn fetch_deployment_heights(client: &Client) -> HashSet<i64> {
-    let res = match client.get(APP_SPECS_URL).send().await {
-        Ok(r) => r,
-        Err(_) => return HashSet::new(),
+    let res = match get_with_backoff(client, APP_SPECS_URL).await {
+        Some(r) => r,
+        None => return HashSet::new(),
     };
     let parsed: AppSpecsResponse = match res.json().await {
         Ok(p) => p,
@@ -390,7 +421,7 @@ pub async fn fetch_deployment_heights(client: &Client) -> HashSet<i64> {
 
 async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
     let url = format!("{}/block-index/{}", EXPLORER_BASE, height);
-    let res = client.get(&url).send().await.ok()?;
+    let res = get_with_backoff(client, &url).await?;
     let parsed: BlockIndexResponse = res.json().await.ok()?;
     Some(parsed.block_hash)
 }
@@ -412,15 +443,15 @@ async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Vec<RawTx> {
 
     while page_num < pages_total {
         let url = format!("{}/txs/?block={}&pageNum={}", EXPLORER_BASE, block_hash, page_num);
-        match client.get(&url).send().await {
-            Ok(res) => match res.json::<TxsPageResponse>().await {
+        match get_with_backoff(client, &url).await {
+            Some(res) => match res.json::<TxsPageResponse>().await {
                 Ok(page) => {
                     pages_total = page.pages_total.max(1);
                     all_txs.extend(page.txs);
                 }
                 Err(_) => break,
             },
-            Err(_) => break,
+            None => break,
         }
         page_num += 1;
     }
