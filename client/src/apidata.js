@@ -686,7 +686,7 @@ export function calc_mtn_window(last_confirmed_height, current_height) {
   return format_minutes(win / 2);
 }
 
-const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
+export const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
 
 const DEFAULT_FLUX_PORT_API = 16127;
 const DEFAULT_FLUX_PORT_OS = 16126;
