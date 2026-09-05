@@ -8,7 +8,10 @@
 > as already present unless a "Built" note says otherwise.
 >
 > This is a separate document from `CODE_IMPROVEMENT_PLAN.md` (retired, see PR #168) —
-> don't resurrect that association.
+> don't resurrect that association. Also separate from `LIVE_REDESIGN_PLAN.md`
+> (added 2026-09-06) — a presentation-layer redesign of the already-shipped `/live`
+> page, tracked independently and being worked interleaved with Session 5+ here rather
+> than sequentially before or after it.
 
 ## Goal
 
