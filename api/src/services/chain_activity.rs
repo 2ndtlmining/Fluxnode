@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
+use futures::stream::{self, StreamExt};
 
 /*
  * Flux team's transparent payment address — a different identity space from the
@@ -444,6 +445,85 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
         .unwrap_or(0);
     let date = unix_to_utc_date(block_time);
     Some(BlockScanResult { height, is_utility, date, team_txs })
+}
+
+/*
+ * Scans every height in (start_height, tip_height] concurrently
+ * (SCAN_CONCURRENCY at a time — same buffer_unordered pattern
+ * live_winners.rs uses for its candidate fan-out), then folds the results in
+ * height order via fold_contiguous_results (Task 1) so a gap never gets
+ * silently skipped. Returns the new checkpoint height (may equal
+ * start_height if nothing new was safely applied).
+ */
+async fn scan_range(
+    client: &Client,
+    start_height: i64,
+    tip_height: i64,
+    deployment_heights: &HashSet<i64>,
+    daily: &mut Vec<DailyCount>,
+    team_txs: &mut Vec<TeamTx>,
+) -> i64 {
+    if start_height >= tip_height {
+        return start_height;
+    }
+
+    let heights: Vec<i64> = (start_height + 1..=tip_height).collect();
+    let mut fetches = stream::iter(heights.into_iter().map(|h| async move {
+        (h, scan_one_block(client, h, deployment_heights).await)
+    }))
+    .buffer_unordered(SCAN_CONCURRENCY);
+
+    let mut results = Vec::new();
+    while let Some(pair) = fetches.next().await {
+        results.push(pair);
+    }
+
+    fold_contiguous_results(start_height, results, daily, team_txs)
+}
+
+/*
+ * The single entry point called both by the hourly scheduler (Task 4) and by
+ * a cold-start replica catching up — same code path either way, just a
+ * different `start_height` depending on how far behind the checkpoint is.
+ */
+pub async fn run_scan_cycle() {
+    let client = create_client();
+
+    let tip_height = match fetch_tip_height(&client).await {
+        Some(h) => h,
+        None => return, // explorer unreachable this cycle — try again next interval
+    };
+
+    let checkpoint = load_checkpoint();
+    let earliest_allowed = tip_height - RETENTION_BLOCKS;
+    // Bounded catch-up: never scan further back than the retention window,
+    // whether this is a genuine cold start (checkpoint 0) or a replica that's
+    // been down long enough to fall behind the window entirely.
+    let start_height = checkpoint.last_scanned_height.max(earliest_allowed);
+
+    if start_height >= tip_height {
+        return; // already caught up to the tip
+    }
+
+    let deployment_heights = fetch_deployment_heights(&client).await;
+    let mut daily = load_daily_rollup();
+    let mut team_txs = load_team_txs();
+
+    let new_checkpoint = scan_range(&client, start_height, tip_height, &deployment_heights, &mut daily, &mut team_txs).await;
+
+    trim_daily_retention(&mut daily, RETENTION_DAYS as usize);
+    trim_team_txs(&mut team_txs, tip_height - RETENTION_BLOCKS);
+
+    let _ = save_daily_rollup(&daily);
+    let _ = save_team_txs(&team_txs);
+    let _ = save_checkpoint(new_checkpoint);
+
+    println!(
+        "[chain_activity] scanned {}..{} (checkpoint now {})",
+        start_height + 1,
+        tip_height,
+        new_checkpoint
+    );
 }
 
 #[cfg(test)]
