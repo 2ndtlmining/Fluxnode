@@ -550,6 +550,10 @@ export async function fetch_global_stats(walletAddress = null) {
     // Carried on the store so fetch_total_network_utils can build the Workhorse
     // showcase without asking for the aggregate a second time.
     store.topNodesByApps = aggregate.topNodesByApps || [];
+
+    // Same reasoning, for the Donor tab: carried here rather than having
+    // DonorTab call fetch_fluxinfo_aggregate() a second time itself.
+    store.nodesByIp = aggregate.nodesByIp || {};
   };
 
   const fetchUniqueWalletAddresses = async () => {
