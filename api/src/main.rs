@@ -27,6 +27,18 @@ async fn main() {
         .route("/", get(g_root))
         .nest("/api/v1", api_v1::make_router());
 
+    // First-ever background job in this API — every existing service is
+    // request-driven. Runs an immediate cycle on boot (covers both a genuine
+    // cold start and a replica that's been rescheduled to a fresh node with
+    // no local data) and then hourly. run_scan_cycle() itself no-ops quickly
+    // if already caught up to the tip.
+    tokio::spawn(async {
+        loop {
+            services::chain_activity::run_scan_cycle().await;
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
+    });
+
     // 404 handler
     let app = app.fallback(g_handler_404.into_service());
 
@@ -79,6 +91,7 @@ pub mod api_v1 {
                 "/live/current-winners",
                 post(self::live_winners::handler),
             )
+            .route("/chain-activity", get(self::chain_activity::handler))
     }
 
     async fn root() -> String {
@@ -257,6 +270,30 @@ pub mod api_v1 {
                 Err(err) => LiveWinnersResultBody::make_err(err),
             };
             (StatusCode::OK, Json(result))
+        }
+    }
+
+    pub mod chain_activity {
+        use super::*;
+
+        #[derive(Debug, Serialize)]
+        pub struct ChainActivityResultBody {
+            success: bool,
+            daily: Vec<services::chain_activity::DailyCount>,
+            team_txs: Vec<services::chain_activity::TeamTx>,
+            last_scanned_height: i64,
+        }
+
+        // Synchronous read of whatever the background scanner has already
+        // persisted — never triggers a scan on the request path.
+        pub async fn handler() -> impl IntoResponse {
+            let body = ChainActivityResultBody {
+                success: true,
+                daily: services::chain_activity::load_daily_rollup(),
+                team_txs: services::chain_activity::load_team_txs(),
+                last_scanned_height: services::chain_activity::load_checkpoint().last_scanned_height,
+            };
+            (StatusCode::OK, Json(body))
         }
     }
 
