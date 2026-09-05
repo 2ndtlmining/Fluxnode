@@ -24,8 +24,8 @@
 // a call the page already makes, rather than a second request.
 const FLUXINFO_URL =
   'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image,apps.runningapps.Names,ip,tier';
-const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v3'; // v3: adds app names per node
-const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1', 'fluxinfoAggregate_v2'];
+const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v4'; // v4: adds nodesByIp (full per-node app lookup, not just top N)
+const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1', 'fluxinfoAggregate_v2', 'fluxinfoAggregate_v3'];
 const FLUXINFO_STALE_MAX_AGE = 6 * 60 * 60 * 1000; // serve last-known-good for up to 6 hours
 // Enough to fill the showcase with a couple spare, in case one drops offline.
 const TOP_NODES_KEPT = 5;
@@ -150,6 +150,17 @@ function _fluxinfo_aggregate(nodes) {
   perNode.sort((a, b) => b.appCount - a.appCount || a.ip.localeCompare(b.ip));
   const topNodesByApps = perNode.slice(0, TOP_NODES_KEPT);
 
+  // Keyed lookup covering EVERY reporting node with running apps, not just
+  // the top N kept above. topNodesByApps exists for the Workhorse showcase's
+  // "busiest nodes network-wide" need; nodesByIp exists for the opposite
+  // need — "what's running on THIS SPECIFIC node" (e.g. a donor's own
+  // wallet's nodes, which are essentially never in the top N). Same
+  // underlying computation (perNode), just not thrown away.
+  const nodesByIp = {};
+  for (const entry of perNode) {
+    nodesByIp[entry.ip.trim()] = entry;
+  }
+
   return {
     imageCounts,
     totalContainers,
@@ -158,6 +169,7 @@ function _fluxinfo_aggregate(nodes) {
     streamrNodes,
     presearchNodes,
     topNodesByApps,
+    nodesByIp,
     nodesReporting: nodes.length
   };
 }

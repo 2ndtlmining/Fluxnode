@@ -550,6 +550,10 @@ export async function fetch_global_stats(walletAddress = null) {
     // Carried on the store so fetch_total_network_utils can build the Workhorse
     // showcase without asking for the aggregate a second time.
     store.topNodesByApps = aggregate.topNodesByApps || [];
+
+    // Same reasoning, for the Donor tab: carried here rather than having
+    // DonorTab call fetch_fluxinfo_aggregate() a second time itself.
+    store.nodesByIp = aggregate.nodesByIp || {};
   };
 
   const fetchUniqueWalletAddresses = async () => {
@@ -682,7 +686,7 @@ export function calc_mtn_window(last_confirmed_height, current_height) {
   return format_minutes(win / 2);
 }
 
-const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
+export const DISPLAY_DATE_FORMAT = 'DD-MMM-YYYY HH:mm:ss';
 
 const DEFAULT_FLUX_PORT_API = 16127;
 const DEFAULT_FLUX_PORT_OS = 16126;

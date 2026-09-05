@@ -17,6 +17,22 @@ const NODES = [
   { apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest' }] } },
 ];
 
+// A second fixture, WITH `ip` set (the existing NODES fixture above omits it
+// deliberately, to exercise the "no ip, so perNode stays empty" path — these
+// nodes exercise the opposite path, the one nodesByIp needs).
+const NODES_WITH_IP = [
+  {
+    ip: '1.2.3.4:16127',
+    tier: 'CUMULUS',
+    apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest', Names: ['/fluxFoldingAtRunOnFlux1'] }] },
+  },
+  {
+    ip: '5.6.7.8:16127',
+    tier: 'STRATUS',
+    apps: { runningapps: [] },
+  },
+];
+
 const okResponse = (data) => ({ ok: true, status: 200, json: async () => ({ status: 'success', data }) });
 
 beforeEach(() => {
@@ -193,5 +209,41 @@ describe('appNameFromContainer', () => {
     expect(appNameFromContainer('/watchtower')).toBeNull();
     expect(appNameFromContainer('')).toBeNull();
     expect(appNameFromContainer(undefined)).toBeNull();
+  });
+});
+
+describe('fetch_fluxinfo_aggregate nodesByIp', () => {
+  it('keeps a full per-node lookup, not just the top N kept in topNodesByApps', async () => {
+    global.fetch = jest.fn().mockResolvedValue(okResponse(NODES_WITH_IP));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+
+    expect(Object.keys(aggregate.nodesByIp)).toEqual(['1.2.3.4:16127']);
+    expect(aggregate.nodesByIp['1.2.3.4:16127'].appCount).toBe(1);
+    expect(aggregate.nodesByIp['1.2.3.4:16127'].tier).toBe('CUMULUS');
+    expect(aggregate.nodesByIp['1.2.3.4:16127'].images).toEqual(['yurinnick/folding-at-home:latest']);
+  });
+
+  it('omits a node with no running apps from nodesByIp, same as topNodesByApps', async () => {
+    global.fetch = jest.fn().mockResolvedValue(okResponse(NODES_WITH_IP));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+
+    expect(aggregate.nodesByIp['5.6.7.8:16127']).toBeUndefined();
+  });
+
+  it('does not change any existing field for the existing NODES fixture', async () => {
+    global.fetch = jest.fn().mockResolvedValue(okResponse(NODES));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+
+    // NODES has no `ip` field on any entry, so perNode was always empty for
+    // it, before and after this change — topNodesByApps and nodesByIp both
+    // stay empty, everything else stays exactly as the existing test above
+    // already pins.
+    expect(aggregate.topNodesByApps).toEqual([]);
+    expect(aggregate.nodesByIp).toEqual({});
+    expect(aggregate.totalContainers).toBe(4);
+    expect(aggregate.nodesReporting).toBe(3);
   });
 });

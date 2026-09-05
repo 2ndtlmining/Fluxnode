@@ -59,9 +59,14 @@ something demoable. Update the checkboxes as sessions land.
   fetched elsewhere) + a hand-rolled world map (`analytics/WorldMap`) built on the
   promoted `geo/countryCentroids.js` projector — country bubbles over a graticule, no
   new npm dependency, no sourced map asset. No backend.
-- [ ] **Session 4 — Donor tab.** Depends on Session 1 (real `donorWallet`). Reuses
-  `PayoutTimer`'s prediction logic, the wallet's existing node-list fetch, and
-  per-node running-apps data. No backend.
+- [x] **Session 4 — Donor tab.** Done. Payout timing, his nodes, apps-by-category, and
+  utilization-vs-network-average, all for `DonorContext.donorWallet`. Reused the
+  wallet's existing node-list fetch (`getWalletNodes`/`transformRawNode`) rather than
+  `PayoutTimer` itself (a stateful component with no reusable pure logic — its data was
+  already sitting per-node in `transformRawNode`'s output). Extended `fluxinfo.js`'s
+  shared aggregate with a full per-node app lookup (`nodesByIp`) since the donor's own
+  nodes are essentially never in the network's top-5-busiest list it kept before. No
+  backend.
 - [ ] **Session 5+ — Chain Activity tab.** Biggest lift: needs a new backend batch-scan
   service (can't scan days of blocks client-side per visitor). Build the utility/empty
   block ratio first (fully self-contained, no external address dependency), then
@@ -232,29 +237,35 @@ Uses only data already fetched elsewhere in the app — no new sourcing.
   country counts and the continent rollup from one shared `fetch_node_geolocation()` call
   so the two panels can't read from different cached datasets.
 
-### Donor tab (Session 4)
+### Donor tab (Session 4) — Built
 
-Personal analytics for `DonorContext.donorWallet` — requires Session 1 to be a real
-wallet, not the current hardcoded `null`.
+Personal analytics for `DonorContext.donorWallet`.
 
-- **Last/next payment** — node reward payout, confirmed 2026-09-05. Extend
-  `main/PayoutTimer/index.jsx`'s existing prediction logic (already built for a wallet's
-  own nodes) rather than rebuilding it; the Donor tab's version needs both the most
-  recent actual payout and the predicted next one, where `PayoutTimer` today likely only
-  surfaces the next one — check its current output shape before assuming a pure reuse.
-- **His nodes** — reuse the wallet's existing node-list fetch (same one `/nodes` uses).
-- **Apps hosted on his nodes, by category** — deliberately scoped to apps *physically
-  running on his hardware*, not apps he *owns*. A Flux payment address (`t1`/`t3`,
-  what `donorWallet` is) and an app-owner ZelID (starts with `1`) are different identity
-  spaces in this app with no existing link between them — "apps he owns" isn't
-  derivable from the wallet address alone, and building that link is out of scope here.
-  Source: per-node running-apps data (`fluxinfo.js`'s `apps.runningapps` projection,
-  already keyed by node `ip`) matched against his nodes' IPs, categorized via the
-  existing `main/Gamification/appCategories.js`.
-- **Node utilization** — an aggregate rollup across his nodes (CPU/RAM/SSD), plus a
-  comparison against the network average (already computed for `NetworkResourcesPanel`
-  on Home) — the value-add over the existing per-node detail table on `/nodes` is the
-  summary + comparison, not a duplicate of that table.
+- **Last/next payment** — Built. Turned out `main/PayoutTimer/index.jsx` had no reusable
+  prediction logic to extend (its countdown lives entirely in component state) — but the
+  data it needs was already sitting per-node in `apidata.js`'s `transformRawNode()`
+  output (`last_reward`, `next_reward`, both already computed on every wallet node-list
+  fetch). `analytics/donorNodes.js`'s `mostRecentPayout()`/`sortByRank()` pick the right
+  node from the donor's own list for each figure — with a guard against a node whose
+  `last_reward` fails to parse (`"Invalid Date"`), caught in the final branch review.
+- **His nodes** — Built, via the same `getWalletNodes`/`transformRawNode` fetch above.
+- **Apps hosted on his nodes, by category** — Built. `fluxinfo.js`'s shared aggregate
+  discarded per-node app data for every node except the network's top 5 busiest, and a
+  donor's own nodes are essentially never in that top 5 — extended the aggregate with a
+  full `nodesByIp` lookup (`fluxinfo.js`, additive, existing consumers unaffected) rather
+  than adding a second, duplicate network fetch just for this tab.
+  `analytics/donorApps.js` categorizes by Docker image (repotag), matching this
+  codebase's established preference over app-name matching, and excludes
+  `containrrr/watchtower` (every node's own auto-updater, not something the donor
+  deployed — caught in the final branch review, the codebase already excludes it from
+  the network-wide `totalRunningApps` figure the same way).
+- **Node utilization** — Built, via `networkNodes.js`'s already-shared benchmark/resource
+  fetchers (the same join `buildWorkhorseNodes` already does for the Workhorse showcase,
+  filtered to the donor's own addresses) compared against
+  `fetch_total_network_utils(gstore)`'s existing network-wide percentages — no new fetch
+  needed for the network-average side at all. Capacity is summed per unique *host*, not
+  per node address, so a donor running two nodes on one machine doesn't get that
+  machine's capacity double-counted — caught in this session's own task review.
 
 **Files to add (Sessions 2-4)**: `analytics/Analytics.jsx` (+`.scss`),
 `analytics/NetworkTab/`, `analytics/AppsTab/`, `analytics/DonorTab/`,
