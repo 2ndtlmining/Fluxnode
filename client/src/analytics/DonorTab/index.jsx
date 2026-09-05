@@ -222,7 +222,8 @@ export function DonorTab() {
       });
 
       setLoading(false);
-    })().catch(() => {
+    })().catch((error) => {
+      console.warn('[DonorTab] failed to load donor data:', error?.message);
       if (!cancelled) setLoading(false);
     });
 

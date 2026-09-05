@@ -44,4 +44,19 @@ describe('aggregateDonorAppsByCategory', () => {
     expect(aggregateDonorAppsByCategory({}, ['1.2.3.4:16127'])).toEqual({ categories: [], totalApps: 0 });
     expect(aggregateDonorAppsByCategory(undefined, undefined)).toEqual({ categories: [], totalApps: 0 });
   });
+
+  it('excludes containrrr/watchtower from the tally — infrastructure every node runs, not a donor-deployed app', () => {
+    const nodesByIpWithWatchtower = {
+      '1.2.3.4:16127': { images: ['yurinnick/folding-at-home:latest', 'containrrr/watchtower:latest'] },
+    };
+    const { categories, totalApps } = aggregateDonorAppsByCategory(nodesByIpWithWatchtower, ['1.2.3.4:16127']);
+    expect(totalApps).toBe(1);
+    expect(categories).toEqual([{ category: 'computing', count: 1 }]);
+  });
+
+  it('normalizes the donor address before lookup (trims whitespace), matching donorUtilization.js\'s own normalization', () => {
+    const cleanNodesByIp = { '1.2.3.4:16127': { images: ['itzg/minecraft-server:latest'] } };
+    const { totalApps } = aggregateDonorAppsByCategory(cleanNodesByIp, [' 1.2.3.4:16127 ']);
+    expect(totalApps).toBe(1);
+  });
 });

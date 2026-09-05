@@ -160,7 +160,15 @@
   gap: 5px;
 }
 
-.hov-ranked-row {
+// Scoped to this panel only — DonorTab's node rows have 3 children (tier,
+// address, rank badge), unlike NetworkTab's/TopHostedApps' 4-column rows.
+// Styling the bare .hov-ranked-row here (as an earlier version of this file
+// did) redefines the SAME global selector those already-shipped tabs also
+// define, and since this stylesheet loads last, it silently broke their
+// row layout — caught in the final whole-branch review, not this task's
+// own review, because it only shows up once three tabs' stylesheets are
+// all loaded together.
+.dt-nodes-panel .hov-ranked-row {
   display: grid;
   align-items: center;
   gap: 6px;

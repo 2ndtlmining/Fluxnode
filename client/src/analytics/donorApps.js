@@ -1,4 +1,5 @@
 import { categorizeApp } from 'main/Gamification/appCategories';
+import { addressOf } from 'networkNodes';
 
 /*
  * Pure: tally the donor's own running apps by category, from the IP-keyed
@@ -14,17 +15,28 @@ import { categorizeApp } from 'main/Gamification/appCategories';
  *
  * Tallies one entry per running CONTAINER, matching the network-wide App
  * Ecosystem panel's own convention — a multi-component compose app
- * contributes one count per component, not one per app.
+ * contributes one count per component, not one per app. containrrr/watchtower
+ * is excluded from that tally: every Flux node runs it to auto-update its
+ * own containers, so it's infrastructure the node runs for itself, not
+ * something the donor deployed — apidata.js's own totalRunningApps figure
+ * (apidata.js:505) already excludes it network-wide for the same reason.
+ *
+ * Addresses are normalized via addressOf() before lookup, matching
+ * donorUtilization.js's own normalization — a whitespace/format mismatch
+ * here would otherwise silently render "no apps" indistinguishable from a
+ * real empty result.
  */
 export function aggregateDonorAppsByCategory(nodesByIp, donorAddresses) {
   const perCategory = {};
   let totalApps = 0;
 
-  for (const addr of donorAddresses || []) {
-    const node = nodesByIp?.[addr];
+  for (const rawAddr of donorAddresses || []) {
+    const node = nodesByIp?.[addressOf(rawAddr)];
     if (!node) continue;
 
     for (const image of node.images || []) {
+      if (image.toLowerCase().includes('containrrr/watchtower')) continue;
+
       const cat = categorizeApp(image);
       perCategory[cat] = (perCategory[cat] || 0) + 1;
       totalApps++;

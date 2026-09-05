@@ -46,4 +46,12 @@ describe('mostRecentPayout', () => {
     expect(mostRecentPayout([])).toBeNull();
     expect(mostRecentPayout(undefined)).toBeNull();
   });
+
+  it('excludes a node whose last_reward failed to parse into a real date ("Invalid Date")', () => {
+    const nodes = [
+      node({ id: 'broken', last_reward: 'Invalid Date' }),
+      node({ id: 'paid', last_reward: '01-Jan-2026 00:00:00' }),
+    ];
+    expect(mostRecentPayout(nodes).id).toBe('paid');
+  });
 });

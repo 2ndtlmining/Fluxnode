@@ -21,7 +21,14 @@ export function sortByRank(nodes) {
  * an ancient date.
  */
 export function mostRecentPayout(nodes) {
-  const paid = (nodes || []).filter((n) => n?.last_reward && n.last_reward !== '-');
+  const paid = (nodes || []).filter((n) => {
+    if (!n?.last_reward || n.last_reward === '-') return false;
+    // transformRawNode always overwrites the '-' sentinel with a formatted
+    // date, even when the source lastpaid value is missing/absent — in
+    // that case dayjs produces the literal string "Invalid Date", which
+    // passes the check above (truthy, not '-') without this guard.
+    return dayjs(n.last_reward, DISPLAY_DATE_FORMAT).isValid();
+  });
   if (paid.length === 0) return null;
 
   return paid.reduce((latest, n) =>
