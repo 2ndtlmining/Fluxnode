@@ -1,11 +1,15 @@
 # Premium Features Plan — Donor Gate + Analytics
 
 > Status: **Part B is BUILT and merged** (PR #170, #171 — real donor verification,
-> DonorContext, DonorUnlockDialog, DonorBadge, all live on `/live` today). Part C/D
-> below (Analytics — Sessions 2-5) are SCOPED, NOT BUILT. Written 2026-09-04, revised
-> 2026-09-05 with the Analytics tabbed IA and a session-by-session build order, revised
-> again 2026-09-05 to mark Session 1 complete. Do not treat any file path in Part C/D
-> as already present unless a "Built" note says otherwise.
+> DonorContext, DonorUnlockDialog, DonorBadge, all live on `/live` today). Part C is
+> BUILT and merged (Sessions 2-4 — Apps/Network/Donor tabs). Part D (Session 5 — Chain
+> Activity tab) is DESIGNED, NOT BUILT — full design now lives in
+> `docs/superpowers/specs/2026-09-06-chain-activity-design.md`; this doc's Part D below
+> is kept in sync but that spec is the source of truth on any disagreement. Written
+> 2026-09-04, revised 2026-09-05 with the Analytics tabbed IA and a session-by-session
+> build order, revised again 2026-09-05 to mark Session 1 complete, revised 2026-09-06
+> to mark Sessions 2-4 complete and lock in the Session 5 design. Do not treat any file
+> path in Part D as already present unless a "Built" note says otherwise.
 >
 > This is a separate document from `CODE_IMPROVEMENT_PLAN.md` (retired, see PR #168) —
 > don't resurrect that association. Also separate from `LIVE_REDESIGN_PLAN.md`
@@ -70,10 +74,16 @@ something demoable. Update the checkboxes as sessions land.
   shared aggregate with a full per-node app lookup (`nodesByIp`) since the donor's own
   nodes are essentially never in the network's top-5-busiest list it kept before. No
   backend.
-- [ ] **Session 5+ — Chain Activity tab.** Biggest lift: needs a new backend batch-scan
-  service (can't scan days of blocks client-side per visitor). Build the utility/empty
-  block ratio first (fully self-contained, no external address dependency), then
-  team-transaction tracking (address now confirmed), leave exchange-flow deferred.
+- [ ] **Session 5 — Chain Activity tab.** Design locked in 2026-09-06 (full detail:
+  `docs/superpowers/specs/2026-09-06-chain-activity-design.md`), not yet built. Biggest
+  lift so far: the first persisted, periodically-scanned backend state this API has —
+  flat JSON cache per Flux replica (multi-replica hosting means no shared writer;
+  independent per-replica scan, self-healing drift accepted), ~8-day retention
+  (2,880 blocks/day @ 30s block time), bounded cold-start backfill. Utility/empty block
+  classification ports `extractP2pTransfers` semantics to Rust; app-deployment
+  classification uses each spec's own real height directly (not a port of the live-only
+  `diffDeployedForEvents` snapshot-diff trick). Team-transaction tracking (address
+  confirmed) runs off the same per-block scan pass. Exchange-flow stays deferred.
 
 Sessions 2-4 don't depend on each other and could reorder if priorities shift; Session 1
 blocking Session 4 and Session 5 being backend-heavy are the two real constraints.
@@ -295,9 +305,23 @@ design consistently across.
 
 ## Part D — Chain Activity tab
 
-The newest and biggest-lift tab (Session 5+) — analyzes recent block history for
+**Design locked in 2026-09-06 — full detail in
+`docs/superpowers/specs/2026-09-06-chain-activity-design.md`, this section is a
+summary kept in sync with it, not a replacement for it.**
+
+The newest and biggest-lift tab (Session 5) — analyzes recent block history for
 network-utility and fund-flow signals, rather than current-snapshot state like the
 other three tabs.
+
+Key decisions the spec settled that weren't yet known when this section was first
+written: **flat JSON persistence** (not SQLite — a new DB dependency buys no extra
+durability given the deployment reality below), **~8-day retention** only (matches
+what the UI actually needs — 24h/7d ranges — not a larger archive), and **each Flux
+replica scans and persists independently** (this API runs as multiple replicas with no
+shared disk and no cross-replica coordination in scope, so single-writer consistency
+isn't achievable without infrastructure this codebase deliberately doesn't have;
+brief cross-replica count drift during catch-up is an accepted, self-healing
+trade-off).
 
 ### Utility vs. empty blocks (build first — no external dependency)
 
@@ -319,10 +343,10 @@ too expensive to repeat for every page load. Needs a backend batch job:
   utility/empty count — cheap for the frontend to read regardless of how far back the
   window goes, since the scan cost is paid once server-side, not per visitor.
 - Needs a small persistence layer the Rust API doesn't have today (everything else is
-  fetch-and-cache, not stored state) — likely the simplest viable option is a flat file
-  or embedded SQLite the service reads/writes, not a new external database dependency,
-  given this API otherwise has none. Confirm this approach before building — it's a
-  first for this codebase.
+  fetch-and-cache, not stored state) — **decided: flat JSON files** under a new `data/`
+  directory (one per logical dataset), not SQLite or an external DB — see the spec for
+  the full reasoning (multi-replica Flux hosting means no persisted file survives a
+  node move regardless of format, so the simpler option costs nothing in durability).
 
 ### Flux team transactions (build second — address now confirmed)
 
