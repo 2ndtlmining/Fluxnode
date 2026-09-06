@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { isPremiumTestingUnlocked } from 'donor/config';
+import { isTestingUnlocked } from 'donor/config';
 import { fetch_donor_status } from 'donor/donorStatus';
 
 export const DonorContext = createContext(null);
@@ -16,7 +16,7 @@ function readStoredWallet() {
 
 /*
  * Gates premium features (currently /live). `isUnlocked` is true when either
- * the PREMIUM_TESTING_MODE flag is set (see donor/config.js) OR a verified
+ * the TESTING flag is set (see donor/config.js) OR a verified
  * donor wallet is active — the testing flag is an override on top of real
  * verification, not a replacement for it.
  *
@@ -59,7 +59,7 @@ export function DonorProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [donorWallet]);
 
-  const isUnlocked = isPremiumTestingUnlocked() || donorStatus?.isDonor === true;
+  const isUnlocked = isTestingUnlocked() || donorStatus?.isDonor === true;
 
   const value = useMemo(() => ({
     isUnlocked, donorWallet, donorStatus, setDonorWallet, refreshDonorStatus,

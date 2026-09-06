@@ -17,16 +17,16 @@ export const DONOR_MAX_PAGES_FETCHED = 20;
  * fetch_donor_status and gates premium features (currently just /live) on
  * the result. This flag is a dev/QA override that sits ON TOP OF that real
  * verification, not a replacement for it — DonorContext's `isUnlocked` is
- * `isPremiumTestingUnlocked() || donorStatus?.isDonor`, so flipping this on
+ * `isTestingUnlocked() || donorStatus?.isDonor`, so flipping this on
  * unlocks premium features without needing a real donor wallet, while real
  * users are still gated by actual verified donations when it's off.
  *
- * Set via the PREMIUM_TESTING_MODE Docker environment variable at container
+ * Set via the TESTING Docker environment variable at container
  * start (see service/container-entrypoint.sh, which patches this value into
  * public/runtime/app-content.js before nginx serves it — no rebuild needed).
  * For local `yarn start` testing, flip the value directly in
  * client/public/runtime/app-content.js instead.
  */
-export function isPremiumTestingUnlocked() {
-  return window.gContent?.PREMIUM_TESTING_MODE === true;
+export function isTestingUnlocked() {
+  return window.gContent?.TESTING === true;
 }
