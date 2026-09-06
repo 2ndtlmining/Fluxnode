@@ -1,0 +1,64 @@
+.live-flow-block {
+  grid-area: block;
+  width: 240px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  border: 1px solid color-mix(in srgb, #2b61d1 30%, var(--border-primary));
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent);
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.live-flow-block--loading {
+  opacity: 0.6;
+}
+
+.live-flow-block-mark {
+  width: 32px;
+  height: 32px;
+}
+
+.live-flow-block-height {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.live-flow-block-age {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+}
+
+.live-flow-block-confirmations {
+  font-size: var(--live-fs-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.live-flow-block-summary {
+  font-size: var(--live-fs-xs);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 1199px) {
+  .live-flow-block {
+    width: 200px;
+    min-height: 170px;
+    padding: 20px 16px;
+  }
+
+  .live-flow-block-height {
+    font-size: 1.25rem;
+  }
+}
