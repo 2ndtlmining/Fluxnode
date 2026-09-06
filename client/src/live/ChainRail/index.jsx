@@ -1,6 +1,7 @@
 import React from 'react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
 import { FluxMark } from 'live/FluxMark';
+import { relativeTime } from 'live/timeFormat';
 import './index.scss';
 
 function sectionKeyFor(event) {
@@ -27,14 +28,6 @@ function activityWeightClass(events) {
   if (count >= 6) return 'live-chain-block-icon--hot';
   if (count >= 3) return 'live-chain-block-icon--busy';
   return '';
-}
-
-function relativeTime(atMs) {
-  if (!atMs) return '';
-  const seconds = Math.max(0, Math.round((Date.now() - atMs) / 1000));
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.round(seconds / 60)}m ago`;
 }
 
 function ChainBlock({ block, isSelected, onSelect }) {
