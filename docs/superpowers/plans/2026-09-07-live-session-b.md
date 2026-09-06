@@ -395,12 +395,17 @@ import './index.scss';
  * presentation").
  */
 export const ActivityCard = React.forwardRef(function ActivityCard(
-  { quadrant, def, count, primary, secondary, emptyLabel, isExpanded, isDimmed, isPulsing, onToggle, expandedBody },
+  { quadrant, def, count, primary, secondary, emptyLabel, isExpanded, isDimmed, isPulsing, onToggle = () => {}, expandedBody },
   ref
 ) {
   const Icon = def.Icon;
   const isEmpty = !count;
 
+  // `onToggle` defaults to a no-op above: FlowCanvas doesn't actually wire a
+  // real handler into this prop until Task 5 (and Live.jsx doesn't own real
+  // expandedCategory state until Task 9) — without this default, clicking a
+  // card between this task and Task 5 landing would throw ("onToggle is not
+  // a function") rather than just harmlessly doing nothing yet.
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -1100,7 +1105,29 @@ Replace the return statement's `.map`:
 }
 ```
 
-- [ ] **Step 2: Append to `client/src/live/FlowConnectors/index.scss`**
+- [ ] **Step 2: Wire the new props from `FlowCanvas`**
+
+`FlowConnectors` cannot receive `expandedCategory`/`pulseCategories`/
+`pulseKey` unless its caller passes them. In `client/src/live/FlowCanvas/
+index.jsx`, update the `<FlowConnectors>` call site:
+
+```jsx
+      <FlowConnectors
+        containerRef={containerRef}
+        blockRef={blockRef}
+        cardRefs={cardRefs}
+        colors={colors}
+        expandedCategory={expandedCategory}
+        pulseCategories={pulseCategories}
+        pulseKey={pulseKey}
+      />
+```
+
+(`expandedCategory`/`pulseCategories`/`pulseKey` are already parameters of
+`FlowCanvas` itself, added in Task 5 Step 2 — this just forwards them one
+level further down.)
+
+- [ ] **Step 3: Append to `client/src/live/FlowConnectors/index.scss`**
 
 ```scss
 .live-flow-connector--expanded {
@@ -1130,18 +1157,25 @@ Replace the return statement's `.map`:
 }
 ```
 
-- [ ] **Step 3: Manual verification (visual — no automated test; geometry/measurement logic is unchanged from Session A, which has no test file for this component either, matching the established per-component-vs-per-pure-function testing split)**
+- [ ] **Step 4: Manual verification (visual — no automated test; geometry/measurement logic is unchanged from Session A, which has no test file for this component either, matching the established per-component-vs-per-pure-function testing split)**
+
+Note: the new-block pulse itself only fires once Task 9 wires `pulseKey`
+from `Live.jsx`'s real `isFreshLiveTip` check — before that, `pulseKey`
+stays `0` (FlowCanvas's default) and no pulse plays yet. If Task 9 hasn't
+run yet when this task executes, just confirm the expanded-state connector
+strengthening and that nothing throws/renders incorrectly with a static
+`pulseKey`; the pulse itself gets verified for real in Task 11's final pass.
 
 Run: `cd client && yarn start`, open `/live`. Expand a card and confirm its
-connector visibly strengthens relative to the other three. Wait for (or
-force, see Task 8's verification note) a genuine new block and confirm the
-active categories' connectors show a brief traveling pulse while empty
-categories' connectors do not animate at all.
+connector visibly strengthens relative to the other three. If Task 9 has
+already run, wait for (or force, see Task 9's verification note) a genuine
+new block and confirm the active categories' connectors show a brief
+traveling pulse while empty categories' connectors do not animate at all.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add client/src/live/FlowConnectors/index.jsx client/src/live/FlowConnectors/index.scss
+git add client/src/live/FlowConnectors/index.jsx client/src/live/FlowConnectors/index.scss client/src/live/FlowCanvas/index.jsx
 git commit -m "feat(live): connector expanded and new-block-pulse states
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
