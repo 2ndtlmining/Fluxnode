@@ -3,14 +3,11 @@ import { Helmet } from 'react-helmet';
 import { AppsTab } from 'analytics/AppsTab';
 import { NetworkTab } from 'analytics/NetworkTab';
 import { DonorTab } from 'analytics/DonorTab';
+import { ChainActivityTab } from 'analytics/ChainActivityTab';
 import './Analytics.scss';
 
-/*
- * Three tabs exist today (Apps, Network, Donor). Chain Activity lands in a
- * later session — add it as one more <Tab> entry here, not a restructure.
- * Gated by PremiumGate at the route level (Application.jsx), same as
- * /live — this component only renders once already unlocked.
- */
+// Four tabs now (Apps, Network, Donor, Chain Activity) — Session 5 lands the
+// last one planned in PREMIUM_FEATURES_PLAN.md Part D.
 export default function Analytics() {
   return (
     <div className="analytics-page">
@@ -29,6 +26,7 @@ export default function Analytics() {
         <Tab id="apps" title="Apps" panel={<AppsTab />} />
         <Tab id="network" title="Network" panel={<NetworkTab />} />
         <Tab id="donor" title="Donor" panel={<DonorTab />} />
+        <Tab id="chain-activity" title="Chain Activity" panel={<ChainActivityTab />} />
       </Tabs>
     </div>
   );
