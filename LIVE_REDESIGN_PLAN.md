@@ -1,14 +1,14 @@
 # Live Page Redesign Plan — Premium Block Flow (V2)
 
-> Status: **SCOPED, NOT BUILT.** Spec: `FLUX_LIVE_VIEW_REDESIGN_SPEC_V2.md` (80 sections,
-> source of truth — this doc organizes it into shippable sessions and tracks status, it
-> does not restate it). Written 2026-09-06.
+> Status: **SCOPED, NOT BUILT — next up.** Spec: `FLUX_LIVE_VIEW_REDESIGN_SPEC_V2.md`
+> (80 sections, source of truth — this doc organizes it into shippable sessions and
+> tracks status, it does not restate it). Written 2026-09-06, status line updated
+> 2026-09-06 once Analytics wrapped.
 >
-> This is a **separate, independent track from `PREMIUM_FEATURES_PLAN.md`** (the
-> donor-gating/Analytics work) — it redesigns the presentation layer of the already-
-> shipped, already donor-gated `/live` page. It does not depend on Analytics Sessions
-> 1-4 (done) or block Session 5+ (Chain Activity), and the two tracks are being worked
-> interleaved by the user's own choice, not sequentially.
+> The Analytics/donor-gating track (`PREMIUM_FEATURES_PLAN.md`) is now fully shipped
+> and retired — see `todo.md` for the current top-level plan and changelog. This track
+> redesigns the presentation layer of the already-shipped, already donor-gated `/live`
+> page and is independent of that work either way. Start at Session A.
 
 ## Goal
 
