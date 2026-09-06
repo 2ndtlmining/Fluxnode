@@ -1,4 +1,4 @@
-import { mergeIncomingBlocks, removeLeavingBlock } from './blockAnimation';
+import { mergeIncomingBlocks, removeLeavingBlock, isFreshLiveTip, categoriesToPulse } from './blockAnimation';
 
 function block(height, events = []) {
   return { height, hash: `h${height}`, at: height * 1000, events };
@@ -91,5 +91,47 @@ describe('removeLeavingBlock', () => {
   it('does not remove a block at the same height that is not actually leaving', () => {
     const input = [{ height: 1, phase: 'pushed' }];
     expect(removeLeavingBlock(input, 1)).toEqual(input);
+  });
+});
+
+describe('isFreshLiveTip', () => {
+  it('is false when not following live, regardless of height difference', () => {
+    expect(isFreshLiveTip({ isFollowingLive: false, tipHeight: 106, lastAnimatedHeight: 105 })).toBe(false);
+  });
+
+  it('is false when there is no tip yet', () => {
+    expect(isFreshLiveTip({ isFollowingLive: true, tipHeight: null, lastAnimatedHeight: null })).toBe(false);
+  });
+
+  it('is true on first load (no prior animated height)', () => {
+    expect(isFreshLiveTip({ isFollowingLive: true, tipHeight: 100, lastAnimatedHeight: null })).toBe(true);
+  });
+
+  it('is false when the tip is unchanged from an ordinary poll', () => {
+    expect(isFreshLiveTip({ isFollowingLive: true, tipHeight: 100, lastAnimatedHeight: 100 })).toBe(false);
+  });
+
+  it('is true when a genuinely new height lands', () => {
+    expect(isFreshLiveTip({ isFollowingLive: true, tipHeight: 101, lastAnimatedHeight: 100 })).toBe(true);
+  });
+});
+
+describe('categoriesToPulse', () => {
+  it('returns an empty list for a null summary', () => {
+    expect(categoriesToPulse(null)).toEqual([]);
+  });
+
+  it('returns an empty list when every category is empty', () => {
+    const summary = {
+      rewards: { count: 0 }, deployments: { count: 0 }, p2p: { count: 0 }, confirmations: { count: 0 },
+    };
+    expect(categoriesToPulse(summary)).toEqual([]);
+  });
+
+  it('returns only the categories with actual activity, in canvas order', () => {
+    const summary = {
+      rewards: { count: 4 }, deployments: { count: 0 }, p2p: { count: 2 }, confirmations: { count: 18 },
+    };
+    expect(categoriesToPulse(summary)).toEqual(['reward', 'p2p', 'confirm']);
   });
 });
