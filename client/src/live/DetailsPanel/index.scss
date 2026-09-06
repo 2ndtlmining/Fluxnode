@@ -1,7 +1,7 @@
 // Compound selector — see ChainRail's index.scss for why.
 .live-panel.live-details-panel {
   --panel-accent: #64748b;
-  min-height: 320px;
+  min-height: 280px;
 }
 
 .live-lock-btn {
@@ -53,9 +53,9 @@
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 11px 14px;
+  padding: 12px 16px;
   border: none;
   background: linear-gradient(90deg, color-mix(in srgb, var(--section-accent, #888) 10%, transparent) 0%, transparent 65%);
   cursor: pointer;

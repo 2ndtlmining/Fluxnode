@@ -3,6 +3,12 @@
 // component's CSS happens to load first.
 .live-panel.live-chain-rail {
   --panel-accent: #3b82f6;
+  box-shadow: none;
+  border-left-width: 2px;
+}
+
+.live-panel.live-chain-rail .live-panel-title {
+  font-size: 0.62rem;
 }
 
 .live-chain-hint {
