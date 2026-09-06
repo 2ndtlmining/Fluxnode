@@ -1,0 +1,78 @@
+@import 'styles/functional';
+
+.live-flow-canvas {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas:
+    'reward  .      deploy'
+    '.       block  .'
+    'p2p     .      confirm';
+  align-items: center;
+  justify-items: center;
+  gap: 28px 24px;
+  min-height: 560px;
+  padding: 40px 32px;
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, #2b61d1 7%, transparent) 0%, transparent 55%),
+    var(--surface-secondary);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+
+  // Very subtle static network dot grid (spec §7/§47) — never animated.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, var(--border-primary) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  @include rule-mode-dark() {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.live-flow-canvas--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 300px;
+  color: var(--text-tertiary);
+  font-size: var(--live-fs-base);
+}
+
+@media (max-width: 1399px) {
+  .live-flow-canvas {
+    gap: 20px 16px;
+    padding: 32px 20px;
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 1199px) {
+  .live-flow-canvas {
+    gap: 16px;
+    padding: 24px 16px;
+    min-height: 460px;
+  }
+}
+
+@media (max-width: 899px) {
+  .live-flow-canvas {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'block'
+      'reward'
+      'deploy'
+      'p2p'
+      'confirm';
+    min-height: 0;
+    padding: 20px 16px;
+  }
+}
