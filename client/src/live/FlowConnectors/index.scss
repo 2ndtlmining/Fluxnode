@@ -1,0 +1,25 @@
+.live-flow-connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.live-flow-connector {
+  fill: none;
+  stroke: var(--connector-color, var(--border-hover));
+  stroke-width: 1.5;
+  opacity: 0.45;
+}
+
+// Connectors add visual noise on a narrow single-column layout where cards
+// stack directly above/below the block anyway — hidden below 900px (spec
+// §48: "Connectors may be simplified/removed on mobile").
+@media (max-width: 899px) {
+  .live-flow-connectors {
+    display: none;
+  }
+}
