@@ -26,7 +26,7 @@ section is a pointer, not a restatement.
 - [x] **Session A — Visual shell + data summaries.** `FlowCanvas`/`FlowBlock`/
   `ActivityCard`/`FlowConnectors`, restyled `ChainRail`/`DetailsPanel`,
   `buildBlockFlowSummary()` + tests, Dev Fund reward-category extraction.
-  Shipped in PR #<fill in after opening the PR> — see
+  Shipped in PR #184 — see
   `docs/superpowers/plans/2026-09-07-live-session-a.md` for the full task
   breakdown.
 - [ ] **Session B — Interaction + motion.** Depends on Session A's shell existing.
