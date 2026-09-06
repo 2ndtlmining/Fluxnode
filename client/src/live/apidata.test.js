@@ -26,17 +26,42 @@ function realCoinbaseTx() {
 }
 
 describe('extractRewardsFromCoinbase', () => {
-  it('identifies all three tier outputs by percentage share, ignoring the treasury output', () => {
+  it('identifies all three tier outputs by percentage share, plus the Dev Fund output by exact address', () => {
     const rewards = extractRewardsFromCoinbase(realCoinbaseTx());
 
     expect(rewards).toEqual(
       expect.arrayContaining([
+        { tier: 'DEVFUND', address: 't3hPu1YDeGUCp8m7BQCnnNUmRMJBa5RadyA', amount: 0.5 },
         { tier: 'CUMULUS', address: 't1aDybT3BM7hkpween5SwrGhTam1gBXuBgG', amount: 1 },
         { tier: 'NIMBUS', address: 't3aqgLXMH6LHgCH7dGAZTBp3PWaaLPrHw8t', amount: 3.5 },
         { tier: 'STRATUS', address: 't3N6aaTHN8WBcaYbQrHvGDGJH9Wg73AN367', amount: 9 },
       ])
     );
-    expect(rewards).toHaveLength(3); // treasury output correctly excluded
+    expect(rewards).toHaveLength(4);
+  });
+
+  it('recognizes the Dev Fund output by its exact address even if its value drifted off the usual ~0.5 FLUX', () => {
+    const tx = {
+      isCoinBase: true,
+      valueOut: 14,
+      vout: [{ value: '0.71000000', scriptPubKey: { addresses: ['t3hPu1YDeGUCp8m7BQCnnNUmRMJBa5RadyA'] } }],
+    };
+    expect(extractRewardsFromCoinbase(tx)).toEqual([
+      { tier: 'DEVFUND', address: 't3hPu1YDeGUCp8m7BQCnnNUmRMJBa5RadyA', amount: 0.71 },
+    ]);
+  });
+
+  it('does not misidentify an ordinary tier output as Dev Fund just because its percentage is close', () => {
+    // A CUMULUS-percentage output at some other address must still resolve as CUMULUS,
+    // not fall through unmatched, now that Dev Fund matching runs first.
+    const tx = {
+      isCoinBase: true,
+      valueOut: 14,
+      vout: [{ value: '1.00000000', scriptPubKey: { addresses: ['t1SomeCumulusNode'] } }],
+    };
+    expect(extractRewardsFromCoinbase(tx)).toEqual([
+      { tier: 'CUMULUS', address: 't1SomeCumulusNode', amount: 1 },
+    ]);
   });
 
   it('returns nothing for a non-coinbase transaction', () => {
