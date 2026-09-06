@@ -30,6 +30,11 @@ pub const RETENTION_BLOCKS: i64 = BLOCKS_PER_DAY * RETENTION_DAYS; // 23,040
 // once tripped) — 2 concurrent requests plus the retry-with-backoff wrapper
 // (get_with_backoff, below) is the safer default.
 pub const SCAN_CONCURRENCY: usize = 2;
+// Bounds a single scan_range() call's blast radius on a gap, and gives each
+// batch its own persisted checkpoint — a cold-start backfill no longer needs
+// to complete in one uninterrupted pass to make (and keep) progress. Chosen
+// to keep a single batch's wall time well under a minute at SCAN_CONCURRENCY=2.
+const SCAN_BATCH_SIZE: i64 = 300;
 
 pub const DATA_DIR: &str = "data";
 pub const DAILY_ROLLUP_FILE: &str = "chain_activity_daily.json";
@@ -47,8 +52,8 @@ fn create_client() -> Client {
         .expect("chain_activity::create_client() => Failed to configure client")
 }
 
-const MAX_RETRIES: u32 = 3;
-const RETRY_BASE_DELAY_MS: u64 = 1000;
+const MAX_RETRIES: u32 = 5;
+const RETRY_BASE_DELAY_MS: u64 = 2000;
 
 /*
  * Wraps a single GET with exponential backoff specifically on HTTP 429 (Too
@@ -59,6 +64,10 @@ const RETRY_BASE_DELAY_MS: u64 = 1000;
  * fails instantly." Any other non-2xx status or network error is NOT
  * retried — those are treated as this request's failure immediately, same
  * as before this fix, since retrying a 404/500 isn't going to help.
+ * MAX_RETRIES=5 / RETRY_BASE_DELAY_MS=2000 gives 6 total attempts with delays
+ * of 2s/4s/8s/16s/32s = 62s total budget — comfortably past the 60+ second
+ * ban duration observed during live testing of this API (the earlier
+ * 3-retry/1s-base budget of 7s was well short of that).
  */
 async fn get_with_backoff(client: &Client, url: &str) -> Option<reqwest::Response> {
     for attempt in 0..=MAX_RETRIES {
@@ -431,37 +440,32 @@ async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
  * live API (see this plan's Global Constraints): node-confirmation txs can
  * fill page 0 entirely, and pagination order isn't guaranteed to put a
  * genuine P2P transfer ahead of them, so a "this block has zero P2P
- * transfers" classification requires seeing every page. A failure partway
- * through returns whatever was gathered so far rather than erroring the
- * whole block — scan_one_block below still produces a result from partial
- * data rather than losing the block entirely to one bad page fetch.
+ * transfers" classification requires seeing every page. A failure on ANY
+ * page — including page 0 — returns None rather than the pages gathered so
+ * far: a partial page set can never support a "this block has zero P2P
+ * transfers" conclusion, so scan_one_block must treat it as a failed scan of
+ * the whole block (propagated via `?`) rather than a confirmed-empty one.
  */
-async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Vec<RawTx> {
+async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Option<Vec<RawTx>> {
     let mut all_txs = Vec::new();
     let mut page_num = 0i64;
     let mut pages_total = 1i64;
 
     while page_num < pages_total {
         let url = format!("{}/txs/?block={}&pageNum={}", EXPLORER_BASE, block_hash, page_num);
-        match get_with_backoff(client, &url).await {
-            Some(res) => match res.json::<TxsPageResponse>().await {
-                Ok(page) => {
-                    pages_total = page.pages_total.max(1);
-                    all_txs.extend(page.txs);
-                }
-                Err(_) => break,
-            },
-            None => break,
-        }
+        let res = get_with_backoff(client, &url).await?;
+        let page = res.json::<TxsPageResponse>().await.ok()?;
+        pages_total = page.pages_total.max(1);
+        all_txs.extend(page.txs);
         page_num += 1;
     }
 
-    all_txs
+    Some(all_txs)
 }
 
 pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &HashSet<i64>) -> Option<BlockScanResult> {
     let hash = resolve_block_hash(client, height).await?;
-    let txs = fetch_all_block_txs(client, &hash).await;
+    let txs = fetch_all_block_txs(client, &hash).await?;
     let transfers = extract_p2p_transfers(&txs);
     let is_utility = is_block_utility(height, &transfers, deployment_heights);
     let team_txs = extract_team_txs(height, &transfers);
@@ -540,20 +544,39 @@ pub async fn run_scan_cycle() {
     let mut daily = load_daily_rollup();
     let mut team_txs = load_team_txs();
 
-    let new_checkpoint = scan_range(&client, start_height, tip_height, &deployment_heights, &mut daily, &mut team_txs).await;
+    let mut checkpoint_height = start_height;
 
-    trim_daily_retention(&mut daily, RETENTION_DAYS as usize);
-    trim_team_txs(&mut team_txs, tip_height - RETENTION_BLOCKS);
+    while checkpoint_height < tip_height {
+        let batch_end = (checkpoint_height + SCAN_BATCH_SIZE).min(tip_height);
+        let new_checkpoint = scan_range(&client, checkpoint_height, batch_end, &deployment_heights, &mut daily, &mut team_txs).await;
 
-    let _ = save_daily_rollup(&daily);
-    let _ = save_team_txs(&team_txs);
-    let _ = save_checkpoint(new_checkpoint);
+        trim_daily_retention(&mut daily, RETENTION_DAYS as usize);
+        trim_team_txs(&mut team_txs, tip_height - RETENTION_BLOCKS);
+
+        if let Err(e) = save_daily_rollup(&daily) {
+            eprintln!("[chain_activity] failed to save daily rollup: {}", e);
+        }
+        if let Err(e) = save_team_txs(&team_txs) {
+            eprintln!("[chain_activity] failed to save team txs: {}", e);
+        }
+        if let Err(e) = save_checkpoint(new_checkpoint) {
+            eprintln!("[chain_activity] failed to save checkpoint: {}", e);
+        }
+
+        let made_progress = new_checkpoint > checkpoint_height;
+        checkpoint_height = new_checkpoint;
+
+        if !made_progress || new_checkpoint < batch_end {
+            // A gap was hit within this batch — stop the cycle here rather than
+            // continuing to fire requests at an API that may still be rate-limiting
+            // us. The next scheduled cycle resumes from this checkpoint.
+            break;
+        }
+    }
 
     println!(
-        "[chain_activity] scanned {}..{} (checkpoint now {})",
-        start_height + 1,
-        tip_height,
-        new_checkpoint
+        "[chain_activity] scanned up to {} (checkpoint now {})",
+        tip_height, checkpoint_height
     );
 }
 

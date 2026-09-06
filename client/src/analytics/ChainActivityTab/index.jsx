@@ -21,12 +21,14 @@ function UtilitySummary({ daily, rangeDays, rangeLabel }) {
   const ranged = filterDailyRange(daily, rangeDays);
   const { utilityBlocks, emptyBlocks } = summarizeDaily(ranged);
   const total = utilityBlocks + emptyBlocks;
+  const isPartial = daily.length > 0 && ranged.length < rangeDays;
+  const badgeText = isPartial ? `${rangeLabel} (${ranged.length}d available)` : rangeLabel;
 
   return (
     <div className="hov-panel ca-utility-panel">
       <div className="hov-header">
         <span className="hov-header-title">UTILITY VS EMPTY BLOCKS</span>
-        <span className="hov-header-badge">{rangeLabel}</span>
+        <span className="hov-header-badge">{badgeText}</span>
       </div>
       {total === 0 ? (
         <div className="hov-empty">
