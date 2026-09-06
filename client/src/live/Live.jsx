@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Info } from 'lucide-react';
 
@@ -15,9 +15,11 @@ import {
   deployEventsForSlowRefresh,
 } from 'live/apidata';
 import { mergeIncomingBlocks, removeLeavingBlock } from 'live/blockAnimation';
+import { buildBlockFlowSummary } from 'live/blockFlowSummary';
 
 import { ChainRail } from 'live/ChainRail';
 import { DetailsPanel } from 'live/DetailsPanel';
+import { FlowCanvas } from 'live/FlowCanvas';
 
 import './Live.scss';
 
@@ -216,6 +218,7 @@ export default function Live() {
   const tipHeight = displayBlocks.find((b) => b.phase !== 'leaving')?.height ?? null;
   const displayedHeight = selectedHeight ?? tipHeight;
   const displayedBlock = displayBlocks.find((b) => b.height === displayedHeight) || null;
+  const summary = useMemo(() => buildBlockFlowSummary(displayedBlock), [displayedBlock]);
   const locked = selectedHeight != null;
 
   const handleToggleLock = useCallback(() => {
@@ -258,6 +261,8 @@ export default function Live() {
           <span>Block data is temporarily unavailable — retrying automatically.</span>
         </div>
       )}
+
+      <FlowCanvas block={displayedBlock} summary={summary} />
 
       <div className="live-main-stack">
         <div ref={chainRailWrapperRef}>

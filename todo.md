@@ -23,14 +23,12 @@ Full detail lives in `LIVE_REDESIGN_PLAN.md` (session breakdown) and
 `FLUX_LIVE_VIEW_REDESIGN_SPEC_V2.md` (the 80-section source-of-truth spec) — this
 section is a pointer, not a restatement.
 
-- [ ] **Session A — Visual shell + data summaries.** `FlowCanvas`/`FlowBlock`/
+- [x] **Session A — Visual shell + data summaries.** `FlowCanvas`/`FlowBlock`/
   `ActivityCard`/`FlowConnectors`, restyled `ChainRail`/`DetailsPanel`,
-  `buildBlockFlowSummary()` + tests, Dev Fund reward-category extraction. No new
-  design decisions needed — go straight to `superpowers:writing-plans` once the
-  session's file list is confirmed against current code (skip brainstorming unless
-  something in-session is genuinely ambiguous, per `LIVE_REDESIGN_PLAN.md`'s own
-  note). New worktree: `Fluxnode/worktrees/live-session-a`, branch
-  `feat/live-session-a`.
+  `buildBlockFlowSummary()` + tests, Dev Fund reward-category extraction.
+  Shipped in PR #184 — see
+  `docs/superpowers/plans/2026-09-07-live-session-a.md` for the full task
+  breakdown.
 - [ ] **Session B — Interaction + motion.** Depends on Session A's shell existing.
 - [ ] **Session C — History + details integration.** Depends on Session B's state
   model.

@@ -8,6 +8,7 @@ export const CATEGORY_META = {
   CUMULUS: { ...TIER_META.CUMULUS, Icon: Coins, kind: 'reward', tooltip: 'Cumulus node reward paid this block (exact amount, from the coinbase transaction)' },
   NIMBUS: { ...TIER_META.NIMBUS, Icon: Coins, kind: 'reward', tooltip: 'Nimbus node reward paid this block (exact amount, from the coinbase transaction)' },
   STRATUS: { ...TIER_META.STRATUS, Icon: Coins, kind: 'reward', tooltip: 'Stratus node reward paid this block (exact amount, from the coinbase transaction)' },
+  DEVFUND: { ...TIER_META.DEVFUND, Icon: Coins, kind: 'reward', tooltip: 'Dev Fund treasury payment this block (exact amount, from the coinbase transaction)' },
   DEPLOY: { label: 'Deployed', color: '#22c55e', Icon: Rocket, kind: 'deploy', tooltip: 'A Flux app was deployed this block' },
   P2P: {
     label: 'P2P',

@@ -55,6 +55,13 @@ export async function fetch_block_transactions(blockHash) {
  * vout index/count, so this keeps working if the payout tx's shape changes
  * (extra treasury outputs, reordering, etc.) as long as the tier splits
  * stay close to their configured percentages.
+ *
+ * The Dev Fund output is matched separately, by its known fixed address
+ * (not percentage) — the three tier percentages above only sum to 96.422%,
+ * so Dev Fund was previously falling through unmatched entirely. It pays a
+ * fixed ~0.5 FLUX/block to a static address rather than a tier-proportional
+ * share, so percentage matching doesn't apply to it the way it does to the
+ * three node tiers.
  */
 const TIER_REWARD_PERCENT = {
   CUMULUS: window.gContent?.CC_FLUX_REWARD_CUMULUS,
@@ -62,6 +69,7 @@ const TIER_REWARD_PERCENT = {
   STRATUS: window.gContent?.CC_FLUX_REWARD_STRATUS,
 };
 const TIER_MATCH_TOLERANCE_PCT = 0.5;
+const DEV_FUND_ADDRESS = 't3hPu1YDeGUCp8m7BQCnnNUmRMJBa5RadyA';
 
 export function extractRewardsFromCoinbase(coinbaseTx) {
   const totalOut = Number(coinbaseTx?.valueOut);
@@ -72,6 +80,11 @@ export function extractRewardsFromCoinbase(coinbaseTx) {
     const value = Number(vout.value);
     const address = vout.scriptPubKey?.addresses?.[0];
     if (!value || !address) continue;
+
+    if (address === DEV_FUND_ADDRESS) {
+      rewards.push({ tier: 'DEVFUND', address, amount: value });
+      continue;
+    }
 
     const pct = (value / totalOut) * 100;
     const tier = Object.entries(TIER_REWARD_PERCENT).find(
