@@ -15,7 +15,7 @@ import './index.scss';
  * FlowCanvas (Task 7) only mounts this once `block` is real, so the null
  * branch here is a defensive fallback, not the primary loading UI.
  */
-export const FlowBlock = React.forwardRef(function FlowBlock({ block, summary }, ref) {
+export const FlowBlock = React.forwardRef(function FlowBlock({ block, summary, pulseKey = 0, haloColor = null }, ref) {
   if (!block || !summary) {
     return (
       <div className="live-flow-block live-flow-block--loading" ref={ref}>
@@ -32,8 +32,14 @@ export const FlowBlock = React.forwardRef(function FlowBlock({ block, summary },
 
   return (
     <div
-      className="live-flow-block"
+      className={[
+        'live-flow-block',
+        pulseKey > 0 && 'live-flow-block--pulse',
+        haloColor && 'live-flow-block--halo',
+      ].filter(Boolean).join(' ')}
       ref={ref}
+      key={pulseKey > 0 ? `pulse-${pulseKey}` : 'idle'}
+      style={haloColor ? { '--flow-block-halo': haloColor } : undefined}
       title={`Block #${block.height}\nHash: ${block.hash || '—'}\nTimestamp: ${exactTimestamp(block.at)}`}
     >
       <FluxMark className="live-flow-block-mark" />

@@ -122,7 +122,13 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
         );
       })}
 
-      <FlowBlock ref={blockRef} block={block} summary={summary} />
+      <FlowBlock
+        ref={blockRef}
+        block={block}
+        summary={summary}
+        pulseKey={pulseKey}
+        haloColor={expandedCategory ? colors[expandedCategory] : null}
+      />
     </div>
   );
 }
