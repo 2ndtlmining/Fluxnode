@@ -93,7 +93,7 @@ export function FlowConnectors({ containerRef, blockRef, cardRefs, colors, expan
     targets.forEach((t) => observer.observe(t));
 
     return () => observer.disconnect();
-  }, [measure, containerRef, blockRef, cardRefs]);
+  }, [measure, containerRef, blockRef, cardRefs, pulseKey]);
 
   return (
     <svg className="live-flow-connectors" aria-hidden="true">
