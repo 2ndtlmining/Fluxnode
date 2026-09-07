@@ -89,7 +89,7 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
   const colors = Object.fromEntries(CARD_KEYS.map((key) => [key, SECTION_BY_KEY[key].color]));
 
   return (
-    <div className="live-flow-canvas" ref={containerRef}>
+    <div className="live-flow-canvas" ref={containerRef} onClick={() => onToggleCategory(null)}>
       <FlowConnectors
         containerRef={containerRef}
         blockRef={blockRef}
