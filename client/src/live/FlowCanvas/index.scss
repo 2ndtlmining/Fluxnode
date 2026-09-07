@@ -18,13 +18,18 @@
     radial-gradient(circle at 50% 42%, color-mix(in srgb, #2b61d1 7%, transparent) 0%, transparent 55%),
     var(--surface-secondary);
   border: 1px solid var(--border-primary);
-  overflow: hidden;
+  // Expanded cards (ActivityCard's --expanded modifier) visually grow past
+  // their grid track and must not be clipped — the dot-grid background
+  // below gets its own border-radius instead, so this doesn't un-round the
+  // canvas's corners.
+  overflow: visible;
 
   // Very subtle static network dot grid (spec §7/§47) — never animated.
   &::before {
     content: '';
     position: absolute;
     inset: 0;
+    border-radius: var(--radius-md);
     background-image: radial-gradient(circle, var(--border-primary) 1px, transparent 1px);
     background-size: 28px 28px;
     opacity: 0.6;
