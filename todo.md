@@ -29,7 +29,10 @@ section is a pointer, not a restatement.
   Shipped in PR #184 — see
   `docs/superpowers/plans/2026-09-07-live-session-a.md` for the full task
   breakdown.
-- [ ] **Session B — Interaction + motion.** Depends on Session A's shell existing.
+- [x] **Session B — Interaction + motion.** Depends on Session A's shell existing.
+  Shipped in PR #<fill in after opening the PR> — see
+  `docs/superpowers/plans/2026-09-07-live-session-b.md` for the full task
+  breakdown.
 - [ ] **Session C — History + details integration.** Depends on Session B's state
   model.
 - [ ] **Session D — Resilience + final polish.** Depends on all three prior sessions;
