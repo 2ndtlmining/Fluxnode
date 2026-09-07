@@ -90,7 +90,15 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
 
   return (
     <div className="live-flow-canvas" ref={containerRef}>
-      <FlowConnectors containerRef={containerRef} blockRef={blockRef} cardRefs={cardRefs} colors={colors} />
+      <FlowConnectors
+        containerRef={containerRef}
+        blockRef={blockRef}
+        cardRefs={cardRefs}
+        colors={colors}
+        expandedCategory={expandedCategory}
+        pulseCategories={pulseCategories}
+        pulseKey={pulseKey}
+      />
 
       {CARD_KEYS.map((key) => {
         const content = cardContentFor(key, summary);

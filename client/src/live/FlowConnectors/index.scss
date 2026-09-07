@@ -23,3 +23,29 @@
     display: none;
   }
 }
+
+.live-flow-connector--expanded {
+  opacity: 0.95;
+  stroke-width: 2.5;
+}
+
+// Spec §22 "New block: One short travelling pulse." `pathLength="100"` (set
+// in the JSX above) normalizes stroke-dasharray/offset to a 0-100 scale
+// regardless of this path's actual geometric length, so one keyframe works
+// for all four (slightly different) Bézier curves.
+@keyframes live-connector-pulse {
+  0% { stroke-dashoffset: 100; opacity: 0.9; stroke-width: 3; }
+  100% { stroke-dashoffset: -40; opacity: 0.45; stroke-width: 1.5; }
+}
+
+.live-flow-connector--pulse {
+  stroke-dasharray: 16 84;
+  animation: live-connector-pulse 350ms ease-out 150ms backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-flow-connector--pulse {
+    animation: none;
+    stroke-dasharray: none;
+  }
+}
