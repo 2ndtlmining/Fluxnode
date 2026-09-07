@@ -30,7 +30,7 @@ section is a pointer, not a restatement.
   `docs/superpowers/plans/2026-09-07-live-session-a.md` for the full task
   breakdown.
 - [x] **Session B — Interaction + motion.** Depends on Session A's shell existing.
-  Shipped in PR #<fill in after opening the PR> — see
+  Shipped in PR #185 — see
   `docs/superpowers/plans/2026-09-07-live-session-b.md` for the full task
   breakdown.
 - [ ] **Session C — History + details integration.** Depends on Session B's state
