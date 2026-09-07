@@ -169,7 +169,7 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
         <div className="live-flow-card-expanded-body">
           {(() => {
             const ExpandedBody = EXPANDED_BODY_COMPONENT[categoryKey];
-            return <ExpandedBody summary={summary} />;
+            return ExpandedBody ? <ExpandedBody summary={summary} /> : null;
           })()}
         </div>
       ) : isEmpty ? (

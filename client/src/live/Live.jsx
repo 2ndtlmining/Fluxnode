@@ -64,6 +64,7 @@ export default function Live() {
   const chainRailWrapperRef = useRef(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [pulseKey, setPulseKey] = useState(0);
+  const [pulseCategories, setPulseCategories] = useState([]);
   const lastAnimatedHeightRef = useRef(null);
 
   const globalRankingsRef = useRef(null);
@@ -230,9 +231,10 @@ export default function Live() {
   useEffect(() => {
     if (isFreshLiveTip({ isFollowingLive, tipHeight, lastAnimatedHeight: lastAnimatedHeightRef.current })) {
       setPulseKey((n) => n + 1);
+      setPulseCategories(categoriesToPulse(summary));
     }
     if (isFollowingLive && tipHeight != null) lastAnimatedHeightRef.current = tipHeight;
-  }, [isFollowingLive, tipHeight]);
+  }, [isFollowingLive, tipHeight, summary]);
 
   useEffect(() => {
     setExpandedCategory(null);
@@ -297,7 +299,7 @@ export default function Live() {
         summary={summary}
         expandedCategory={expandedCategory}
         onToggleCategory={handleToggleCategory}
-        pulseCategories={categoriesToPulse(summary)}
+        pulseCategories={pulseCategories}
         pulseKey={pulseKey}
       />
 

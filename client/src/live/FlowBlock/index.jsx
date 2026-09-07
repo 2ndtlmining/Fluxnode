@@ -9,9 +9,10 @@ import './index.scss';
  * event; the outer nodes explain the event." — deliberately not overloaded
  * with addresses or transaction rows).
  *
- * Live/History status treatment (spec §26-27) and the elaborate new-block
- * glow (spec §9, §24) are out of scope this session — this renders the
- * plain idle state only. `block` is null before the first successful poll;
+ * Live/History status treatment (spec §26-27) is out of scope this session;
+ * the new-block pulse and expanded-category halo (spec §9, §24) ARE
+ * implemented here via the `pulseKey`/`haloColor` props. `block` is null
+ * before the first successful poll;
  * FlowCanvas (Task 7) only mounts this once `block` is real, so the null
  * branch here is a defensive fallback, not the primary loading UI.
  */

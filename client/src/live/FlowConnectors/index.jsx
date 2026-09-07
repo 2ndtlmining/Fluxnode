@@ -100,7 +100,7 @@ export function FlowConnectors({ containerRef, blockRef, cardRefs, colors, expan
       {CONNECTOR_ORDER.map((key) => {
         if (!paths[key]) return null;
         const isExpanded = key === expandedCategory;
-        const isPulsing = pulseCategories.includes(key);
+        const isPulsing = pulseCategories.includes(key) && pulseKey > 0;
         const classes = [
           'live-flow-connector',
           `live-flow-connector--${key}`,
