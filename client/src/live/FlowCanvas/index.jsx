@@ -102,9 +102,10 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
 
       {CARD_KEYS.map((key) => {
         const content = cardContentFor(key, summary);
+        const isPulsing = pulseCategories.includes(key) && pulseKey > 0;
         return (
           <ActivityCard
-            key={key}
+            key={isPulsing ? `${key}-pulse-${pulseKey}` : key}
             ref={cardRefs[key]}
             quadrant={QUADRANT_BY_KEY[key]}
             categoryKey={key}
@@ -116,7 +117,7 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
             summary={summary}
             isExpanded={expandedCategory === key}
             isDimmed={expandedCategory != null && expandedCategory !== key}
-            isPulsing={pulseCategories.includes(key) && pulseKey > 0}
+            isPulsing={isPulsing}
             onToggle={() => onToggleCategory(key)}
           />
         );
