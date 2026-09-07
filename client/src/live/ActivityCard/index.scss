@@ -184,9 +184,12 @@
   font-size: var(--live-fs-base);
   color: var(--text-secondary);
   padding: 6px 0;
-  border-bottom: 1px solid var(--border-primary);
 
-  &:last-of-type { border-bottom: none; }
+  // Border sits between consecutive rows only (not after the last one,
+  // whether or not a trailing .live-flow-expanded-note div follows it —
+  // :last-of-type/:last-child would still match that note div, not the
+  // actual last row, since both are <div>s).
+  & + & { border-top: 1px solid var(--border-primary); }
 }
 
 .live-flow-expanded-row--stacked {
