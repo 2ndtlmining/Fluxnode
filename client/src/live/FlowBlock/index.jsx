@@ -41,7 +41,15 @@ export const FlowBlock = React.forwardRef(function FlowBlock({ block, summary, p
       ref={ref}
       key={pulseKey > 0 ? `pulse-${pulseKey}` : 'idle'}
       style={haloColor ? { '--flow-block-halo': haloColor } : undefined}
-      title={`Block #${block.height}\nHash: ${block.hash || '—'}\nTimestamp: ${exactTimestamp(block.at)}`}
+      title={[
+        `Block #${block.height}`,
+        `Hash: ${block.hash || '—'}`,
+        `Timestamp: ${exactTimestamp(block.at)}`,
+        `Rewards: ${summary.rewards.count}`,
+        `P2P: ${summary.p2p.count}`,
+        `Deployments: ${summary.deployments.count}`,
+        `Confirmations: ${summary.confirmations.count}`,
+      ].join('\n')}
     >
       <FluxMark className="live-flow-block-mark" />
       <span className="live-flow-block-height">#{block.height}</span>
