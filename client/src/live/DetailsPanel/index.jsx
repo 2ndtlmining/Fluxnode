@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactCountryFlag from 'react-country-flag';
-import { Lock, Unlock, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
 import { TIER_META } from 'live/tierMeta';
 import { lookupNodeInfo } from 'live/apidata';
@@ -149,7 +149,7 @@ const DEFAULT_COLLAPSED_KEYS = new Set(['confirm']);
  * component just renders it. `globalRankings` feeds the confirmation rows'
  * cheap country/rank enrichment (see live/apidata.js's lookupNodeInfo).
  */
-export function DetailsPanel({ block, locked, onToggleLock, globalRankings }) {
+export function DetailsPanel({ block, globalRankings }) {
   const [expandedKeys, setExpandedKeys] = useState(
     () => new Set([...ALL_SECTION_KEYS].filter((k) => !DEFAULT_COLLAPSED_KEYS.has(k)))
   );
@@ -167,15 +167,6 @@ export function DetailsPanel({ block, locked, onToggleLock, globalRankings }) {
     <div className="live-panel live-details-panel">
       <div className="live-panel-header">
         <span className="live-panel-title">BLOCK DETAILS{block ? ` — #${block.height}` : ''}</span>
-        <button
-          type="button"
-          className={`live-lock-btn${locked ? ' live-lock-btn--active' : ''}`}
-          onClick={onToggleLock}
-          title={locked ? 'Unlock — resume following the latest block' : 'Lock this block so a new one arriving doesn’t change what you’re viewing'}
-        >
-          {locked ? <Lock size={13} /> : <Unlock size={13} />}
-          {locked ? 'Locked' : 'Lock'}
-        </button>
       </div>
 
       {!block ? (

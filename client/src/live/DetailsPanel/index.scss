@@ -4,31 +4,6 @@
   min-height: 280px;
 }
 
-.live-lock-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border-primary);
-  background: var(--surface-primary);
-  color: var(--text-secondary);
-  font-size: var(--live-fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-
-  &:hover {
-    border-color: var(--border-hover);
-  }
-
-  &--active {
-    background: rgba(234, 179, 8, 0.14);
-    border-color: #eab308;
-    color: #eab308;
-  }
-}
-
 .live-feed-empty {
   color: var(--text-tertiary);
   font-size: var(--live-fs-base);
