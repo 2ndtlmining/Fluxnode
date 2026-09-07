@@ -170,6 +170,122 @@
   .live-flow-card-icon { transition: none; }
 }
 
+.live-flow-expanded-total {
+  font-size: var(--live-fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-flow-expanded-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--live-fs-base);
+  color: var(--text-secondary);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-primary);
+
+  &:last-of-type { border-bottom: none; }
+}
+
+.live-flow-expanded-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.live-flow-expanded-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-flow-expanded-row-label {
+  font-weight: 600;
+  flex: 1;
+}
+
+.live-flow-expanded-row-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.live-flow-expanded-row-sub {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-flow-expanded-badge {
+  font-size: var(--live-fs-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: var(--surface-inset);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.live-flow-expanded-note {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding-top: 4px;
+}
+
+// ── Hover relationship (spec §19) ─────────────────────────────────────────
+// The card's own lift/border-brighten lives in ActivityCard's own :hover
+// rule above (Task 4). These reach across to the SVG connector and central
+// block, which are *sibling* elements under the same .live-flow-canvas
+// container (see FlowCanvas/index.jsx) — CSS :has() lets a hover on one
+// child style another without any extra React state or re-render, keeping
+// hover response effectively instant (spec §50: "input → response under
+// ~100ms").
+.live-flow-canvas:has(.live-flow-card--top-left:hover:not(.live-flow-card--expanded)) .live-flow-connector--reward {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--top-right:hover:not(.live-flow-card--expanded)) .live-flow-connector--deploy {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--bottom-left:hover:not(.live-flow-card--expanded)) .live-flow-connector--p2p {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--bottom-right:hover:not(.live-flow-card--expanded)) .live-flow-connector--confirm {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+
+// A tiny matching halo on the central block (spec §19: "central block gets a
+// tiny matching halo") — one rule per category since each needs its own
+// halo color; reuses categoryMeta.js's own colors (duplicated as hex here,
+// same convention tierMeta.js documents for the same reason: can't read a
+// CSS custom property into these selectors from JS).
+.live-flow-canvas:has(.live-flow-card--top-left:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #3b82f6 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--top-right:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #22c55e 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--bottom-left:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #8b93a6 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--bottom-right:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #eab308 35%, transparent);
+}
+
+@media (max-width: 899px) {
+  // Connectors are already hidden below 900px (Session A, spec §48) and
+  // hover is not a mobile concept — the :has() rules above are harmless
+  // no-ops there, nothing further to override.
+}
+
 @media (max-width: 1199px) {
   .live-flow-card {
     min-height: 120px;
