@@ -12,12 +12,58 @@
   background: var(--surface-primary);
   border: 1px solid var(--border-primary);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: width 320ms ease, min-height 320ms ease, transform 320ms ease,
+    box-shadow 320ms ease, border-color 320ms ease, opacity 320ms ease;
+
+  &:focus-visible {
+    outline: 2px solid var(--card-accent);
+    outline-offset: 2px;
+  }
 }
 
 .live-flow-card--top-left { grid-area: reward; }
 .live-flow-card--top-right { grid-area: deploy; }
 .live-flow-card--bottom-left { grid-area: p2p; }
 .live-flow-card--bottom-right { grid-area: confirm; }
+
+// Hover relationship (spec §19): card lifts 1-2px, border/icon brighten. Its
+// matching connector/block-halo reactions live in FlowConnectors'/FlowBlock's
+// own SCSS via :has(), since those are different elements in the DOM tree.
+.live-flow-card:hover:not(.live-flow-card--expanded) {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--card-accent) 45%, var(--border-primary));
+}
+
+// ── Expansion (spec §12-14) ──────────────────────────────────────────────
+// Growth happens via width/min-height (real layout, not scale — content
+// structurally changes between compact and expanded, so faking it with
+// `transform: scale()` would distort text/rows rather than reveal them).
+// The `transform: translate(...)` per quadrant below is purely visual
+// (spec §13: "expansion must be outward") and doesn't affect anything's
+// measured layout box, so it composites cheaply alongside the width/height
+// transition already running.
+.live-flow-card--expanded {
+  width: 420px;
+  max-width: 420px;
+  min-height: 320px;
+  z-index: 5;
+  box-shadow: var(--shadow-md), 0 0 24px color-mix(in srgb, var(--card-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--card-accent) 55%, var(--border-primary));
+  cursor: default;
+}
+
+.live-flow-card--expanded.live-flow-card--top-left { transform: translate(-24px, -24px); }
+.live-flow-card--expanded.live-flow-card--top-right { transform: translate(24px, -24px); }
+.live-flow-card--expanded.live-flow-card--bottom-left { transform: translate(-24px, 24px); }
+.live-flow-card--expanded.live-flow-card--bottom-right { transform: translate(24px, 24px); }
+
+// Spec §12 point 3: "dims other cards slightly" — spec §14 recommends
+// roughly 0.65-0.8; not applied to the expanded card itself or while nothing
+// is expanded (isDimmed is only ever true on the three non-expanded cards).
+.live-flow-card--dimmed {
+  opacity: 0.72;
+}
 
 .live-flow-card-header {
   display: flex;
@@ -34,6 +80,12 @@
   border-radius: 7px;
   color: var(--card-accent);
   background: color-mix(in srgb, var(--card-accent) 16%, transparent);
+  transition: filter 320ms ease;
+}
+
+.live-flow-card:hover .live-flow-card-icon,
+.live-flow-card--expanded .live-flow-card-icon {
+  filter: brightness(1.25);
 }
 
 .live-flow-card-label {
@@ -71,12 +123,170 @@
   flex: 1;
 }
 
+.live-flow-card-expanded-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .live-flow-card-chevron {
   position: absolute;
   bottom: 12px;
   right: 14px;
   color: var(--text-tertiary);
   opacity: 0.6;
+  transition: transform 320ms ease;
+}
+
+.live-flow-card-chevron--open {
+  transform: rotate(90deg);
+}
+
+// ── New-block pulse highlight (spec §24 T+300-850ms) ─────────────────────
+// Keyed by the caller re-mounting this element (via a changing `key` on the
+// pulse counter — see FlowCanvas Task) so this only plays once per genuine
+// new block, never on an ordinary re-render (spec §25).
+@keyframes live-card-pulse {
+  0% { box-shadow: var(--shadow-sm); border-color: var(--border-primary); }
+  40% { box-shadow: var(--shadow-md), 0 0 16px color-mix(in srgb, var(--card-accent) 30%, transparent); border-color: color-mix(in srgb, var(--card-accent) 60%, var(--border-primary)); }
+  100% { box-shadow: var(--shadow-sm); border-color: var(--border-primary); }
+}
+
+.live-flow-card--pulse {
+  animation: live-card-pulse 550ms ease-out 300ms backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-flow-card {
+    transition: opacity 150ms ease;
+  }
+  .live-flow-card--expanded { transform: none; }
+  .live-flow-card:hover:not(.live-flow-card--expanded) { transform: none; }
+  .live-flow-card--pulse { animation: none; }
+  .live-flow-card-chevron { transition: none; }
+  .live-flow-card-icon { transition: none; }
+}
+
+.live-flow-expanded-total {
+  font-size: var(--live-fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-flow-expanded-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--live-fs-base);
+  color: var(--text-secondary);
+  padding: 6px 0;
+
+  // Border sits between consecutive rows only (not after the last one,
+  // whether or not a trailing .live-flow-expanded-note div follows it —
+  // :last-of-type/:last-child would still match that note div, not the
+  // actual last row, since both are <div>s).
+  & + & { border-top: 1px solid var(--border-primary); }
+}
+
+.live-flow-expanded-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.live-flow-expanded-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-flow-expanded-row-label {
+  font-weight: 600;
+  flex: 1;
+}
+
+.live-flow-expanded-row-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.live-flow-expanded-row-sub {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-flow-expanded-badge {
+  font-size: var(--live-fs-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: var(--surface-inset);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.live-flow-expanded-note {
+  font-size: var(--live-fs-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding-top: 4px;
+}
+
+// ── Hover relationship (spec §19) ─────────────────────────────────────────
+// The card's own lift/border-brighten lives in ActivityCard's own :hover
+// rule above (Task 4). These reach across to the SVG connector and central
+// block, which are *sibling* elements under the same .live-flow-canvas
+// container (see FlowCanvas/index.jsx) — CSS :has() lets a hover on one
+// child style another without any extra React state or re-render, keeping
+// hover response effectively instant (spec §50: "input → response under
+// ~100ms").
+.live-flow-canvas:has(.live-flow-card--top-left:hover:not(.live-flow-card--expanded)) .live-flow-connector--reward {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--top-right:hover:not(.live-flow-card--expanded)) .live-flow-connector--deploy {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--bottom-left:hover:not(.live-flow-card--expanded)) .live-flow-connector--p2p {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+.live-flow-canvas:has(.live-flow-card--bottom-right:hover:not(.live-flow-card--expanded)) .live-flow-connector--confirm {
+  opacity: 0.9;
+  stroke-width: 2.5;
+}
+
+// A tiny matching halo on the central block (spec §19: "central block gets a
+// tiny matching halo") — one rule per category since each needs its own
+// halo color; reuses categoryMeta.js's own colors (duplicated as hex here,
+// same convention tierMeta.js documents for the same reason: can't read a
+// CSS custom property into these selectors from JS).
+.live-flow-canvas:has(.live-flow-card--top-left:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #3b82f6 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--top-right:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #22c55e 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--bottom-left:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #8b93a6 35%, transparent);
+}
+.live-flow-canvas:has(.live-flow-card--bottom-right:hover:not(.live-flow-card--expanded)) .live-flow-block {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent), 0 0 0 2px color-mix(in srgb, #eab308 35%, transparent);
+}
+
+@media (max-width: 899px) {
+  // Connectors are already hidden below 900px (Session A, spec §48) and
+  // hover is not a mobile concept — the :has() rules above are harmless
+  // no-ops there, nothing further to override.
 }
 
 @media (max-width: 1199px) {
@@ -87,5 +297,18 @@
 
   .live-flow-card-primary {
     font-size: var(--live-fs-md);
+  }
+
+  .live-flow-card--expanded {
+    width: 100%;
+    max-width: 340px;
+    min-height: 260px;
+  }
+
+  .live-flow-card--expanded.live-flow-card--top-left,
+  .live-flow-card--expanded.live-flow-card--top-right,
+  .live-flow-card--expanded.live-flow-card--bottom-left,
+  .live-flow-card--expanded.live-flow-card--bottom-right {
+    transform: none;
   }
 }

@@ -63,7 +63,7 @@ function cardContentFor(key, summary) {
  * composition only (spec §66) — FlowBlock/ActivityCard/FlowConnectors each
  * own their own presentation.
  */
-export function FlowCanvas({ block, summary }) {
+export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCategory = () => {}, pulseCategories = [], pulseKey = 0 }) {
   const containerRef = useRef(null);
   const blockRef = useRef(null);
   // One stable ref-holding object for the component's lifetime — created
@@ -89,26 +89,47 @@ export function FlowCanvas({ block, summary }) {
   const colors = Object.fromEntries(CARD_KEYS.map((key) => [key, SECTION_BY_KEY[key].color]));
 
   return (
-    <div className="live-flow-canvas" ref={containerRef}>
-      <FlowConnectors containerRef={containerRef} blockRef={blockRef} cardRefs={cardRefs} colors={colors} />
+    <div className="live-flow-canvas" ref={containerRef} onClick={() => onToggleCategory(null)}>
+      <FlowConnectors
+        containerRef={containerRef}
+        blockRef={blockRef}
+        cardRefs={cardRefs}
+        colors={colors}
+        expandedCategory={expandedCategory}
+        pulseCategories={pulseCategories}
+        pulseKey={pulseKey}
+      />
 
       {CARD_KEYS.map((key) => {
         const content = cardContentFor(key, summary);
+        const isPulsing = pulseCategories.includes(key) && pulseKey > 0;
         return (
           <ActivityCard
-            key={key}
+            key={isPulsing ? `${key}-pulse-${pulseKey}` : key}
             ref={cardRefs[key]}
             quadrant={QUADRANT_BY_KEY[key]}
+            categoryKey={key}
             def={SECTION_BY_KEY[key]}
             count={content.count}
             primary={content.primary}
             secondary={content.secondary}
             emptyLabel={content.emptyLabel}
+            summary={summary}
+            isExpanded={expandedCategory === key}
+            isDimmed={expandedCategory != null && expandedCategory !== key}
+            isPulsing={isPulsing}
+            onToggle={() => onToggleCategory(key)}
           />
         );
       })}
 
-      <FlowBlock ref={blockRef} block={block} summary={summary} />
+      <FlowBlock
+        ref={blockRef}
+        block={block}
+        summary={summary}
+        pulseKey={pulseKey}
+        haloColor={expandedCategory ? colors[expandedCategory] : null}
+      />
     </div>
   );
 }

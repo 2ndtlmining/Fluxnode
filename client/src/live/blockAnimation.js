@@ -71,3 +71,25 @@ export function mergeIncomingBlocks(prevDisplay, freshBlocks, maxSettled = 5) {
 export function removeLeavingBlock(displayBlocks, height) {
   return displayBlocks.filter((b) => !(b.phase === 'leaving' && b.height === height));
 }
+
+// Spec §25: "If the same block is fetched again: no new-block animation."
+// `lastAnimatedHeight` is a ref the caller (Live.jsx) updates only when
+// `isFollowingLive` is true, so viewing history never advances it — meaning
+// returning to live after a real new block arrived still reports fresh here,
+// while returning to an unchanged tip does not (spec §30).
+export function isFreshLiveTip({ isFollowingLive, tipHeight, lastAnimatedHeight }) {
+  return Boolean(isFollowingLive) && tipHeight != null && tipHeight !== lastAnimatedHeight;
+}
+
+// Spec §24: "Only categories containing actual activity should animate."
+// Fixed canvas order (matches FlowCanvas's own CARD_KEYS) so callers can rely
+// on it for deterministic staggered-delay indexing if ever needed.
+export function categoriesToPulse(summary) {
+  if (!summary) return [];
+  const active = [];
+  if (summary.rewards?.count) active.push('reward');
+  if (summary.deployments?.count) active.push('deploy');
+  if (summary.p2p?.count) active.push('p2p');
+  if (summary.confirmations?.count) active.push('confirm');
+  return active;
+}

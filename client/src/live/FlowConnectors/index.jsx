@@ -9,8 +9,9 @@ import './index.scss';
  * resolution coordinates, and re-measured only when something's size
  * actually changes — not on every animation frame.
  *
- * Static/idle only this session — no hover/expanded/pulse states (Session
- * B, spec §22).
+ * Idle rendering plus two visual states layered on top: an expanded card's
+ * connector strengthens (opacity/stroke-width), and a category active in
+ * the latest block plays a brief traveling pulse (spec §22-25).
  */
 
 const CONNECTOR_ORDER = ['reward', 'deploy', 'p2p', 'confirm'];
@@ -48,7 +49,7 @@ function buildPath(from, to, pull) {
   return `M ${from.x},${from.y} C ${c1x},${c1y} ${c2x},${c2y} ${to.x},${to.y}`;
 }
 
-export function FlowConnectors({ containerRef, blockRef, cardRefs, colors }) {
+export function FlowConnectors({ containerRef, blockRef, cardRefs, colors, expandedCategory = null, pulseCategories = [], pulseKey = 0 }) {
   const [paths, setPaths] = useState({});
 
   const measure = useCallback(() => {
@@ -92,20 +93,33 @@ export function FlowConnectors({ containerRef, blockRef, cardRefs, colors }) {
     targets.forEach((t) => observer.observe(t));
 
     return () => observer.disconnect();
-  }, [measure, containerRef, blockRef, cardRefs]);
+  }, [measure, containerRef, blockRef, cardRefs, pulseKey]);
 
   return (
     <svg className="live-flow-connectors" aria-hidden="true">
-      {CONNECTOR_ORDER.map((key) => (
-        paths[key] ? (
+      {CONNECTOR_ORDER.map((key) => {
+        if (!paths[key]) return null;
+        const isExpanded = key === expandedCategory;
+        const isPulsing = pulseCategories.includes(key) && pulseKey > 0;
+        const classes = [
+          'live-flow-connector',
+          `live-flow-connector--${key}`,
+          isExpanded && 'live-flow-connector--expanded',
+        ].filter(Boolean).join(' ');
+        return (
           <path
-            key={key}
-            className={`live-flow-connector live-flow-connector--${key}`}
+            // Remounts (replaying the pulse keyframe) only when this
+            // specific category is both active this block AND pulseKey has
+            // advanced — every other poll keeps the same key, so the path
+            // updates in place with no replay (spec §25).
+            key={isPulsing ? `${key}-pulse-${pulseKey}` : key}
+            className={isPulsing ? `${classes} live-flow-connector--pulse` : classes}
             d={paths[key]}
+            pathLength="100"
             style={{ '--connector-color': colors?.[key] }}
           />
-        ) : null
-      ))}
+        );
+      })}
     </svg>
   );
 }

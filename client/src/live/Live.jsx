@@ -14,8 +14,9 @@ import {
   attachEventsToBlocks,
   deployEventsForSlowRefresh,
 } from 'live/apidata';
-import { mergeIncomingBlocks, removeLeavingBlock } from 'live/blockAnimation';
+import { mergeIncomingBlocks, removeLeavingBlock, isFreshLiveTip, categoriesToPulse } from 'live/blockAnimation';
 import { buildBlockFlowSummary } from 'live/blockFlowSummary';
+import { toggleExpandedCategory } from 'live/flowInteraction';
 
 import { ChainRail } from 'live/ChainRail';
 import { DetailsPanel } from 'live/DetailsPanel';
@@ -61,6 +62,10 @@ export default function Live() {
   // (see the ResizeObserver effect below), bounded to [5, 10].
   const [visibleBlockCount, setVisibleBlockCount] = useState(MIN_VISIBLE_BLOCK_COUNT);
   const chainRailWrapperRef = useRef(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [pulseCategories, setPulseCategories] = useState([]);
+  const lastAnimatedHeightRef = useRef(null);
 
   const globalRankingsRef = useRef(null);
   const appSpecsRef = useRef(null);
@@ -221,6 +226,33 @@ export default function Live() {
   const summary = useMemo(() => buildBlockFlowSummary(displayedBlock), [displayedBlock]);
   const locked = selectedHeight != null;
 
+  const isFollowingLive = selectedHeight == null;
+
+  useEffect(() => {
+    if (isFreshLiveTip({ isFollowingLive, tipHeight, lastAnimatedHeight: lastAnimatedHeightRef.current })) {
+      setPulseKey((n) => n + 1);
+      setPulseCategories(categoriesToPulse(summary));
+    }
+    if (isFollowingLive && tipHeight != null) lastAnimatedHeightRef.current = tipHeight;
+  }, [isFollowingLive, tipHeight, summary]);
+
+  useEffect(() => {
+    setExpandedCategory(null);
+  }, [displayedBlock?.height]);
+
+  useEffect(() => {
+    if (expandedCategory == null) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setExpandedCategory(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [expandedCategory]);
+
+  const handleToggleCategory = useCallback((key) => {
+    setExpandedCategory((current) => toggleExpandedCategory(current, key));
+  }, []);
+
   const handleToggleLock = useCallback(() => {
     setSelectedHeight((prev) => (prev != null ? null : tipHeight));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,7 +294,14 @@ export default function Live() {
         </div>
       )}
 
-      <FlowCanvas block={displayedBlock} summary={summary} />
+      <FlowCanvas
+        block={displayedBlock}
+        summary={summary}
+        expandedCategory={expandedCategory}
+        onToggleCategory={handleToggleCategory}
+        pulseCategories={pulseCategories}
+        pulseKey={pulseKey}
+      />
 
       <div className="live-main-stack">
         <div ref={chainRailWrapperRef}>

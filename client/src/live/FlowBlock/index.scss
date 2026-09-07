@@ -62,3 +62,26 @@
     font-size: 1.25rem;
   }
 }
+
+.live-flow-block--halo {
+  box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--flow-block-halo) 40%, transparent);
+}
+
+// Spec §9/§24: "New-block glow: briefly stronger." Keyed remount (via the
+// `key` prop change in FlowBlock's JSX) makes this replay exactly once per
+// genuine new block — an ordinary poll re-render with the same key does not
+// restart it (spec §25).
+@keyframes live-block-pulse {
+  0% { box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent); }
+  30% { box-shadow: var(--shadow-md), 0 0 48px color-mix(in srgb, #2b61d1 35%, transparent); border-color: color-mix(in srgb, #2b61d1 55%, var(--border-primary)); }
+  100% { box-shadow: var(--shadow-md), 0 0 32px color-mix(in srgb, #2b61d1 10%, transparent); }
+}
+
+.live-flow-block--pulse {
+  animation: live-block-pulse 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-flow-block--pulse { animation: none; }
+}
