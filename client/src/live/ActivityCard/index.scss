@@ -166,6 +166,8 @@
   .live-flow-card--expanded { transform: none; }
   .live-flow-card:hover:not(.live-flow-card--expanded) { transform: none; }
   .live-flow-card--pulse { animation: none; }
+  .live-flow-card-chevron { transition: none; }
+  .live-flow-card-icon { transition: none; }
 }
 
 @media (max-width: 1199px) {
