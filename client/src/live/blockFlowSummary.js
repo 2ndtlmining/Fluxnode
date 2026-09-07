@@ -53,10 +53,13 @@ function summarizeDeployments(events) {
 }
 
 function summarizeP2p(events) {
-  const transfers = events.filter((e) => e.type === 'p2p');
+  const transfers = events
+    .filter((e) => e.type === 'p2p')
+    .map((e) => ({ id: e.id, from: e.from, to: e.to, amount: e.amount }));
   return {
     count: transfers.length,
     totalFlux: transfers.reduce((sum, t) => sum + t.amount, 0),
+    transfers,
   };
 }
 

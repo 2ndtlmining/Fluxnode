@@ -38,7 +38,7 @@ describe('buildBlockFlowSummary', () => {
       at: 123,
       rewards: { count: 0, totalFlux: 0, tiers: [] },
       deployments: { count: 0, instances: 0, apps: [] },
-      p2p: { count: 0, totalFlux: 0 },
+      p2p: { count: 0, totalFlux: 0, transfers: [] },
       confirmations: { count: 0, byTier: [] },
     });
   });
@@ -69,11 +69,15 @@ describe('buildBlockFlowSummary', () => {
     });
   });
 
-  it('sums P2P count and total', () => {
+  it('sums P2P count and total, and lists individual transfers in order', () => {
     const block = { height: 1, hash: 'h', at: 1, events: [p2pEvent('p1', 8), p2pEvent('p2', 4.42)] };
     const summary = buildBlockFlowSummary(block);
     expect(summary.p2p.count).toBe(2);
     expect(summary.p2p.totalFlux).toBeCloseTo(12.42);
+    expect(summary.p2p.transfers).toEqual([
+      { id: 'p1', from: 'a', to: 'b', amount: 8 },
+      { id: 'p2', from: 'a', to: 'b', amount: 4.42 },
+    ]);
   });
 
   it('counts deployments and sums instances, carrying resource/owner details', () => {
