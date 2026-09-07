@@ -24,6 +24,7 @@ import { ChainRail } from 'live/ChainRail';
 import { DetailsPanel } from 'live/DetailsPanel';
 import { FlowCanvas } from 'live/FlowCanvas';
 import { LiveStatusBadge } from 'live/LiveStatusBadge';
+import { NewBlockNotice } from 'live/NewBlockNotice';
 
 import './Live.scss';
 
@@ -318,6 +319,10 @@ export default function Live() {
           <Info size={16} className="live-unavailable-icon" />
           <span>Block data is temporarily unavailable — retrying automatically.</span>
         </div>
+      )}
+
+      {locked && tipHeight != null && tipHeight > selectedHeight && (
+        <NewBlockNotice tipHeight={tipHeight} onReturnToLive={handleReturnToLive} />
       )}
 
       <FlowCanvas
