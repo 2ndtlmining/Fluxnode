@@ -269,6 +269,12 @@ export default function Live() {
     setExpandedCategory((current) => toggleExpandedCategory(current, key));
   }, []);
 
+  // Stable reference — DetailsPanel's focus/scroll/highlight effect depends
+  // on this, and an inline arrow here would change identity on every Live.jsx
+  // render (e.g. the 15s poll tick), re-firing that effect and restarting its
+  // scroll/highlight even though focusedCategory itself never changed.
+  const handleFocusedCategoryHandled = useCallback(() => setFocusedDetailCategory(null), []);
+
   // Always forces a fresh effect run in DetailsPanel even if the same
   // category is clicked twice in a row without an intervening reset —
   // otherwise React sees an unchanged state value on the second click and
@@ -358,7 +364,7 @@ export default function Live() {
           block={displayedBlock}
           globalRankings={globalRankings}
           focusedCategory={focusedDetailCategory}
-          onFocusedCategoryHandled={() => setFocusedDetailCategory(null)}
+          onFocusedCategoryHandled={handleFocusedCategoryHandled}
         />
       </div>
     </div>
