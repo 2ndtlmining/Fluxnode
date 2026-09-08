@@ -61,11 +61,34 @@ export function buildSpecIndex(rawSpecs) {
   const index = {};
   for (const spec of rawSpecs || []) {
     if (!spec?.name) continue;
+    const composeList = Array.isArray(spec.compose) && spec.compose.length > 0 ? spec.compose : null;
     index[spec.name] = {
       ...specResources(spec),
       category: categorizeAppSpec(spec),
-      instances: spec.instances || 1
+      instances: spec.instances || 1,
+      // Per-component repotags, for consumers that need the EXACT image a
+      // specific running container is (not just the spec's primary/first
+      // one) — see repotagForComponent below. Only the name/repotag pairs are
+      // kept; nothing else off `compose` is needed here. null for
+      // single-component and enterprise specs, which have no distinct
+      // components to resolve.
+      compose: composeList ? composeList.map((c) => ({ name: c?.name, repotag: c?.repotag || '' })) : null
     };
   }
   return index;
+}
+
+/**
+ * The exact repotag for one component of a running app, given that app's
+ * buildSpecIndex() entry and the component name recovered from its container
+ * name (fluxinfo.js's componentFromContainer). Falls back to the entry's
+ * aggregate `.repotag` (component 0, or the spec's own top-level repotag for
+ * single-component apps) when the component can't be matched — a spec update
+ * mid-flight, or a null/empty component for a single-component app.
+ */
+export function repotagForComponent(indexEntry, component) {
+  if (!indexEntry) return '';
+  if (!indexEntry.compose || !component) return indexEntry.repotag || '';
+  const match = indexEntry.compose.find((c) => c.name === component);
+  return match?.repotag || indexEntry.repotag || '';
 }

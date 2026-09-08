@@ -7,9 +7,9 @@ import { buildWorkhorseNodes, hostOf, addressOf } from './networkNodes';
  */
 
 const topNodes = [
-  { ip: '82.66.83.104:16147', tier: 'CUMULUS', appCount: 15, containerAppNames: ['a/one:latest', 'b/two:latest'], appNames: ['AppOne', 'AppTwo'] },
-  { ip: '99.56.151.69', tier: 'STRATUS', appCount: 13, containerAppNames: ['c/three:latest'], appNames: ['AppThree'] },
-  { ip: '98.174.3.181', tier: 'CUMULUS', appCount: 11, containerAppNames: ['d/four:latest'], appNames: ['AppFour'] },
+  { ip: '82.66.83.104:16147', tier: 'CUMULUS', appCount: 15, containerAppNames: ['AppOne', 'AppTwo'], appNames: ['AppOne', 'AppTwo'] },
+  { ip: '99.56.151.69', tier: 'STRATUS', appCount: 13, containerAppNames: ['AppThree'], appNames: ['AppThree'] },
+  { ip: '98.174.3.181', tier: 'CUMULUS', appCount: 11, containerAppNames: ['AppFour'], appNames: ['AppFour'] },
 ];
 
 const paymentAddresses = [
@@ -102,7 +102,7 @@ describe('buildWorkhorseNodes', () => {
   });
 
   it('keeps the app container names for the list', () => {
-    expect(out[0].containerAppNames).toEqual(['a/one:latest', 'b/two:latest']);
+    expect(out[0].containerAppNames).toEqual(['AppOne', 'AppTwo']);
   });
 
   it('still renders nodes when benchmarks are unavailable', () => {

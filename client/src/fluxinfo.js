@@ -14,9 +14,10 @@
  *
  * Now: one shared request per refresh, retried with backoff, with the derived
  * aggregate persisted so a failure serves last-known-good marked as stale
- * instead of switching datasets. Only the aggregate is cached (~365 image
- * counts), never the ~465 KB raw payload, and categories are recomputed from it
- * on every read so keyword changes take effect immediately.
+ * instead of switching datasets. Only the derived aggregate is cached, never
+ * the raw payload. Category/repotag detection no longer happens in this
+ * module at all (see the comment on _fluxinfo_aggregate) — it's recomputed
+ * downstream, in runningAppsCategorized.js, on every read.
  */
 
 // `ip` is included so per-node app counts can be attributed to a node — the
@@ -24,8 +25,19 @@
 // a call the page already makes, rather than a second request.
 const FLUXINFO_URL =
   'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Names,ip,tier';
-const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v5'; // v5: Image field removed from the API (#187) — imageCounts replaced by nameCounts, per-node `images` renamed `containerAppNames`
-const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1', 'fluxinfoAggregate_v2', 'fluxinfoAggregate_v3', 'fluxinfoAggregate_v4'];
+// v5: Image field removed from the API (#187) — imageCounts replaced by nameCounts, per-node `images` renamed `containerAppNames`
+// v6: componentCounts + per-node containerComponents added, so running containers
+//     resolve to their OWN component's repotag rather than the app's compose[0].
+//     A v5 entry has neither, which would silently zero wordpressCount and
+//     topRunningApps for up to the 6h stale window, so it is dropped rather than served.
+const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v6';
+const FLUXINFO_STALE_KEYS = [
+  'fluxinfoAggregate_v1',
+  'fluxinfoAggregate_v2',
+  'fluxinfoAggregate_v3',
+  'fluxinfoAggregate_v4',
+  'fluxinfoAggregate_v5'
+];
 const FLUXINFO_STALE_MAX_AGE = 6 * 60 * 60 * 1000; // serve last-known-good for up to 6 hours
 // Enough to fill the showcase with a couple spare, in case one drops offline.
 const TOP_NODES_KEPT = 5;
@@ -57,6 +69,42 @@ export function appNameFromContainer(containerName) {
   return name || null;
 }
 
+/**
+ * Recover the docker COMPONENT name from a container name, the counterpart
+ * to appNameFromContainer. Returns null for a single-component app (no
+ * underscore) — there is no distinct component name to resolve against in
+ * that case, since specResources()/appSpecs.js already falls back to the
+ * spec's own top-level repotag for those.
+ *
+ *   /fluxFoldingAtHome_FoldingAtRunOnFlux29  ->  FoldingAtHome
+ *   /fluxPresearch                           ->  null
+ */
+export function componentFromContainer(containerName) {
+  const raw = (containerName || '').replace(/^\//, '');
+  if (!raw.startsWith('flux')) return null;
+  const body = raw.slice(4);
+  const underscore = body.indexOf('_');
+  return underscore === -1 ? null : body.slice(0, underscore) || null;
+}
+
+/**
+ * The key componentCounts is tallied under, and its inverse.
+ *
+ * '\u0000' can appear in neither a Flux app name nor a docker component name,
+ * so unlike '_' or ':' it can never be ambiguous with the halves it joins.
+ */
+export const COMPONENT_KEY_SEP = '\u0000';
+
+export function componentCountKey(appName, component) {
+  return `${appName}${COMPONENT_KEY_SEP}${component || ''}`;
+}
+
+export function splitComponentCountKey(key) {
+  const sep = key.indexOf(COMPONENT_KEY_SEP);
+  if (sep === -1) return { name: key, component: null }; // not one of ours; treat as app-level
+  return { name: key.slice(0, sep), component: key.slice(sep + 1) || null };
+}
+
 async function _fluxinfo_fetch_once() {
   const res = await fetch(FLUXINFO_URL);
   if (!res.ok) throw new Error('fluxinfo HTTP ' + res.status);
@@ -84,6 +132,14 @@ function _fluxinfo_aggregate(nodes) {
   // are available. This module stays a pure, spec-agnostic reader of
   // fluxinfo, same as before.
   const nameCounts = {};
+  // Same tally, but split one level finer: keyed by app name AND the component
+  // the container actually is (componentCountKey above). An app-level tally
+  // alone cannot say which of a compose app's images a given container runs,
+  // so every container of a 3-component app resolved to compose[0]'s repotag —
+  // which triple-counted WordPress and dropped real images out of the Top
+  // Hosted Apps ranking. Category tallies stay on nameCounts (categorizeAppSpec
+  // already scans every component, so category is app-level by construction).
+  const componentCounts = {};
   const perNode = [];
   let totalContainers = 0;
 
@@ -91,15 +147,28 @@ function _fluxinfo_aggregate(nodes) {
     const running = Array.isArray(item?.apps?.runningapps) ? item.apps.runningapps : [];
     totalContainers += running.length;
 
-    // One name per container, NOT deduped — a 3-component compose app
+    // One entry per container, NOT deduped — a 3-component compose app
     // contributes its app name 3 times, matching the pre-#187 per-container
-    // imageCounts convention (each component counted once).
-    const containerAppNames = running
-      .map((a) => appNameFromContainer(Array.isArray(a?.Names) ? a.Names[0] : null))
-      .filter(Boolean);
+    // imageCounts convention (each component counted once). Containers whose
+    // name does not parse are dropped here, once, so every array derived below
+    // stays index-aligned with every other.
+    const parsedContainers = running
+      .map((a) => {
+        const containerName = Array.isArray(a?.Names) ? a.Names[0] : null;
+        return {
+          name: appNameFromContainer(containerName),
+          component: componentFromContainer(containerName)
+        };
+      })
+      .filter((c) => c.name);
 
-    for (const name of containerAppNames) {
+    const containerAppNames = parsedContainers.map((c) => c.name);
+    const containerComponents = parsedContainers.map((c) => c.component);
+
+    for (const { name, component } of parsedContainers) {
       nameCounts[name] = (nameCounts[name] || 0) + 1;
+      const key = componentCountKey(name, component);
+      componentCounts[key] = (componentCounts[key] || 0) + 1;
     }
 
     const ip = typeof item?.ip === 'string' ? item.ip : '';
@@ -109,6 +178,10 @@ function _fluxinfo_aggregate(nodes) {
         tier: typeof item?.tier === 'string' ? item.tier : null,
         containerCount: running.length,
         containerAppNames,
+        // Index-aligned with containerAppNames: containerComponents[i] is the
+        // component of the container named containerAppNames[i] (null for a
+        // single-component app).
+        containerComponents,
         appNames: [],
       });
 
@@ -129,6 +202,7 @@ function _fluxinfo_aggregate(nodes) {
 
   return {
     nameCounts,
+    componentCounts,
     totalContainers,
     topNodesByApps,
     nodesByIp,

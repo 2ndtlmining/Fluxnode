@@ -9,6 +9,9 @@ const specIndex = {
   minecraft1: { repotag: 'itzg/minecraft-server:latest', category: 'gaming' },
 };
 
+// Every app in this fixture is single-component, so each componentCounts key
+// carries an empty component half — the exact shape fluxinfo produces for
+// `/flux<appname>` containers.
 const aggregate = {
   nameCounts: {
     FoldingAtRunOnFlux1: 1,
@@ -19,9 +22,18 @@ const aggregate = {
     minecraft1: 1,
     unknownApp: 2, // not in specIndex — must not throw, must not silently vanish
   },
+  componentCounts: {
+    'FoldingAtRunOnFlux1\u0000': 1,
+    'FoldingAtRunOnFlux2\u0000': 1,
+    'wordpress123\u0000': 1,
+    'streamr1\u0000': 1,
+    'Presearch\u0000': 1,
+    'minecraft1\u0000': 1,
+    'unknownApp\u0000': 2,
+  },
   nodesByIp: {
-    '1.2.3.4:16127': { containerAppNames: ['streamr1', 'FoldingAtRunOnFlux1'] },
-    '5.6.7.8:16127': { containerAppNames: ['Presearch'] },
+    '1.2.3.4:16127': { containerAppNames: ['streamr1', 'FoldingAtRunOnFlux1'], containerComponents: [null, null] },
+    '5.6.7.8:16127': { containerAppNames: ['Presearch'], containerComponents: [null] },
   },
 };
 
@@ -51,14 +63,15 @@ describe('categorizeRunningApps', () => {
   it('counts streamr/presearch once per NODE that hosts one, not once per container', () => {
     const twoOnOneNode = {
       nameCounts: { streamr1: 2 },
-      nodesByIp: { '1.1.1.1:1': { containerAppNames: ['streamr1', 'streamr1'] } },
+      componentCounts: { 'streamr1\u0000': 2 },
+      nodesByIp: { '1.1.1.1:1': { containerAppNames: ['streamr1', 'streamr1'], containerComponents: [null, null] } },
     };
     const { streamrRunningApps } = categorizeRunningApps(twoOnOneNode, specIndex);
     expect(streamrRunningApps).toBe(1);
   });
 
   it('returns all-zero/empty output for an empty aggregate, without throwing', () => {
-    const result = categorizeRunningApps({ nameCounts: {}, nodesByIp: {} }, {});
+    const result = categorizeRunningApps({ nameCounts: {}, componentCounts: {}, nodesByIp: {} }, {});
     expect(result.runningCategoryMap).toEqual({});
     expect(result.topRunningApps).toEqual([]);
     expect(result.totalRunningApps).toBe(0);
@@ -70,5 +83,121 @@ describe('categorizeRunningApps', () => {
   it('does not throw when nodesByIp or specIndex is missing entirely', () => {
     expect(() => categorizeRunningApps({ nameCounts: { a: 1 } }, undefined)).not.toThrow();
     expect(() => categorizeRunningApps({}, {})).not.toThrow();
+  });
+});
+
+/*
+ * The regression this fix wave exists for.
+ *
+ * A WordPress deployment on Flux is one app running three containers — wp,
+ * mysql and an operator. Resolving each of those by APP NAME gave all three
+ * compose[0]'s image, so one deployment reported as three WordPress instances
+ * (258 network-wide against a true 86) and mysql/shared-db never appeared in
+ * Top Hosted Apps at all.
+ */
+describe('categorizeRunningApps with a multi-component (compose) app', () => {
+  const composeIndex = {
+    wordpressCompose1: {
+      repotag: 'runonflux/wp-nginx:latest', // compose[0], what the old code used for all three
+      category: 'web',
+      compose: [
+        { name: 'wp', repotag: 'runonflux/wp-nginx:latest' },
+        { name: 'mysql', repotag: 'mysql:8.3.0' },
+        { name: 'operator', repotag: 'runonflux/shared-db:latest' },
+      ],
+    },
+  };
+
+  const composeAggregate = {
+    nameCounts: { wordpressCompose1: 3 }, // three containers, one deployment
+    componentCounts: {
+      'wordpressCompose1\u0000wp': 1,
+      'wordpressCompose1\u0000mysql': 1,
+      'wordpressCompose1\u0000operator': 1,
+    },
+    nodesByIp: {
+      '1.2.3.4:16127': {
+        containerAppNames: ['wordpressCompose1', 'wordpressCompose1', 'wordpressCompose1'],
+        containerComponents: ['wp', 'mysql', 'operator'],
+      },
+    },
+  };
+
+  it('counts one WordPress instance for a 3-container deployment, not three', () => {
+    const { wordpressCount } = categorizeRunningApps(composeAggregate, composeIndex);
+    expect(wordpressCount).toBe(1);
+  });
+
+  it('ranks each component under its OWN image', () => {
+    const { topRunningApps } = categorizeRunningApps(composeAggregate, composeIndex);
+    const byImage = Object.fromEntries(topRunningApps.map((r) => [r.image, r.nodeCount]));
+    expect(byImage).toEqual({
+      'runonflux/wp-nginx:latest': 1,
+      'mysql:8.3.0': 1,
+      'runonflux/shared-db:latest': 1,
+    });
+  });
+
+  it('still counts every container toward the app-level category total', () => {
+    const { runningCategoryMap, totalRunningApps } = categorizeRunningApps(composeAggregate, composeIndex);
+    expect(runningCategoryMap.web).toBe(3); // category stays app-level, unchanged by this fix
+    expect(totalRunningApps).toBe(3);
+  });
+
+  it('detects streamr on the component that actually runs it, not just compose[0]', () => {
+    const index = {
+      bundle1: {
+        repotag: 'nginx:latest',
+        category: 'other',
+        compose: [
+          { name: 'front', repotag: 'nginx:latest' },
+          { name: 'broker', repotag: 'streamr/broker-node:latest' },
+        ],
+      },
+    };
+    const agg = {
+      nameCounts: { bundle1: 2 },
+      componentCounts: { 'bundle1\u0000front': 1, 'bundle1\u0000broker': 1 },
+      nodesByIp: {
+        '9.9.9.9:1': { containerAppNames: ['bundle1', 'bundle1'], containerComponents: ['front', 'broker'] },
+      },
+    };
+    expect(categorizeRunningApps(agg, index).streamrRunningApps).toBe(1);
+  });
+
+  it('falls back to the app-level repotag when a node carries no component info', () => {
+    // A cache entry written before containerComponents existed, or a spec
+    // updated mid-flight: resolution degrades to the old behaviour rather
+    // than dropping the node.
+    const agg = {
+      nameCounts: { streamr1: 1 },
+      componentCounts: { 'streamr1\u0000': 1 },
+      nodesByIp: { '1.1.1.1:1': { containerAppNames: ['streamr1'] } },
+    };
+    expect(categorizeRunningApps(agg, specIndex).streamrRunningApps).toBe(1);
+  });
+});
+
+/*
+ * runonflux/orbit is Flux's git-deployment wrapper: whatever it builds is
+ * opaque, so the operator's deployment name says nothing reliable about what
+ * the app does. The pre-#187 aggregation forced these to 'other'; that guard
+ * was lost when categories moved onto the spec index.
+ */
+describe('categorizeRunningApps opaque runtime images', () => {
+  it('puts a git-deployed (orbit) app in "other", not in whatever its name suggests', () => {
+    const index = { myMinecraftThing: { repotag: 'runonflux/orbit:latest', category: 'gaming' } };
+    const agg = { nameCounts: { myMinecraftThing: 4 }, componentCounts: { 'myMinecraftThing\u0000': 4 } };
+
+    const { runningCategoryMap } = categorizeRunningApps(agg, index);
+
+    expect(runningCategoryMap.other).toBe(4);
+    expect(runningCategoryMap.gaming).toBeUndefined();
+  });
+
+  it('leaves every other image categorised by its spec', () => {
+    const { runningCategoryMap } = categorizeRunningApps(aggregate, specIndex);
+    expect(runningCategoryMap.gaming).toBe(1); // minecraft1 is a real minecraft image
+    expect(runningCategoryMap.web).toBe(1);
   });
 });
