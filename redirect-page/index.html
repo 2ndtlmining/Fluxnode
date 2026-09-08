@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FluxNode Dashboard - Temporarily Unavailable</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+    background: radial-gradient(circle at top, #16233a 0%, #0b1220 60%, #070b14 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #e6ebf5;
+  }
+
+  .card {
+    max-width: 520px;
+    width: 100%;
+    background: #131b2e;
+    border: 1px solid #223050;
+    border-radius: 16px;
+    padding: 40px 36px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(45, 212, 191, 0.12);
+    border: 1px solid rgba(45, 212, 191, 0.35);
+    color: #2dd4bf;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+  }
+
+  .badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2dd4bf;
+    box-shadow: 0 0 8px 2px rgba(45, 212, 191, 0.6);
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #f5f7fb;
+  }
+
+  .status {
+    margin: 0 0 20px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #9aa7c2;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .message {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #c4cde3;
+  }
+
+  .message:last-of-type {
+    margin-bottom: 28px;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 13px 28px;
+    border-radius: 10px;
+    background: #2dd4bf;
+    color: #06201c;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    transition: filter 0.15s ease;
+  }
+
+  .btn:hover {
+    filter: brightness(1.08);
+  }
+
+  .countdown {
+    margin: 18px 0 0;
+    font-size: 13px;
+    color: #7d89a8;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge"><span class="dot"></span> Maintenance in progress</div>
+    <h1>FluxNode Dashboard</h1>
+    <p class="status">Temporarily Unavailable</p>
+    <p class="message">
+      Recent API changes introduced in FluxOS v8.18 have affected the accuracy of the data shown here.
+      Our team is reworking the integration to restore full compatibility.
+    </p>
+    <p class="message">
+      In the meantime, please use the official Flux Network Overview below for accurate node and network statistics.
+    </p>
+    <a href="https://stats.runonflux.io/flux/dashboard/overview" class="btn" id="redirect-btn">Go to Dashboard Now</a>
+    <p class="countdown">Redirecting automatically in <span id="countdown">6</span>s&hellip;</p>
+  </div>
+
+  <script>
+    (function () {
+      var TARGET_URL = "https://stats.runonflux.io/flux/dashboard/overview";
+      var SECONDS = 6;
+      var countdownEl = document.getElementById("countdown");
+
+      var timer = setInterval(function () {
+        SECONDS -= 1;
+        if (countdownEl) {
+          countdownEl.textContent = SECONDS;
+        }
+        if (SECONDS <= 0) {
+          clearInterval(timer);
+          window.location.href = TARGET_URL;
+        }
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

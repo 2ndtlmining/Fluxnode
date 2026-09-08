@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.2
+#
+# TEMPORARY MAINTENANCE IMAGE
+# ---------------------------
+# Serves a static notice explaining that the FluxNode dashboard is
+# temporarily inaccurate due to FluxOS v8.18 API changes, and redirects
+# visitors to the official Flux Network Overview instead.
+#
+# This is intentionally separate from the main Dockerfile: it has no
+# build stage, no app code, and no dependency on client/ or api/ being
+# built. It exists purely so ops can swap the running production image
+# to this one during an incident, and swap back once the real app is
+# fixed, without touching the normal build pipeline.
+#
+# Build:
+#   docker build -f Dockerfile.redirect -t <USERNAME>/<REPOSITORY>:redirect-maintenance .
+#
+# Run:
+#   docker run --rm --name flux-node-redirect -p 9000:80 <USERNAME>/<REPOSITORY>:redirect-maintenance
+#
+# Verify:
+#   curl -s http://localhost:9000/ | grep -i "Temporarily Unavailable"
+
+FROM nginx:1.23.3
+
+RUN rm -f /etc/nginx/conf.d/*.conf
+COPY conf/redirect-nginx.conf /etc/nginx/conf.d/app.conf
+COPY redirect-page/ /usr/share/nginx/html/
