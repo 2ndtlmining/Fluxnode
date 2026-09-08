@@ -5,6 +5,8 @@ import {
   calc_mtn_window,
   normalize_raw_node_tier,
   wallet_health_full,
+  fetch_global_app_specs,
+  fetch_global_app_specs_raw,
 } from './apidata';
 
 import {
@@ -170,5 +172,101 @@ describe('wallet_health_full', () => {
       expect(h[tier].projection_daily.flux).toBe(0);
       expect(h[tier].projection_montly.flux).toBe(0);
     }
+  });
+});
+
+describe('fetch_global_app_specs_raw / fetch_global_app_specs', () => {
+  const SPECS = [{ name: 'appA', height: 100, compose: [{ repotag: 'someimage/app:latest', cpu: 1, ram: 512, hdd: 5 }] }];
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  it('fetch_global_app_specs_raw returns the raw spec array', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: SPECS }) });
+    const raw = await fetch_global_app_specs_raw();
+    expect(raw).toEqual(SPECS);
+  });
+
+  it('shares one in-flight request between concurrent callers', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: SPECS }) });
+    const [a, b] = await Promise.all([fetch_global_app_specs_raw(), fetch_global_app_specs_raw()]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(a).toBe(b);
+  });
+
+  it('recomputes expiringToday/deployedToday fresh from the block height on every call, never from a stale cached value', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: SPECS }) });
+
+    // First call at block height 0 (the race this task exists to fix):
+    // appA is not "deployed today" because there is no reliable height yet.
+    const first = await fetch_global_app_specs({ fluxBlockHeight: 0 });
+    expect(first.deployedToday).toEqual([]);
+
+    // Second call moments later, same 5-minute cache window, but with the
+    // real block height available — must NOT read back the first call's
+    // (wrong) cached deployedToday.
+    const second = await fetch_global_app_specs({ fluxBlockHeight: 100 });
+    expect(second.deployedToday).toHaveLength(1);
+    expect(second.deployedToday[0].name).toBe('appA');
+
+    // Only one network fetch for both calls — the raw array is what's shared.
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * Neither of these may ever reject. Three callers have no .catch of their
+   * own — AppsSection, analytics/AppsTab, and fetchTotalDeployedApps, which
+   * sits in fetch_global_stats' bare Promise.all where a rejection takes the
+   * whole Home page load (price, wallet, node counts) down with it.
+   */
+  describe('never rejects', () => {
+    const EMPTY = { expiringToday: [], deployedToday: [], networkCategories: [], rawSpecs: [] };
+
+    it('resolves to empty when data is an object rather than an array', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: { not: 'an array' } }) });
+
+      await expect(fetch_global_app_specs_raw()).resolves.toEqual([]);
+      await expect(fetch_global_app_specs({ fluxBlockHeight: 100 })).resolves.toEqual(EMPTY);
+    });
+
+    it('does not read a malformed cache entry back as a spec array', async () => {
+      sessionStorage.setItem('homeAppSpecsRaw_v1', JSON.stringify({ data: { not: 'an array' }, timestamp: Date.now() }));
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: SPECS }) });
+
+      // The bad cache entry is ignored and a real fetch happens instead.
+      await expect(fetch_global_app_specs_raw()).resolves.toEqual(SPECS);
+    });
+
+    it('resolves to empty when a spec in the array cannot be computed over', async () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: [null] }) });
+
+      await expect(fetch_global_app_specs({ fluxBlockHeight: 100 })).resolves.toEqual(EMPTY);
+      expect(warn).toHaveBeenCalled();
+    });
+
+    it('resolves to empty when the request itself fails', async () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+
+      await expect(fetch_global_app_specs_raw()).resolves.toEqual([]);
+      await expect(fetch_global_app_specs({ fluxBlockHeight: 100 })).resolves.toEqual(EMPTY);
+      expect(warn).toHaveBeenCalled();
+    });
+
+    it('still returns the full shape on the success path', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'success', data: SPECS }) });
+
+      const out = await fetch_global_app_specs({ fluxBlockHeight: 100 });
+
+      expect(Object.keys(out).sort()).toEqual(['deployedToday', 'expiringToday', 'networkCategories', 'rawSpecs']);
+      expect(out.rawSpecs).toEqual(SPECS);
+      expect(out.deployedToday).toHaveLength(1);
+      expect(out.networkCategories).toHaveLength(1);
+    });
   });
 });

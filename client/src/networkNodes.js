@@ -156,7 +156,7 @@ export function buildWorkhorseNodes(
       host,
       appCount: node.appCount,
       containerCount: node.containerCount ?? node.appCount,
-      images: node.images,
+      containerAppNames: node.containerAppNames,
       appNames: node.appNames || [],
       paymentAddress: walletByAddr[addr] || null,
       tier: node.tier || benchEntry?.tier || null,

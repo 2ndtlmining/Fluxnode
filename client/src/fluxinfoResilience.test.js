@@ -1,4 +1,9 @@
-import { fetch_fluxinfo_aggregate, buildCategoryTop, appNameFromContainer } from './fluxinfo';
+import {
+  fetch_fluxinfo_aggregate,
+  buildCategoryTop,
+  appNameFromContainer,
+  componentFromContainer,
+} from './fluxinfo';
 
 /*
  * Regression tests for issue #144.
@@ -12,9 +17,9 @@ import { fetch_fluxinfo_aggregate, buildCategoryTop, appNameFromContainer } from
  */
 
 const NODES = [
-  { apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest' }, { Image: 'runonflux/wp-nginx:latest' }] } },
-  { apps: { runningapps: [{ Image: 'presearch/node:latest' }] } },
-  { apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest' }] } },
+  { apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux1'] }, { Names: ['/fluxwp_wordpress123'] }] } },
+  { apps: { runningapps: [{ Names: ['/fluxPresearch'] }] } },
+  { apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux2'] }] } },
 ];
 
 // A second fixture, WITH `ip` set (the existing NODES fixture above omits it
@@ -24,7 +29,7 @@ const NODES_WITH_IP = [
   {
     ip: '1.2.3.4:16127',
     tier: 'CUMULUS',
-    apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest', Names: ['/fluxFoldingAtRunOnFlux1'] }] },
+    apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux1'] }] },
   },
   {
     ip: '5.6.7.8:16127',
@@ -49,9 +54,9 @@ describe('fetch_fluxinfo_aggregate', () => {
     expect(status).toBe('live');
     expect(aggregate.totalContainers).toBe(4);
     expect(aggregate.nodesReporting).toBe(3);
-    expect(aggregate.wordpressContainers).toBe(1);
-    expect(aggregate.presearchNodes).toBe(1);
-    expect(aggregate.imageCounts['yurinnick/folding-at-home:latest']).toBe(2);
+    expect(aggregate.nameCounts.FoldingAtRunOnFlux1).toBe(1);
+    expect(aggregate.nameCounts.FoldingAtRunOnFlux2).toBe(1);
+    expect(aggregate.nameCounts.wordpress123).toBe(1);
   });
 
   it('retries and succeeds after transient failures', async () => {
@@ -132,7 +137,7 @@ describe('fetch_fluxinfo_aggregate', () => {
     localStorage.setItem(
       'fluxinfoAggregate_v1',
       JSON.stringify({
-        aggregate: { imageCounts: { 'busybox:latest': 1 }, totalContainers: 1 },
+        aggregate: { nameCounts: { busybox: 1 }, totalContainers: 1 },
         timestamp: Date.now() - 7 * 60 * 60 * 1000, // window is 6h
       })
     );
@@ -212,6 +217,99 @@ describe('appNameFromContainer', () => {
   });
 });
 
+describe('componentFromContainer', () => {
+  it('takes the component name from a compose container', () => {
+    expect(componentFromContainer('/fluxFoldingAtHome_FoldingAtRunOnFlux29')).toBe('FoldingAtHome');
+  });
+
+  it('returns null for a single-component app with no underscore', () => {
+    // Nothing to resolve against: appSpecs falls back to the spec's own repotag.
+    expect(componentFromContainer('/fluxPresearch')).toBeNull();
+  });
+
+  it('splits on the first underscore, the same one appNameFromContainer does', () => {
+    expect(componentFromContainer('/fluxbackend_my_app_name')).toBe('backend');
+    expect(appNameFromContainer('/fluxbackend_my_app_name')).toBe('my_app_name');
+  });
+
+  it('ignores containers that are not Flux apps', () => {
+    expect(componentFromContainer('/watchtower')).toBeNull();
+    expect(componentFromContainer('')).toBeNull();
+    expect(componentFromContainer(undefined)).toBeNull();
+  });
+});
+
+describe('fetch_fluxinfo_aggregate componentCounts', () => {
+  it('tallies each container under its app name AND its component', async () => {
+    global.fetch = jest.fn().mockResolvedValue(okResponse(NODES));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+
+    expect(aggregate.componentCounts['FoldingAtRunOnFlux1\u0000FoldingAtHome']).toBe(1);
+    expect(aggregate.componentCounts['FoldingAtRunOnFlux2\u0000FoldingAtHome']).toBe(1);
+    expect(aggregate.componentCounts['wordpress123\u0000wp']).toBe(1);
+    // Single-component app: empty-string component half, never absent.
+    expect(aggregate.componentCounts['Presearch\u0000']).toBe(1);
+    // Every container is counted exactly once, same as nameCounts.
+    expect(Object.values(aggregate.componentCounts).reduce((s, n) => s + n, 0)).toBe(
+      Object.values(aggregate.nameCounts).reduce((s, n) => s + n, 0)
+    );
+  });
+
+  it('keeps each component of one multi-component app apart', async () => {
+    // The bug this exists to catch: all three of these used to collapse into
+    // one app-level tally, and so all resolved to compose[0]'s image.
+    const compose = [
+      {
+        ip: '9.9.9.9:16127',
+        apps: {
+          runningapps: [
+            { Names: ['/fluxwp_wordpress1'] },
+            { Names: ['/fluxmysql_wordpress1'] },
+            { Names: ['/fluxoperator_wordpress1'] },
+          ],
+        },
+      },
+    ];
+    global.fetch = jest.fn().mockResolvedValue(okResponse(compose));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+
+    expect(aggregate.nameCounts.wordpress1).toBe(3);
+    expect(aggregate.componentCounts['wordpress1\u0000wp']).toBe(1);
+    expect(aggregate.componentCounts['wordpress1\u0000mysql']).toBe(1);
+    expect(aggregate.componentCounts['wordpress1\u0000operator']).toBe(1);
+  });
+
+  it('keeps containerComponents index-aligned with containerAppNames on every node', async () => {
+    // An unparseable container in the middle must drop out of BOTH arrays, or
+    // every container after it resolves against the wrong component.
+    const mixed = [
+      {
+        ip: '1.2.3.4:16127',
+        apps: {
+          runningapps: [
+            { Names: ['/fluxwp_wordpress1'] },
+            { Names: ['/watchtower'] }, // not a Flux app
+            { Names: null }, // malformed
+            { Names: ['/fluxPresearch'] },
+          ],
+        },
+      },
+    ];
+    global.fetch = jest.fn().mockResolvedValue(okResponse(mixed));
+
+    const { aggregate } = await fetch_fluxinfo_aggregate();
+    const node = aggregate.nodesByIp['1.2.3.4:16127'];
+
+    expect(node.containerAppNames).toEqual(['wordpress1', 'Presearch']);
+    expect(node.containerComponents).toEqual(['wp', null]);
+    expect(node.containerComponents).toHaveLength(node.containerAppNames.length);
+    // containerCount still counts every reported container, parsed or not.
+    expect(node.containerCount).toBe(4);
+  });
+});
+
 describe('fetch_fluxinfo_aggregate nodesByIp', () => {
   it('keeps a full per-node lookup, not just the top N kept in topNodesByApps', async () => {
     global.fetch = jest.fn().mockResolvedValue(okResponse(NODES_WITH_IP));
@@ -221,7 +319,7 @@ describe('fetch_fluxinfo_aggregate nodesByIp', () => {
     expect(Object.keys(aggregate.nodesByIp)).toEqual(['1.2.3.4:16127']);
     expect(aggregate.nodesByIp['1.2.3.4:16127'].appCount).toBe(1);
     expect(aggregate.nodesByIp['1.2.3.4:16127'].tier).toBe('CUMULUS');
-    expect(aggregate.nodesByIp['1.2.3.4:16127'].images).toEqual(['yurinnick/folding-at-home:latest']);
+    expect(aggregate.nodesByIp['1.2.3.4:16127'].containerAppNames).toEqual(['FoldingAtRunOnFlux1']);
   });
 
   it('omits a node with no running apps from nodesByIp, same as topNodesByApps', async () => {

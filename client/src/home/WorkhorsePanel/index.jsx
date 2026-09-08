@@ -6,7 +6,6 @@ import { FiCpu, FiHardDrive, FiDownload, FiUpload, FiBox } from 'react-icons/fi'
 
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
-import { categorizeApp, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { buildSpecIndex } from 'appSpecs';
 
 const ROTATE_MS = 8000;
@@ -88,12 +87,12 @@ function NodeCard({ node, specsByName }) {
 
   const categories = useMemo(() => {
     const counts = {};
-    for (const image of node.images || []) {
-      const cat = isOpaqueRuntimeImage(image) ? 'other' : categorizeApp(image.toLowerCase());
+    for (const name of node.containerAppNames || []) {
+      const cat = specsByName?.[name]?.category || 'other';
       counts[cat] = (counts[cat] || 0) + 1;
     }
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [node.images]);
+  }, [node.containerAppNames, specsByName]);
 
   const tierColor = TIER_COLOR[node.tier] || 'var(--text-tertiary)';
   const b = node.benchmark;

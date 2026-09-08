@@ -14,18 +14,30 @@
  *
  * Now: one shared request per refresh, retried with backoff, with the derived
  * aggregate persisted so a failure serves last-known-good marked as stale
- * instead of switching datasets. Only the aggregate is cached (~365 image
- * counts), never the ~465 KB raw payload, and categories are recomputed from it
- * on every read so keyword changes take effect immediately.
+ * instead of switching datasets. Only the derived aggregate is cached, never
+ * the raw payload. Category/repotag detection no longer happens in this
+ * module at all (see the comment on _fluxinfo_aggregate) — it's recomputed
+ * downstream, in runningAppsCategorized.js, on every read.
  */
 
 // `ip` is included so per-node app counts can be attributed to a node — the
 // Workhorse showcase ranks nodes by how many apps they host. Costs ~158 KB on
 // a call the page already makes, rather than a second request.
 const FLUXINFO_URL =
-  'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Image,apps.runningapps.Names,ip,tier';
-const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v4'; // v4: adds nodesByIp (full per-node app lookup, not just top N)
-const FLUXINFO_STALE_KEYS = ['fluxinfoAggregate_v1', 'fluxinfoAggregate_v2', 'fluxinfoAggregate_v3'];
+  'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Names,ip,tier';
+// v5: Image field removed from the API (#187) — imageCounts replaced by nameCounts, per-node `images` renamed `containerAppNames`
+// v6: componentCounts + per-node containerComponents added, so running containers
+//     resolve to their OWN component's repotag rather than the app's compose[0].
+//     A v5 entry has neither, which would silently zero wordpressCount and
+//     topRunningApps for up to the 6h stale window, so it is dropped rather than served.
+const FLUXINFO_CACHE_KEY = 'fluxinfoAggregate_v6';
+const FLUXINFO_STALE_KEYS = [
+  'fluxinfoAggregate_v1',
+  'fluxinfoAggregate_v2',
+  'fluxinfoAggregate_v3',
+  'fluxinfoAggregate_v4',
+  'fluxinfoAggregate_v5'
+];
 const FLUXINFO_STALE_MAX_AGE = 6 * 60 * 60 * 1000; // serve last-known-good for up to 6 hours
 // Enough to fill the showcase with a couple spare, in case one drops offline.
 const TOP_NODES_KEPT = 5;
@@ -57,6 +69,42 @@ export function appNameFromContainer(containerName) {
   return name || null;
 }
 
+/**
+ * Recover the docker COMPONENT name from a container name, the counterpart
+ * to appNameFromContainer. Returns null for a single-component app (no
+ * underscore) — there is no distinct component name to resolve against in
+ * that case, since specResources()/appSpecs.js already falls back to the
+ * spec's own top-level repotag for those.
+ *
+ *   /fluxFoldingAtHome_FoldingAtRunOnFlux29  ->  FoldingAtHome
+ *   /fluxPresearch                           ->  null
+ */
+export function componentFromContainer(containerName) {
+  const raw = (containerName || '').replace(/^\//, '');
+  if (!raw.startsWith('flux')) return null;
+  const body = raw.slice(4);
+  const underscore = body.indexOf('_');
+  return underscore === -1 ? null : body.slice(0, underscore) || null;
+}
+
+/**
+ * The key componentCounts is tallied under, and its inverse.
+ *
+ * '\u0000' can appear in neither a Flux app name nor a docker component name,
+ * so unlike '_' or ':' it can never be ambiguous with the halves it joins.
+ */
+export const COMPONENT_KEY_SEP = '\u0000';
+
+export function componentCountKey(appName, component) {
+  return `${appName}${COMPONENT_KEY_SEP}${component || ''}`;
+}
+
+export function splitComponentCountKey(key) {
+  const sep = key.indexOf(COMPONENT_KEY_SEP);
+  if (sep === -1) return { name: key, component: null }; // not one of ours; treat as app-level
+  return { name: key.slice(0, sep), component: key.slice(sep + 1) || null };
+}
+
 async function _fluxinfo_fetch_once() {
   const res = await fetch(FLUXINFO_URL);
   if (!res.ok) throw new Error('fluxinfo HTTP ' + res.status);
@@ -75,99 +123,87 @@ async function _fluxinfo_fetch_once() {
  * used to throw a TypeError here and wipe the whole category map.
  */
 function _fluxinfo_aggregate(nodes) {
-  const streamrImage = process.env.REACT_APP_STREAMR || 'streamr/broker-node:latest';
-  const presearchImage = process.env.REACT_APP_PRE_SEARCH || 'presearch/node:latest';
-
-  const imageCounts = {};
-  // Per-node app lists, kept only for the busiest handful. Retaining all ~6,500
-  // would bloat the cached aggregate for no benefit — the showcase needs three.
+  // Per-app-name running-container tally. Category/repotag/watchtower/
+  // wordpress/streamr/presearch detection all used to be image-substring
+  // matches done right here — fluxinfo no longer reports an image at all
+  // (issue #187), so none of that can happen in this module any more. It now
+  // moves to runningAppsCategorized.js, which joins this name-keyed tally
+  // against globalappsspecifications (still has the real repotag) once both
+  // are available. This module stays a pure, spec-agnostic reader of
+  // fluxinfo, same as before.
+  const nameCounts = {};
+  // Same tally, but split one level finer: keyed by app name AND the component
+  // the container actually is (componentCountKey above). An app-level tally
+  // alone cannot say which of a compose app's images a given container runs,
+  // so every container of a 3-component app resolved to compose[0]'s repotag —
+  // which triple-counted WordPress and dropped real images out of the Top
+  // Hosted Apps ranking. Category tallies stay on nameCounts (categorizeAppSpec
+  // already scans every component, so category is app-level by construction).
+  const componentCounts = {};
   const perNode = [];
   let totalContainers = 0;
-  let watchtowerContainers = 0;
-  let wordpressContainers = 0;
-  let streamrNodes = 0;
-  let presearchNodes = 0;
 
   for (const item of nodes) {
     const running = Array.isArray(item?.apps?.runningapps) ? item.apps.runningapps : [];
     totalContainers += running.length;
 
-    // streamr / presearch are counted per NODE, matching the original behaviour
-    let hasStreamr = false;
-    let hasPresearch = false;
+    // One entry per container, NOT deduped — a 3-component compose app
+    // contributes its app name 3 times, matching the pre-#187 per-container
+    // imageCounts convention (each component counted once). Containers whose
+    // name does not parse are dropped here, once, so every array derived below
+    // stays index-aligned with every other.
+    const parsedContainers = running
+      .map((a) => {
+        const containerName = Array.isArray(a?.Names) ? a.Names[0] : null;
+        return {
+          name: appNameFromContainer(containerName),
+          component: componentFromContainer(containerName)
+        };
+      })
+      .filter((c) => c.name);
 
-    for (const app of running) {
-      const image = typeof app?.Image === 'string' ? app.Image : '';
-      if (!image) continue;
+    const containerAppNames = parsedContainers.map((c) => c.name);
+    const containerComponents = parsedContainers.map((c) => c.component);
 
-      imageCounts[image] = (imageCounts[image] || 0) + 1;
-
-      const lower = image.toLowerCase();
-      if (lower.includes('containrrr/watchtower')) watchtowerContainers++;
-      if (lower === 'runonflux/wp-nginx' || lower.startsWith('runonflux/wp-nginx:')) wordpressContainers++;
-      if (image.includes(streamrImage)) hasStreamr = true;
-      if (image.includes(presearchImage)) hasPresearch = true;
+    for (const { name, component } of parsedContainers) {
+      nameCounts[name] = (nameCounts[name] || 0) + 1;
+      const key = componentCountKey(name, component);
+      componentCounts[key] = (componentCounts[key] || 0) + 1;
     }
-
-    if (hasStreamr) streamrNodes++;
-    if (hasPresearch) presearchNodes++;
 
     const ip = typeof item?.ip === 'string' ? item.ip : '';
     if (ip && running.length > 0) {
       perNode.push({
         ip,
-        // Tier comes from here rather than the benchmark projection: this call
-        // is ~726 KB and reliable, that one is 3.45 MB and has been observed
-        // returning status=error for minutes at a time.
         tier: typeof item?.tier === 'string' ? item.tier : null,
-        // Containers, kept for the utilisation reading. Not the ranking metric:
-        // a compose app runs one container per component, so a node with 13
-        // containers can be hosting as few as 6 apps.
         containerCount: running.length,
-        images: running.map((a) => (typeof a?.Image === 'string' ? a.Image : '')).filter(Boolean),
-        // Deployed app names, so the showcase can look each one up in the
-        // global app specs for its category and resource reservation.
-        appNames: []
+        containerAppNames,
+        // Index-aligned with containerAppNames: containerComponents[i] is the
+        // component of the container named containerAppNames[i] (null for a
+        // single-component app).
+        containerComponents,
+        appNames: [],
       });
 
-      // Distinct deployed apps — "hosting the most apps" means apps, not
-      // containers. Populated after the push so appCount can be derived from it.
-      const names = [
-        ...new Set(
-          running
-            .map((a) => appNameFromContainer(Array.isArray(a?.Names) ? a.Names[0] : null))
-            .filter(Boolean)
-        )
-      ];
+      const names = [...new Set(containerAppNames)];
       const entry = perNode[perNode.length - 1];
       entry.appNames = names;
       entry.appCount = names.length || running.length;
     }
   }
 
-  // Descending by app count, ties broken on ip so the order is stable between
-  // refreshes rather than reshuffling on equal counts.
   perNode.sort((a, b) => b.appCount - a.appCount || a.ip.localeCompare(b.ip));
   const topNodesByApps = perNode.slice(0, TOP_NODES_KEPT);
 
-  // Keyed lookup covering EVERY reporting node with running apps, not just
-  // the top N kept above. topNodesByApps exists for the Workhorse showcase's
-  // "busiest nodes network-wide" need; nodesByIp exists for the opposite
-  // need — "what's running on THIS SPECIFIC node" (e.g. a donor's own
-  // wallet's nodes, which are essentially never in the top N). Same
-  // underlying computation (perNode), just not thrown away.
   const nodesByIp = {};
   for (const entry of perNode) {
     nodesByIp[entry.ip.trim()] = entry;
   }
 
   return {
-    imageCounts,
+    nameCounts,
+    componentCounts,
     totalContainers,
-    watchtowerContainers,
-    wordpressContainers,
-    streamrNodes,
-    presearchNodes,
     topNodesByApps,
     nodesByIp,
     nodesReporting: nodes.length
@@ -188,7 +224,7 @@ function _fluxinfo_read_cache() {
     const raw = localStorage.getItem(FLUXINFO_CACHE_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw);
-    if (!cached?.aggregate?.imageCounts) return null;
+    if (!cached?.aggregate?.nameCounts) return null;
     if (Date.now() - cached.timestamp > FLUXINFO_STALE_MAX_AGE) return null;
     return cached;
   } catch {

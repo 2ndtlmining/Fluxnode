@@ -1,43 +1,38 @@
-import { categorizeApp } from 'main/Gamification/appCategories';
 import { addressOf } from 'networkNodes';
 
 /*
  * Pure: tally the donor's own running apps by category, from the IP-keyed
- * lookup Task 1 added to fluxinfo.js's fetch_fluxinfo_aggregate() output
- * (nodesByIp — added specifically so a wallet's own, typically-not-top-5
- * nodes are visible here at all; the pre-existing topNodesByApps only ever
- * covers the network's 5 busiest nodes).
+ * lookup fetch_fluxinfo_aggregate() carries as nodesByIp, joined against a
+ * name-keyed spec index (appSpecs.js's buildSpecIndex) for category —
+ * fluxinfo no longer reports a docker image (issue #187), so category can
+ * only be recovered by joining the running app's name to its
+ * globalappsspecifications repotag, same as runningAppsCategorized.js does
+ * network-wide. A running app whose spec can't be found (e.g. it expired
+ * between the two independent fetches) falls back to 'other' rather than
+ * being dropped from the tally.
  *
- * Categorizes by DOCKER IMAGE (repotag), not app name — this codebase's
- * established preference (main/Gamification/appCategories.js's own header
- * comment, and categorizeAppSpec's identical choice): the repotag is right
- * far more often than the user-chosen name.
- *
- * Tallies one entry per running CONTAINER, matching the network-wide App
- * Ecosystem panel's own convention — a multi-component compose app
- * contributes one count per component, not one per app. containrrr/watchtower
- * is excluded from that tally: every Flux node runs it to auto-update its
- * own containers, so it's infrastructure the node runs for itself, not
- * something the donor deployed — apidata.js's own totalRunningApps figure
- * (apidata.js:505) already excludes it network-wide for the same reason.
+ * containrrr/watchtower is excluded from the tally by its resolved repotag:
+ * every Flux node runs it to auto-update its own containers, so it's
+ * infrastructure the node runs for itself, not something the donor deployed.
  *
  * Addresses are normalized via addressOf() before lookup, matching
- * donorUtilization.js's own normalization — a whitespace/format mismatch
- * here would otherwise silently render "no apps" indistinguishable from a
- * real empty result.
+ * donorUtilization.js's own normalization.
  */
-export function aggregateDonorAppsByCategory(nodesByIp, donorAddresses) {
+export function aggregateDonorAppsByCategory(nodesByIp, donorAddresses, specIndex) {
   const perCategory = {};
   let totalApps = 0;
+  const index = specIndex || {};
 
   for (const rawAddr of donorAddresses || []) {
     const node = nodesByIp?.[addressOf(rawAddr)];
     if (!node) continue;
 
-    for (const image of node.images || []) {
-      if (image.toLowerCase().includes('containrrr/watchtower')) continue;
+    for (const name of node.containerAppNames || []) {
+      const spec = index[name];
+      const repotag = spec?.repotag || '';
+      if (repotag.toLowerCase().includes('containrrr/watchtower')) continue;
 
-      const cat = categorizeApp(image);
+      const cat = spec?.category || 'other';
       perCategory[cat] = (perCategory[cat] || 0) + 1;
       totalApps++;
     }
