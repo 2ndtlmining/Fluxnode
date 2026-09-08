@@ -7,9 +7,9 @@ import { buildWorkhorseNodes, hostOf, addressOf } from './networkNodes';
  */
 
 const topNodes = [
-  { ip: '82.66.83.104:16147', tier: 'CUMULUS', appCount: 15, images: ['a/one:latest', 'b/two:latest'], appNames: ['AppOne', 'AppTwo'] },
-  { ip: '99.56.151.69', tier: 'STRATUS', appCount: 13, images: ['c/three:latest'], appNames: ['AppThree'] },
-  { ip: '98.174.3.181', tier: 'CUMULUS', appCount: 11, images: ['d/four:latest'], appNames: ['AppFour'] },
+  { ip: '82.66.83.104:16147', tier: 'CUMULUS', appCount: 15, containerAppNames: ['a/one:latest', 'b/two:latest'], appNames: ['AppOne', 'AppTwo'] },
+  { ip: '99.56.151.69', tier: 'STRATUS', appCount: 13, containerAppNames: ['c/three:latest'], appNames: ['AppThree'] },
+  { ip: '98.174.3.181', tier: 'CUMULUS', appCount: 11, containerAppNames: ['d/four:latest'], appNames: ['AppFour'] },
 ];
 
 const paymentAddresses = [
@@ -101,8 +101,8 @@ describe('buildWorkhorseNodes', () => {
     });
   });
 
-  it('keeps the app images for the list', () => {
-    expect(out[0].images).toEqual(['a/one:latest', 'b/two:latest']);
+  it('keeps the app container names for the list', () => {
+    expect(out[0].containerAppNames).toEqual(['a/one:latest', 'b/two:latest']);
   });
 
   it('still renders nodes when benchmarks are unavailable', () => {
@@ -139,7 +139,7 @@ describe('buildWorkhorseNodes', () => {
     const nothing = buildWorkhorseNodes(topNodes, [], [], [], []);
     expect(nothing).toHaveLength(3);
     expect(nothing[0].appCount).toBe(15);
-    expect(nothing[0].images).toHaveLength(2);
+    expect(nothing[0].containerAppNames).toHaveLength(2);
   });
 
   it('respects the limit', () => {
@@ -163,7 +163,7 @@ describe('wallet linkage', () => {
   it("does not attribute a co-located node's wallet to its neighbour", () => {
     // 82.66.83.104 runs three nodes on different ports, each with its own
     // wallet. Joining on the bare IP silently merged them.
-    const sameMachine = [{ ip: '82.66.83.104:16167', tier: 'CUMULUS', appCount: 9, images: [], appNames: [] }];
+    const sameMachine = [{ ip: '82.66.83.104:16167', tier: 'CUMULUS', appCount: 9, containerAppNames: [], appNames: [] }];
     const res = buildWorkhorseNodes(sameMachine, benchmarks, geolocations, resources, paymentAddresses);
     expect(res[0].paymentAddress).toBe('t1DIFFERENTnodeSameMachine0000000000');
   });
