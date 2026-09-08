@@ -123,6 +123,23 @@
   flex: 1;
 }
 
+// ── Temporarily unavailable (spec §79: informative, not alarming) ────────
+// Reuses the confirmations amber (categoryMeta.js / DETAIL_SECTIONS's
+// "confirm" color, #eab308) as one calm "source is delayed" tone shared by
+// every category, rather than each card's own --card-accent — this is a
+// data-availability signal, not a per-category highlight, so it stays fixed
+// regardless of which quadrant it appears in.
+.live-flow-card--unavailable {
+  border-color: color-mix(in srgb, #eab308 40%, var(--border-primary));
+  background: color-mix(in srgb, #eab308 6%, var(--surface-primary));
+}
+
+.live-flow-card-unavailable {
+  font-size: var(--live-fs-sm);
+  color: var(--text-secondary);
+  flex: 1;
+}
+
 .live-flow-card-expanded-body {
   flex: 1;
   display: flex;

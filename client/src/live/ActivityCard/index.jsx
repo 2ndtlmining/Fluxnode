@@ -115,7 +115,7 @@ const EXPANDED_BODY_COMPONENT = {
  * category summary and expansion presentation").
  */
 export const ActivityCard = React.forwardRef(function ActivityCard(
-  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, summary, isExpanded, isDimmed, isPulsing, onToggle, onViewDetails },
+  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, unavailable, unavailableLabel, summary, isExpanded, isDimmed, isPulsing, onToggle, onViewDetails },
   ref
 ) {
   const Icon = def.Icon;
@@ -139,7 +139,8 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
   const classes = [
     'live-flow-card',
     `live-flow-card--${quadrant}`,
-    isEmpty && 'live-flow-card--empty',
+    isEmpty && !unavailable && 'live-flow-card--empty',
+    unavailable && 'live-flow-card--unavailable',
     isExpanded && 'live-flow-card--expanded',
     isDimmed && 'live-flow-card--dimmed',
     isPulsing && 'live-flow-card--pulse',
@@ -184,6 +185,8 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
             View full details <ArrowRight size={12} />
           </button>
         </div>
+      ) : unavailable ? (
+        <div className="live-flow-card-unavailable">{unavailableLabel}</div>
       ) : isEmpty ? (
         <div className="live-flow-card-empty">{emptyLabel}</div>
       ) : (

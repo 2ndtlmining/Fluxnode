@@ -98,6 +98,13 @@
   padding: 4px 2px;
 }
 
+// Spec §79: informative, not alarming — plain text, no red/error styling.
+.live-detail-unavailable {
+  color: var(--text-secondary);
+  font-size: var(--live-fs-base);
+  padding: 4px 2px;
+}
+
 .live-detail-row {
   display: grid;
   grid-template-columns: auto 1fr auto auto;

@@ -100,7 +100,7 @@ function ConfirmRow({ event, globalRankings }) {
 
 const ROW_COMPONENT = { reward: RewardRow, p2p: P2pRow, deploy: DeployRow, confirm: ConfirmRow };
 
-function Section({ def, events, expanded, onToggle, globalRankings, headerRef, focused }) {
+function Section({ def, events, expanded, onToggle, globalRankings, headerRef, focused, unavailable }) {
   const Icon = def.Icon;
   const RowComponent = ROW_COMPONENT[def.key];
   const items = (events || []).filter((e) => (def.key === 'reward' ? e.type === 'reward' : e.type === def.key));
@@ -127,7 +127,9 @@ function Section({ def, events, expanded, onToggle, globalRankings, headerRef, f
 
       {expanded && (
         <div className="live-detail-section-body">
-          {items.length === 0 ? (
+          {unavailable ? (
+            <div className="live-detail-unavailable">{def.unavailableLabel || 'Data temporarily unavailable — retrying automatically'}</div>
+          ) : items.length === 0 ? (
             <div className="live-detail-empty">{def.emptyLabel || 'None this block'}</div>
           ) : (
             items.map((e) => <RowComponent key={e.id} event={e} globalRankings={globalRankings} />)
@@ -224,6 +226,7 @@ export function DetailsPanel({ block, globalRankings, focusedCategory, onFocused
               globalRankings={globalRankings}
               headerRef={sectionHeaderRefs[def.key]}
               focused={highlightedKey === def.key}
+              unavailable={block?.unavailable?.[def.key]}
             />
           ))}
         </div>

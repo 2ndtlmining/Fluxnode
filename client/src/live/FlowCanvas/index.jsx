@@ -17,12 +17,14 @@ const CARD_KEYS = ['reward', 'deploy', 'p2p', 'confirm'];
 function cardContentFor(key, summary) {
   switch (key) {
     case 'reward': {
-      const { count, totalFlux, tiers } = summary.rewards;
+      const { count, totalFlux, tiers, unavailable } = summary.rewards;
       return {
         count,
         primary: `${totalFlux.toFixed(2)} FLUX`,
         secondary: tiers.map((t) => t.label).join(' · '),
         emptyLabel: 'No rewards paid out yet this block',
+        unavailable,
+        unavailableLabel: 'Reward data temporarily unavailable — retrying automatically',
       };
     }
     case 'deploy': {
@@ -35,21 +37,25 @@ function cardContentFor(key, summary) {
       };
     }
     case 'p2p': {
-      const { count, totalFlux } = summary.p2p;
+      const { count, totalFlux, unavailable } = summary.p2p;
       return {
         count,
         primary: `${totalFlux.toFixed(4)} FLUX moved`,
         secondary: null,
         emptyLabel: 'No wallet-to-wallet transfers detected in this block',
+        unavailable,
+        unavailableLabel: 'P2P transfer data temporarily unavailable — retrying automatically',
       };
     }
     case 'confirm': {
-      const { count, byTier } = summary.confirmations;
+      const { count, byTier, unavailable } = summary.confirmations;
       return {
         count,
         primary: `${count} confirmation${count === 1 ? '' : 's'}`,
         secondary: byTier.map((t) => `${t.count} ${t.label}`).join(' · '),
         emptyLabel: 'No node confirmations seen yet this block',
+        unavailable,
+        unavailableLabel: 'Confirmation data temporarily unavailable — retrying automatically',
       };
     }
     default:
@@ -114,6 +120,8 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
             primary={content.primary}
             secondary={content.secondary}
             emptyLabel={content.emptyLabel}
+            unavailable={content.unavailable}
+            unavailableLabel={content.unavailableLabel}
             summary={summary}
             isExpanded={expandedCategory === key}
             isDimmed={expandedCategory != null && expandedCategory !== key}
