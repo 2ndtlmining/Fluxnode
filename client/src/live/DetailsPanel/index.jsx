@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactCountryFlag from 'react-country-flag';
 import { ChevronDown } from 'lucide-react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
@@ -100,19 +100,22 @@ function ConfirmRow({ event, globalRankings }) {
 
 const ROW_COMPONENT = { reward: RewardRow, p2p: P2pRow, deploy: DeployRow, confirm: ConfirmRow };
 
-function Section({ def, events, expanded, onToggle, globalRankings }) {
+function Section({ def, events, expanded, onToggle, globalRankings, headerRef, focused }) {
   const Icon = def.Icon;
   const RowComponent = ROW_COMPONENT[def.key];
   const items = (events || []).filter((e) => (def.key === 'reward' ? e.type === 'reward' : e.type === def.key));
 
   return (
-    <div className="live-detail-section">
+    <div
+      className={`live-detail-section${focused ? ' live-detail-section--focused' : ''}`}
+      style={{ '--section-accent': def.color }}
+    >
       <button
         type="button"
+        ref={headerRef}
         className="live-detail-section-header"
         onClick={onToggle}
         aria-expanded={expanded}
-        style={{ '--section-accent': def.color }}
       >
         <span className="live-detail-section-icon" style={{ color: def.color }}>
           <Icon size={14} />
@@ -149,10 +152,48 @@ const DEFAULT_COLLAPSED_KEYS = new Set(['confirm']);
  * component just renders it. `globalRankings` feeds the confirmation rows'
  * cheap country/rank enrichment (see live/apidata.js's lookupNodeInfo).
  */
-export function DetailsPanel({ block, globalRankings }) {
+export function DetailsPanel({ block, globalRankings, focusedCategory, onFocusedCategoryHandled }) {
   const [expandedKeys, setExpandedKeys] = useState(
     () => new Set([...ALL_SECTION_KEYS].filter((k) => !DEFAULT_COLLAPSED_KEYS.has(k)))
   );
+  const [highlightedKey, setHighlightedKey] = useState(null);
+  const sectionHeaderRefs = useRef({
+    reward: React.createRef(),
+    p2p: React.createRef(),
+    deploy: React.createRef(),
+    confirm: React.createRef(),
+  }).current;
+  // Mirrors home/WorkhorsePanel's existing reduced-motion check — this is the
+  // first place in live/ that needs the JS-side (not just CSS-side) answer,
+  // to pick 'smooth' vs 'auto' scrollIntoView behavior.
+  const prefersReducedMotion = useRef(
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  ).current;
+
+  // Spec §38: expand the matching section, scroll it into view, briefly
+  // highlight its header, then clear the highlight after ~1.5s. Runs once per
+  // distinct focusedCategory value (Live.jsx's handleViewFullDetails always
+  // clears then re-sets it, even for the same category twice in a row, so
+  // clicking "View full details" again always replays this).
+  useEffect(() => {
+    if (!focusedCategory) return undefined;
+    setExpandedKeys((prev) => {
+      if (prev.has(focusedCategory)) return prev;
+      const next = new Set(prev);
+      next.add(focusedCategory);
+      return next;
+    });
+    sectionHeaderRefs[focusedCategory]?.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
+    setHighlightedKey(focusedCategory);
+    const timer = setTimeout(() => {
+      setHighlightedKey(null);
+      onFocusedCategoryHandled?.();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [focusedCategory, onFocusedCategoryHandled, prefersReducedMotion, sectionHeaderRefs]);
 
   const toggle = (key) => {
     setExpandedKeys((prev) => {
@@ -181,6 +222,8 @@ export function DetailsPanel({ block, globalRankings }) {
               expanded={expandedKeys.has(def.key)}
               onToggle={() => toggle(def.key)}
               globalRankings={globalRankings}
+              headerRef={sectionHeaderRefs[def.key]}
+              focused={highlightedKey === def.key}
             />
           ))}
         </div>

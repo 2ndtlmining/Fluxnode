@@ -226,3 +226,20 @@
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   margin-left: auto;
 }
+
+.live-detail-section--focused {
+  animation: live-detail-section-flash 1.5s ease-out;
+}
+
+@keyframes live-detail-section-flash {
+  0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--section-accent, #3b82f6) 55%, transparent); }
+  70% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--section-accent, #3b82f6) 55%, transparent); }
+  100% { box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-detail-section--focused {
+    animation: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--section-accent, #3b82f6) 55%, transparent);
+  }
+}
