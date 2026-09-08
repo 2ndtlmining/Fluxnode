@@ -1302,107 +1302,112 @@ export async function fetch_global_performance_rankings() {
 /* =================== GLOBAL APP SPECIFICATIONS ================= */
 /* ================================================================ */
 
-// v2: enterprise apps now report null (unknown) resources instead of 0, so the
-// cached shape changed. Older code does spec.cpuPerInst.toFixed(2) unguarded
-// and would crash on a v1-keyed cache written by this version — bumping the key
-// keeps a rollback safe.
-const HOME_APP_SPECS_CACHE_KEY = 'homeAppSpecs_v2';
+const BLOCKS_PER_DAY = 2880; // 30 sec/block
 
-/*
- * Keys this module used to write. sessionStorage runs ~85% full on a normal
- * load (globalPerfRankings_v3 alone is ~2.9 MB of a ~5 MB quota), so leaving a
- * ~1.3 MB orphan behind after a key bump is enough to push the new write over
- * the limit. setItem is wrapped in a silent catch, so that failure is invisible
- * and caching just quietly stops working.
- */
-const HOME_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v1'];
+const RAW_APP_SPECS_CACHE_KEY = 'homeAppSpecsRaw_v1';
+const RAW_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const RAW_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v2']; // old key cached the full computed (height-dependent) result
+
+let _rawAppSpecsInFlight = null;
 
 function _prune_stale_app_spec_caches() {
-  for (const key of HOME_APP_SPECS_STALE_KEYS) {
+  for (const key of RAW_APP_SPECS_STALE_KEYS) {
     try {
       sessionStorage.removeItem(key);
     } catch {}
   }
 }
-const HOME_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const BLOCKS_PER_DAY = 2880; // 30 sec/block
 
-export async function fetch_global_app_specs(gstore) {
+/*
+ * Raw globalappsspecifications array only — no block-height-dependent
+ * computation, so this is safe to cache and safe to call from more than one
+ * place in a page load. fetch_global_app_specs() below layers the height-
+ * dependent expiring/deployed-today lists on top, recomputed fresh every
+ * call, specifically so a caller with a not-yet-populated fluxBlockHeight
+ * (fetchTotalDeployedApps runs concurrently with fetchDaemonInfo) can never
+ * poison this cache with a wrong result that a later, correct caller then
+ * reads back within the TTL.
+ */
+export async function fetch_global_app_specs_raw() {
   _prune_stale_app_spec_caches();
 
   try {
-    const raw = sessionStorage.getItem(HOME_APP_SPECS_CACHE_KEY);
+    const raw = sessionStorage.getItem(RAW_APP_SPECS_CACHE_KEY);
     if (raw) {
       const cached = JSON.parse(raw);
-      if (cached && Date.now() - cached.timestamp < HOME_APP_SPECS_CACHE_TTL) {
+      if (cached && Date.now() - cached.timestamp < RAW_APP_SPECS_CACHE_TTL) {
         return cached.data;
       }
     }
   } catch {}
 
-  const currentBlock = gstore.fluxBlockHeight || 0;
-  const empty = { expiringToday: [], deployedToday: [], networkCategories: [], rawSpecs: [] };
+  if (_rawAppSpecsInFlight) return _rawAppSpecsInFlight;
+
+  _rawAppSpecsInFlight = (async () => {
+    try {
+      const res = await fetch('https://api.runonflux.io/apps/globalappsspecifications');
+      const json = await res.json();
+      if (json.status === 'error' || !json.data) return [];
+
+      try {
+        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, JSON.stringify({ data: json.data, timestamp: Date.now() }));
+      } catch {}
+
+      return json.data;
+    } catch (e) {
+      console.warn('[AppSpecs] Failed to fetch:', e);
+      return [];
+    }
+  })();
 
   try {
-    const res = await fetch('https://api.runonflux.io/apps/globalappsspecifications');
-    const json = await res.json();
+    return await _rawAppSpecsInFlight;
+  } finally {
+    _rawAppSpecsInFlight = null;
+  }
+}
 
-    if (json.status === 'error' || !json.data) return empty;
+export async function fetch_global_app_specs(gstore) {
+  const specs = await fetch_global_app_specs_raw();
+  const empty = { expiringToday: [], deployedToday: [], networkCategories: [], rawSpecs: [] };
+  if (specs.length === 0) return empty;
 
-    const specs = json.data;
-    const expiringToday = [];
-    const deployedToday = [];
-    const categoryMap = {};
+  const currentBlock = gstore.fluxBlockHeight || 0;
+  const expiringToday = [];
+  const deployedToday = [];
+  const categoryMap = {};
 
-    for (const spec of specs) {
-      const instances = spec.instances || 1;
+  for (const spec of specs) {
+    const instances = spec.instances || 1;
+    const { cpuPerInst, ramGBPerInst, ssdGBPerInst } = specResources(spec);
+    const cat = categorizeAppSpec(spec);
+    categoryMap[cat] = (categoryMap[cat] || 0) + instances;
 
-      // Resource per instance — see specResources: enterprise specs report null
-      // rather than a misleading zero.
-      const { cpuPerInst, ramGBPerInst, ssdGBPerInst } = specResources(spec);
+    const specHeight = spec.height || 0;
+    const deployedAgeBlocks = currentBlock - specHeight;
+    const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst, category: cat };
 
-      // Categorize by compose image names first (more accurate than app name),
-      // and give encrypted enterprise specs their own bucket instead of Other.
-      const cat = categorizeAppSpec(spec);
-      categoryMap[cat] = (categoryMap[cat] || 0) + instances;
-
-      // Deployed / expiring — spec.height is lowercase in the API
-      const specHeight = spec.height || 0;
-      const deployedAgeBlocks = currentBlock - specHeight;
-
-      const enriched = { ...spec, instances, cpuPerInst, ramGBPerInst, ssdGBPerInst, category: cat };
-
-      if (currentBlock > 0 && deployedAgeBlocks >= 0 && deployedAgeBlocks < BLOCKS_PER_DAY) {
-        deployedToday.push({ ...enriched, deployedAgeBlocks });
-      }
-
-      if (spec.expire) {
-        const expiryBlock = specHeight + spec.expire;
-        const expiresInBlocks = expiryBlock - currentBlock;
-        if (currentBlock > 0 && expiresInBlocks >= 0 && expiresInBlocks < BLOCKS_PER_DAY) {
-          expiringToday.push({ ...enriched, expiresInBlocks });
-        }
-      }
+    if (currentBlock > 0 && deployedAgeBlocks >= 0 && deployedAgeBlocks < BLOCKS_PER_DAY) {
+      deployedToday.push({ ...enriched, deployedAgeBlocks });
     }
 
-    expiringToday.sort((a, b) => a.expiresInBlocks - b.expiresInBlocks);
-    deployedToday.sort((a, b) => a.deployedAgeBlocks - b.deployedAgeBlocks);
-
-    const networkCategories = Object.entries(categoryMap)
-      .map(([category, totalInstances]) => ({ category, totalInstances }))
-      .sort((a, b) => b.totalInstances - a.totalInstances);
-
-    const data = { expiringToday, deployedToday, networkCategories, rawSpecs: specs };
-
-    try {
-      sessionStorage.setItem(HOME_APP_SPECS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch {}
-
-    return data;
-  } catch (e) {
-    console.warn('[AppSpecs] Failed to fetch:', e);
-    return empty;
+    if (spec.expire) {
+      const expiryBlock = specHeight + spec.expire;
+      const expiresInBlocks = expiryBlock - currentBlock;
+      if (currentBlock > 0 && expiresInBlocks >= 0 && expiresInBlocks < BLOCKS_PER_DAY) {
+        expiringToday.push({ ...enriched, expiresInBlocks });
+      }
+    }
   }
+
+  expiringToday.sort((a, b) => a.expiresInBlocks - b.expiresInBlocks);
+  deployedToday.sort((a, b) => a.deployedAgeBlocks - b.deployedAgeBlocks);
+
+  const networkCategories = Object.entries(categoryMap)
+    .map(([category, totalInstances]) => ({ category, totalInstances }))
+    .sort((a, b) => b.totalInstances - a.totalInstances);
+
+  return { expiringToday, deployedToday, networkCategories, rawSpecs: specs };
 }
 
 const HOME_GEO_CACHE_KEY = 'homeGeoCounts_v1';
