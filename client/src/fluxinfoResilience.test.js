@@ -12,9 +12,9 @@ import { fetch_fluxinfo_aggregate, buildCategoryTop, appNameFromContainer } from
  */
 
 const NODES = [
-  { apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest' }, { Image: 'runonflux/wp-nginx:latest' }] } },
-  { apps: { runningapps: [{ Image: 'presearch/node:latest' }] } },
-  { apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest' }] } },
+  { apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux1'] }, { Names: ['/fluxwp_wordpress123'] }] } },
+  { apps: { runningapps: [{ Names: ['/fluxPresearch'] }] } },
+  { apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux2'] }] } },
 ];
 
 // A second fixture, WITH `ip` set (the existing NODES fixture above omits it
@@ -24,7 +24,7 @@ const NODES_WITH_IP = [
   {
     ip: '1.2.3.4:16127',
     tier: 'CUMULUS',
-    apps: { runningapps: [{ Image: 'yurinnick/folding-at-home:latest', Names: ['/fluxFoldingAtRunOnFlux1'] }] },
+    apps: { runningapps: [{ Names: ['/fluxFoldingAtHome_FoldingAtRunOnFlux1'] }] },
   },
   {
     ip: '5.6.7.8:16127',
@@ -49,9 +49,9 @@ describe('fetch_fluxinfo_aggregate', () => {
     expect(status).toBe('live');
     expect(aggregate.totalContainers).toBe(4);
     expect(aggregate.nodesReporting).toBe(3);
-    expect(aggregate.wordpressContainers).toBe(1);
-    expect(aggregate.presearchNodes).toBe(1);
-    expect(aggregate.imageCounts['yurinnick/folding-at-home:latest']).toBe(2);
+    expect(aggregate.nameCounts.FoldingAtRunOnFlux1).toBe(1);
+    expect(aggregate.nameCounts.FoldingAtRunOnFlux2).toBe(1);
+    expect(aggregate.nameCounts.wordpress123).toBe(1);
   });
 
   it('retries and succeeds after transient failures', async () => {
@@ -132,7 +132,7 @@ describe('fetch_fluxinfo_aggregate', () => {
     localStorage.setItem(
       'fluxinfoAggregate_v1',
       JSON.stringify({
-        aggregate: { imageCounts: { 'busybox:latest': 1 }, totalContainers: 1 },
+        aggregate: { nameCounts: { busybox: 1 }, totalContainers: 1 },
         timestamp: Date.now() - 7 * 60 * 60 * 1000, // window is 6h
       })
     );
@@ -221,7 +221,7 @@ describe('fetch_fluxinfo_aggregate nodesByIp', () => {
     expect(Object.keys(aggregate.nodesByIp)).toEqual(['1.2.3.4:16127']);
     expect(aggregate.nodesByIp['1.2.3.4:16127'].appCount).toBe(1);
     expect(aggregate.nodesByIp['1.2.3.4:16127'].tier).toBe('CUMULUS');
-    expect(aggregate.nodesByIp['1.2.3.4:16127'].images).toEqual(['yurinnick/folding-at-home:latest']);
+    expect(aggregate.nodesByIp['1.2.3.4:16127'].containerAppNames).toEqual(['FoldingAtRunOnFlux1']);
   });
 
   it('omits a node with no running apps from nodesByIp, same as topNodesByApps', async () => {
