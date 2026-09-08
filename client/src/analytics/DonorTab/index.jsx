@@ -3,7 +3,8 @@ import { Spinner, Button } from '@blueprintjs/core';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
 import { DonorUnlockDialog } from 'donor/DonorUnlockDialog';
-import { fetch_global_stats, fetch_total_network_utils } from 'apidata';
+import { fetch_global_stats, fetch_total_network_utils, fetch_global_app_specs_raw } from 'apidata';
+import { buildSpecIndex } from 'appSpecs';
 import { fetch_donor_nodes, sortByRank, mostRecentPayout } from 'analytics/donorNodes';
 import { fetch_donor_utilization } from 'analytics/donorUtilization';
 import { aggregateDonorAppsByCategory } from 'analytics/donorApps';
@@ -211,10 +212,14 @@ export function DonorTab() {
 
       setUtilization(util);
 
-      const gstore = await fetch_total_network_utils(stage1);
+      const [gstore, rawSpecs] = await Promise.all([
+        fetch_total_network_utils(stage1),
+        fetch_global_app_specs_raw(),
+      ]);
       if (cancelled) return;
 
-      setAppCategories(aggregateDonorAppsByCategory(gstore.nodesByIp || {}, addresses));
+      const specIndex = buildSpecIndex(rawSpecs);
+      setAppCategories(aggregateDonorAppsByCategory(gstore.nodesByIp || {}, addresses, specIndex));
       setNetworkPct({
         cores: gstore.utilized.cores_percentage,
         ram: gstore.utilized.ram_percentage,
