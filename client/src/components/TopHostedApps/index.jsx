@@ -27,7 +27,7 @@ function PanelHeader({ title, badge, badgeClassName, badgeContent, right }) {
 }
 
 export function TopHostedApps({ gstore }) {
-  const images = gstore.topRunningImages || [];
+  const images = gstore.topRunningApps || [];
   const isLoading = images.length === 0 && gstore.node_count.total > 0;
   const maxCount = images[0]?.nodeCount || 1;
 

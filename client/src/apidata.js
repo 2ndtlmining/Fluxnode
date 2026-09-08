@@ -2,9 +2,10 @@ import dayjs from 'dayjs';
 
 import { format_minutes } from 'utils';
 import { fluxos_version_desc, fluxos_version_string, fluxos_version_desc_parse } from 'main/flux_version';
-import { categorizeApp, categorizeAppSpec, isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
-import { fetch_fluxinfo_aggregate, buildCategoryTop } from 'fluxinfo';
-import { specResources } from 'appSpecs';
+import { categorizeAppSpec } from 'main/Gamification/appCategories';
+import { fetch_fluxinfo_aggregate } from 'fluxinfo';
+import { specResources, buildSpecIndex } from 'appSpecs';
+import { categorizeRunningApps } from 'runningAppsCategorized';
 import {
   fetch_node_benchmarks,
   fetch_node_resources,
@@ -108,7 +109,7 @@ export function create_global_store() {
       ram_percentage: 0,
       ssd_percentage: 0
     },
-    topRunningImages: [],
+    topRunningApps: [],
     runningCategoryMap: {},
     runningCategoryTop: {},
     topNodesByApps: [],
@@ -498,62 +499,31 @@ export async function fetch_global_stats(walletAddress = null) {
     store.runningAppsStatus = status;
     store.runningAppsFetchedAt = fetchedAt;
 
-    // No data and no cache: leave the zeroed defaults in place. The UI reports
-    // this as unavailable rather than substituting a different dataset.
     if (!aggregate) return;
 
-    store.totalRunningApps = aggregate.totalContainers - aggregate.watchtowerContainers;
-    store.streamrRunningApps = aggregate.streamrNodes;
-    store.presearchRunningApps = aggregate.presearchNodes;
-    store.wordpressCount = aggregate.wordpressContainers;
-
-    const imageEntries = Object.entries(aggregate.imageCounts);
-
-    store.topRunningImages = [...imageEntries]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([image, nodeCount]) => ({ image, nodeCount }));
-
-    // Category breakdown from actual running containers (more accurate than spec data)
-    const categoryMap = {};
-    // Per-category image tallies, keyed on the image name with the tag stripped
-    // so feather:1.0.13 and feather:1.0.14 count as one app rather than two.
-    // Genuinely different images stay separate — minecraft-server and
-    // minecraft-bedrock-server are two apps, not two versions of one.
-    const categoryImages = {};
-
-    for (const [image, count] of imageEntries) {
-      // Git-deployed apps all run the same wrapper image, which says nothing
-      // about the workload inside — keep them uncategorized rather than
-      // reporting 175 containers of "DevOps".
-      const cat = isOpaqueRuntimeImage(image) ? 'other' : categorizeApp(image.toLowerCase());
-      categoryMap[cat] = (categoryMap[cat] || 0) + count;
-
-      const base = image.split(':')[0];
-      categoryImages[cat] = categoryImages[cat] || {};
-      categoryImages[cat][base] = (categoryImages[cat][base] || 0) + count;
-    }
-
-    store.runningCategoryMap = categoryMap;
-
-    /*
-     * Top 3 apps per category, for the category tooltips. Several categories
-     * are effectively a single app — Computing is 99% Folding@Home, Monitoring
-     * 94% Globalping — which the bar chart alone does not convey.
-     *
-     * Ties are broken alphabetically: Media currently has three apps on 3
-     * containers each, so sorting by count alone reshuffles them on every
-     * refresh.
-     */
-    store.runningCategoryTop = buildCategoryTop(categoryImages);
-
-    // Carried on the store so fetch_total_network_utils can build the Workhorse
-    // showcase without asking for the aggregate a second time.
+    // Carried on the store before the spec join below, same as before —
+    // the Workhorse showcase and DonorTab both read these directly off
+    // aggregate's shape.
     store.topNodesByApps = aggregate.topNodesByApps || [];
-
-    // Same reasoning, for the Donor tab: carried here rather than having
-    // DonorTab call fetch_fluxinfo_aggregate() a second time itself.
     store.nodesByIp = aggregate.nodesByIp || {};
+
+    // fluxinfo no longer reports a docker image (#187) — category, repotag,
+    // wordpress/streamr/presearch detection all now require joining each
+    // running app's NAME against globalappsspecifications. That fetch is
+    // its own safe, shared, sessionStorage-cached layer (Task 2), so this
+    // costs a real network request only on a cold cache.
+    const rawSpecs = await fetch_global_app_specs_raw();
+    const specIndex = buildSpecIndex(rawSpecs);
+
+    const categorized = categorizeRunningApps(aggregate, specIndex);
+
+    store.totalRunningApps = categorized.totalRunningApps;
+    store.streamrRunningApps = categorized.streamrRunningApps;
+    store.presearchRunningApps = categorized.presearchRunningApps;
+    store.wordpressCount = categorized.wordpressCount;
+    store.topRunningApps = categorized.topRunningApps;
+    store.runningCategoryMap = categorized.runningCategoryMap;
+    store.runningCategoryTop = categorized.runningCategoryTop;
   };
 
   const fetchUniqueWalletAddresses = async () => {
