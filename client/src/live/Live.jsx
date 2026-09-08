@@ -69,6 +69,7 @@ export default function Live() {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [pulseKey, setPulseKey] = useState(0);
   const [pulseCategories, setPulseCategories] = useState([]);
+  const [focusedDetailCategory, setFocusedDetailCategory] = useState(null);
   const lastAnimatedHeightRef = useRef(null);
 
   const globalRankingsRef = useRef(null);
@@ -268,6 +269,15 @@ export default function Live() {
     setExpandedCategory((current) => toggleExpandedCategory(current, key));
   }, []);
 
+  // Always forces a fresh effect run in DetailsPanel even if the same
+  // category is clicked twice in a row without an intervening reset —
+  // otherwise React sees an unchanged state value on the second click and
+  // never re-fires the scroll/highlight effect.
+  const handleViewFullDetails = useCallback((key) => {
+    setFocusedDetailCategory(null);
+    requestAnimationFrame(() => setFocusedDetailCategory(key));
+  }, []);
+
   // Spec §30: clears selectedHeight, but must NOT let the new-block pulse
   // fire for a tip that advanced while the user was looking at history — the
   // pulse is "a block just landed", not "here's everything you missed". By
@@ -332,6 +342,7 @@ export default function Live() {
         onToggleCategory={handleToggleCategory}
         pulseCategories={pulseCategories}
         pulseKey={pulseKey}
+        onViewDetails={handleViewFullDetails}
       />
 
       <div className="live-main-stack">
@@ -346,6 +357,8 @@ export default function Live() {
         <DetailsPanel
           block={displayedBlock}
           globalRankings={globalRankings}
+          focusedCategory={focusedDetailCategory}
+          onFocusedCategoryHandled={() => setFocusedDetailCategory(null)}
         />
       </div>
     </div>
