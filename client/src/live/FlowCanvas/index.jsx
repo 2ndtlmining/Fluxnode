@@ -63,7 +63,7 @@ function cardContentFor(key, summary) {
  * composition only (spec §66) — FlowBlock/ActivityCard/FlowConnectors each
  * own their own presentation.
  */
-export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCategory = () => {}, pulseCategories = [], pulseKey = 0 }) {
+export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCategory = () => {}, pulseCategories = [], pulseKey = 0, onViewDetails = () => {} }) {
   const containerRef = useRef(null);
   const blockRef = useRef(null);
   // One stable ref-holding object for the component's lifetime — created
@@ -119,6 +119,7 @@ export function FlowCanvas({ block, summary, expandedCategory = null, onToggleCa
             isDimmed={expandedCategory != null && expandedCategory !== key}
             isPulsing={isPulsing}
             onToggle={() => onToggleCategory(key)}
+            onViewDetails={onViewDetails}
           />
         );
       })}

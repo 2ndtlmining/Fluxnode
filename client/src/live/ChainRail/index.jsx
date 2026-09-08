@@ -1,7 +1,7 @@
 import React from 'react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
 import { FluxMark } from 'live/FluxMark';
-import { relativeTime } from 'live/timeFormat';
+import { relativeTime, exactTimestamp } from 'live/timeFormat';
 import './index.scss';
 
 function sectionKeyFor(event) {
@@ -30,7 +30,7 @@ function activityWeightClass(events) {
   return '';
 }
 
-function ChainBlock({ block, isSelected, onSelect }) {
+function ChainBlock({ block, isSelected, isTip, onSelect }) {
   const chips = sectionCounts(block.events);
   const activate = () => onSelect(block);
   const onKeyDown = (e) => {
@@ -40,6 +40,12 @@ function ChainBlock({ block, isSelected, onSelect }) {
     }
   };
 
+  const hoverTitle = [
+    `Block #${block.height}`,
+    exactTimestamp(block.at),
+    chips.length > 0 ? chips.map((c) => `${c.label}: ${c.count}`).join(' · ') : 'No activity this block',
+  ].join('\n');
+
   return (
     <div
       className={`live-chain-block live-chain-block--${block.phase}${isSelected ? ' live-chain-block--selected' : ''}`}
@@ -47,8 +53,9 @@ function ChainBlock({ block, isSelected, onSelect }) {
       tabIndex={0}
       onClick={activate}
       onKeyDown={onKeyDown}
-      title={`Block #${block.height} — click to inspect`}
+      title={hoverTitle}
     >
+      {isTip && <span className="live-chain-block-live-marker">LIVE</span>}
       <span className={`live-chain-block-icon ${activityWeightClass(block.events)}`}>
         <FluxMark />
       </span>
@@ -96,6 +103,7 @@ export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock }) 
               <ChainBlock
                 block={block}
                 isSelected={selectedHeight == null ? i === 0 : selectedHeight === block.height}
+                isTip={block.height === tipHeight}
                 onSelect={onSelectBlock}
               />
               {i < blocks.length - 1 && <span className="live-chain-connector" aria-hidden="true" />}

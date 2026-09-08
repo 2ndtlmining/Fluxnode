@@ -1,0 +1,81 @@
+// client/src/live/LiveStatusBadge/index.scss
+
+.live-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--live-fs-xs);
+}
+
+.live-status-label {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-status-detail {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.live-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.live-status-badge--live {
+  .live-status-label { color: #22c55e; }
+  .live-status-dot--live {
+    background: #22c55e;
+    animation: live-status-pulse-dot 1.6s ease-in-out infinite;
+  }
+}
+
+.live-status-badge--syncing {
+  .live-status-label { color: var(--text-tertiary); }
+  .live-status-dot--syncing {
+    background: var(--text-tertiary);
+    animation: live-status-pulse-dot 1s ease-in-out infinite;
+  }
+}
+
+.live-status-badge--delayed {
+  .live-status-label { color: #eab308; }
+  .live-status-dot--delayed { background: #eab308; }
+}
+
+.live-status-badge--historical {
+  .live-status-label { color: #64748b; }
+}
+
+@keyframes live-status-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.live-status-return-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-primary);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: var(--live-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-status-dot { animation: none; }
+}

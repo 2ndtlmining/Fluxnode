@@ -33,8 +33,10 @@ section is a pointer, not a restatement.
   Shipped in PR #185 — see
   `docs/superpowers/plans/2026-09-07-live-session-b.md` for the full task
   breakdown.
-- [ ] **Session C — History + details integration.** Depends on Session B's state
-  model.
+- [x] **Session C — History + details integration.** Depends on Session B's state
+  model. Shipped in PR #186 — see
+  `docs/superpowers/plans/2026-09-08-live-session-c.md` for the full task
+  breakdown.
 - [ ] **Session D — Resilience + final polish.** Depends on all three prior sessions;
   runs the full manual QA matrix.
 

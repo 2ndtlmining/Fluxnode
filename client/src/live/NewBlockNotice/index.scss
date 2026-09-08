@@ -1,0 +1,59 @@
+// client/src/live/NewBlockNotice/index.scss
+
+.live-new-block-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #3b82f6 10%, var(--surface-primary));
+  border: 1px solid color-mix(in srgb, #3b82f6 35%, var(--border-primary));
+  font-size: var(--live-fs-xs);
+  animation: live-new-block-in 220ms ease-out;
+}
+
+.live-new-block-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: live-status-pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes live-status-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.live-new-block-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.live-new-block-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #3b82f6 45%, var(--border-primary));
+  background: transparent;
+  color: #3b82f6;
+  font-size: var(--live-fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover { background: color-mix(in srgb, #3b82f6 12%, transparent); }
+}
+
+@keyframes live-new-block-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-new-block-notice { animation: none; }
+  .live-new-block-dot { animation: none; }
+}

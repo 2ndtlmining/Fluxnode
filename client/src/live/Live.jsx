@@ -17,10 +17,14 @@ import {
 import { mergeIncomingBlocks, removeLeavingBlock, isFreshLiveTip, categoriesToPulse } from 'live/blockAnimation';
 import { buildBlockFlowSummary } from 'live/blockFlowSummary';
 import { toggleExpandedCategory } from 'live/flowInteraction';
+import { computeLiveStatus } from 'live/liveStatus';
+import { relativeTime } from 'live/timeFormat';
 
 import { ChainRail } from 'live/ChainRail';
 import { DetailsPanel } from 'live/DetailsPanel';
 import { FlowCanvas } from 'live/FlowCanvas';
+import { LiveStatusBadge } from 'live/LiveStatusBadge';
+import { NewBlockNotice } from 'live/NewBlockNotice';
 
 import './Live.scss';
 
@@ -65,6 +69,7 @@ export default function Live() {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [pulseKey, setPulseKey] = useState(0);
   const [pulseCategories, setPulseCategories] = useState([]);
+  const [focusedDetailCategory, setFocusedDetailCategory] = useState(null);
   const lastAnimatedHeightRef = useRef(null);
 
   const globalRankingsRef = useRef(null);
@@ -228,6 +233,17 @@ export default function Live() {
 
   const isFollowingLive = selectedHeight == null;
 
+  const hasEverLoaded = displayBlocks.length > 0;
+  const liveStatus = computeLiveStatus({ isFollowingLive, hasEverLoaded, unavailable });
+
+  // Reuses the tip block's own timestamp rather than tracking a separate
+  // "last successful poll" wall-clock value (spec §69: prefer derived state)
+  // — at a 15s poll / ~30s block cadence, block age and poll recency read
+  // the same to a user either way, and this avoids a second source of truth.
+  const tipBlock = displayBlocks.find((b) => b.phase !== 'leaving') || null;
+  const updatedAgoText = tipBlock ? relativeTime(tipBlock.at) : null;
+  const historicalAgoText = locked && displayedBlock ? relativeTime(displayedBlock.at) : null;
+
   useEffect(() => {
     if (isFreshLiveTip({ isFollowingLive, tipHeight, lastAnimatedHeight: lastAnimatedHeightRef.current })) {
       setPulseKey((n) => n + 1);
@@ -253,9 +269,32 @@ export default function Live() {
     setExpandedCategory((current) => toggleExpandedCategory(current, key));
   }, []);
 
-  const handleToggleLock = useCallback(() => {
-    setSelectedHeight((prev) => (prev != null ? null : tipHeight));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Stable reference — DetailsPanel's focus/scroll/highlight effect depends
+  // on this, and an inline arrow here would change identity on every Live.jsx
+  // render (e.g. the 15s poll tick), re-firing that effect and restarting its
+  // scroll/highlight even though focusedCategory itself never changed.
+  const handleFocusedCategoryHandled = useCallback(() => setFocusedDetailCategory(null), []);
+
+  // Always forces a fresh effect run in DetailsPanel even if the same
+  // category is clicked twice in a row without an intervening reset —
+  // otherwise React sees an unchanged state value on the second click and
+  // never re-fires the scroll/highlight effect.
+  const handleViewFullDetails = useCallback((key) => {
+    setFocusedDetailCategory(null);
+    requestAnimationFrame(() => setFocusedDetailCategory(key));
+  }, []);
+
+  // Spec §30: clears selectedHeight, but must NOT let the new-block pulse
+  // fire for a tip that advanced while the user was looking at history — the
+  // pulse is "a block just landed", not "here's everything you missed". By
+  // writing tipHeight into lastAnimatedHeightRef synchronously, before the
+  // isFreshLiveTip effect below re-runs, the effect sees tipHeight ===
+  // lastAnimatedHeight and correctly stays quiet (spec: "Do not replay a
+  // new-block animation unless a genuinely new block was detected at that
+  // moment").
+  const handleReturnToLive = useCallback(() => {
+    if (tipHeight != null) lastAnimatedHeightRef.current = tipHeight;
+    setSelectedHeight(null);
   }, [tipHeight]);
 
   // A block pinned by a click (or the Lock button) that ages out of the
@@ -276,10 +315,14 @@ export default function Live() {
       <div className="live-page-header">
         <span className="live-page-title">
           Live Network Activity
-          <span className="live-live-badge">
-            <span className="live-live-dot" />
-            LIVE
-          </span>
+          <LiveStatusBadge
+            status={liveStatus}
+            tipHeight={tipHeight}
+            updatedAgoText={updatedAgoText}
+            selectedHeight={selectedHeight}
+            historicalAgoText={historicalAgoText}
+            onReturnToLive={handleReturnToLive}
+          />
         </span>
         <span className="live-page-subtitle">
           The most recent blocks on the chain — click one to inspect its real node reward
@@ -294,6 +337,10 @@ export default function Live() {
         </div>
       )}
 
+      {locked && tipHeight != null && tipHeight > selectedHeight && (
+        <NewBlockNotice tipHeight={tipHeight} onReturnToLive={handleReturnToLive} />
+      )}
+
       <FlowCanvas
         block={displayedBlock}
         summary={summary}
@@ -301,6 +348,7 @@ export default function Live() {
         onToggleCategory={handleToggleCategory}
         pulseCategories={pulseCategories}
         pulseKey={pulseKey}
+        onViewDetails={handleViewFullDetails}
       />
 
       <div className="live-main-stack">
@@ -314,9 +362,9 @@ export default function Live() {
         </div>
         <DetailsPanel
           block={displayedBlock}
-          locked={locked}
-          onToggleLock={handleToggleLock}
           globalRankings={globalRankings}
+          focusedCategory={focusedDetailCategory}
+          onFocusedCategoryHandled={handleFocusedCategoryHandled}
         />
       </div>
     </div>

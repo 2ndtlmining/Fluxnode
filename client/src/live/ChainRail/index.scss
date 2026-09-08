@@ -63,6 +63,7 @@
 }
 
 .live-chain-block {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
@@ -212,6 +213,23 @@ $live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
   .flux-mark-facet {
     animation: none;
   }
+}
+
+.live-chain-block-live-marker {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #22c55e;
+  background: var(--surface-primary);
+  border: 1px solid #22c55e;
+  border-radius: 999px;
+  padding: 0 5px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .live-chain-block-height {
