@@ -6,7 +6,7 @@ import { TIER_META } from 'live/tierMeta';
 const REWARD_TIER_ORDER = ['CUMULUS', 'NIMBUS', 'STRATUS', 'DEVFUND'];
 const CONFIRM_TIER_ORDER = ['CUMULUS', 'NIMBUS', 'STRATUS']; // Dev Fund never confirms a node
 
-function summarizeRewards(events) {
+function summarizeRewards(events, unavailableReward) {
   const byTier = {};
   for (const e of events) {
     if (e.type !== 'reward') continue;
@@ -29,6 +29,7 @@ function summarizeRewards(events) {
     count: tiers.length,
     totalFlux: tiers.reduce((sum, t) => sum + t.amount, 0),
     tiers,
+    unavailable: !!unavailableReward,
   };
 }
 
@@ -52,7 +53,8 @@ function summarizeDeployments(events) {
   };
 }
 
-function summarizeP2p(events) {
+
+function summarizeP2p(events, unavailableP2p) {
   const transfers = events
     .filter((e) => e.type === 'p2p')
     .map((e) => ({ id: e.id, from: e.from, to: e.to, amount: e.amount }));
@@ -60,10 +62,11 @@ function summarizeP2p(events) {
     count: transfers.length,
     totalFlux: transfers.reduce((sum, t) => sum + t.amount, 0),
     transfers,
+    unavailable: !!unavailableP2p,
   };
 }
 
-function summarizeConfirmations(events) {
+function summarizeConfirmations(events, unavailableConfirm) {
   const byTier = {};
   for (const e of events) {
     if (e.type !== 'confirm') continue;
@@ -80,6 +83,7 @@ function summarizeConfirmations(events) {
   return {
     count: tiers.reduce((sum, t) => sum + t.count, 0),
     byTier: tiers,
+    unavailable: !!unavailableConfirm,
   };
 }
 
@@ -97,14 +101,15 @@ function summarizeConfirmations(events) {
 export function buildBlockFlowSummary(block) {
   if (!block) return null;
   const events = block.events || [];
+  const unavailable = block.unavailable || null;
 
   return {
     height: block.height,
     hash: block.hash,
     at: block.at,
-    rewards: summarizeRewards(events),
+    rewards: summarizeRewards(events, unavailable?.reward),
     deployments: summarizeDeployments(events),
-    p2p: summarizeP2p(events),
-    confirmations: summarizeConfirmations(events),
+    p2p: summarizeP2p(events, unavailable?.p2p),
+    confirmations: summarizeConfirmations(events, unavailable?.confirm),
   };
 }

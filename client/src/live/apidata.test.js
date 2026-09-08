@@ -7,6 +7,7 @@ import {
   diffDeployedForEvents,
   deployEventsForSlowRefresh,
   attachEventsToBlocks,
+  attachUnavailabilityToBlocks,
 } from './apidata';
 
 // Real shape from a real block's coinbase tx (height 2916763): a small
@@ -404,5 +405,21 @@ describe('attachEventsToBlocks', () => {
   it('gives a block with nothing accumulated an empty events list, not undefined', () => {
     const result = attachEventsToBlocks([{ height: 100 }], {});
     expect(result[0].events).toEqual([]);
+  });
+});
+
+describe('attachUnavailabilityToBlocks', () => {
+  it('attaches the recorded unavailability for a block by height', () => {
+    const blocks = [{ height: 100 }];
+    const unavailableByHeight = { 100: { reward: true, p2p: true, confirm: false } };
+
+    const result = attachUnavailabilityToBlocks(blocks, unavailableByHeight);
+
+    expect(result[0].unavailable).toEqual({ reward: true, p2p: true, confirm: false });
+  });
+
+  it('gives a block with nothing recorded null, not undefined or an empty object', () => {
+    const result = attachUnavailabilityToBlocks([{ height: 100 }], {});
+    expect(result[0].unavailable).toBeNull();
   });
 });

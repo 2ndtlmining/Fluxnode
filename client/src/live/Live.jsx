@@ -12,6 +12,7 @@ import {
   buildConfirmationEvents,
   extractP2pTransfers,
   attachEventsToBlocks,
+  attachUnavailabilityToBlocks,
   deployEventsForSlowRefresh,
 } from 'live/apidata';
 import { mergeIncomingBlocks, removeLeavingBlock, isFreshLiveTip, categoriesToPulse } from 'live/blockAnimation';
@@ -77,7 +78,8 @@ export default function Live() {
   const prevTipHeightRef = useRef(null);
   const errorStreakRef = useRef(0);
   const eventsByHeightRef = useRef({});
-  const fetchedHeightsRef = useRef(new Set());
+  const blockFetchStatusRef = useRef({}); // { [height]: { ok: boolean } }
+  const unavailableByHeightRef = useRef({}); // { [height]: { reward, p2p, confirm } }
 
   const rememberEvents = useCallback((newEvents) => {
     if (!newEvents || newEvents.length === 0) return;
@@ -107,16 +109,20 @@ export default function Live() {
    */
   const ensureBlockDetailsFetched = useCallback(async (blocks) => {
     const addressGeoMap = globalRankingsRef.current?.addressGeoMap;
-    const toFetch = blocks.filter((b) => !fetchedHeightsRef.current.has(b.height));
+    const toFetch = blocks.filter((b) => !blockFetchStatusRef.current[b.height]?.ok);
     if (toFetch.length === 0) return;
 
     await Promise.all(
       toFetch.map(async (block) => {
-        fetchedHeightsRef.current.add(block.height);
-        const [{ coinbase, others }, confirmingTxs] = await Promise.all([
+        const [{ ok: txsOk, coinbase, others }, { ok: confirmOk, confirmingTxs }] = await Promise.all([
           fetch_block_transactions(block.hash),
           fetch_block_confirmations(block.hash),
         ]);
+
+        blockFetchStatusRef.current[block.height] = { ok: txsOk && confirmOk };
+        unavailableByHeightRef.current[block.height] =
+          txsOk && confirmOk ? undefined : { reward: !txsOk, p2p: !txsOk, confirm: !confirmOk };
+
         const rewards = extractRewardsFromCoinbase(coinbase);
         const events = [
           ...buildRewardEvents(block, rewards, addressGeoMap),
@@ -126,6 +132,13 @@ export default function Live() {
         rememberEvents(events);
       })
     );
+
+    // Same unbounded-growth guard as eventsByHeightRef — see rememberEvents above.
+    const heights = Object.keys(blockFetchStatusRef.current).map(Number).sort((a, b) => b - a);
+    for (const h of heights.slice(EVENTS_BY_HEIGHT_RETENTION)) {
+      delete blockFetchStatusRef.current[h];
+      delete unavailableByHeightRef.current[h];
+    }
   }, [rememberEvents]);
 
   // Node geography/rankings and today's app deployments — both change slowly,
@@ -193,9 +206,10 @@ export default function Live() {
     await ensureBlockDetailsFetched(recentBlocks);
 
     const withEvents = attachEventsToBlocks(recentBlocks, eventsByHeightRef.current);
+    const withUnavailability = attachUnavailabilityToBlocks(withEvents, unavailableByHeightRef.current);
 
     setDisplayBlocks((prev) => {
-      const next = mergeIncomingBlocks(prev, withEvents, visibleBlockCount);
+      const next = mergeIncomingBlocks(prev, withUnavailability, visibleBlockCount);
 
       const outgoing = next.find((b) => b.phase === 'leaving');
       if (outgoing) {
