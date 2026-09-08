@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ArrowRight } from 'lucide-react';
 import './index.scss';
 
 function truncateAddr(addr) {
@@ -115,7 +115,7 @@ const EXPANDED_BODY_COMPONENT = {
  * category summary and expansion presentation").
  */
 export const ActivityCard = React.forwardRef(function ActivityCard(
-  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, summary, isExpanded, isDimmed, isPulsing, onToggle },
+  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, summary, isExpanded, isDimmed, isPulsing, onToggle, onViewDetails },
   ref
 ) {
   const Icon = def.Icon;
@@ -171,6 +171,18 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
             const ExpandedBody = EXPANDED_BODY_COMPONENT[categoryKey];
             return ExpandedBody ? <ExpandedBody summary={summary} /> : null;
           })()}
+          <button
+            type="button"
+            className="live-flow-view-details-btn"
+            onClick={(e) => {
+              // Same reason as the card's own handleClick: this must not
+              // also bubble to FlowCanvas's click-outside-collapses handler.
+              e.stopPropagation();
+              onViewDetails(categoryKey);
+            }}
+          >
+            View full details <ArrowRight size={12} />
+          </button>
         </div>
       ) : isEmpty ? (
         <div className="live-flow-card-empty">{emptyLabel}</div>
