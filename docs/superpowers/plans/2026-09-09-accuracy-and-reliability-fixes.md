@@ -298,6 +298,14 @@ describe('computeCountryPerformanceAchievements (characterization)', () => {
 
 - [ ] **Step 6: `_extract_country_counts` (in `apidata.js`)**
 
+Note: Task 3 changes this function's entire input contract (from
+`countryRankings` to a much smaller `countryTierCounts` shape) as part of
+the `globalPerfRankings` redesign, and will REPLACE this test in place with
+an equivalent one against the new shape — this is expected, not a
+conflict; write the characterization test below against the CURRENT shape
+regardless, since it's what proves today's `nodeCount` arithmetic
+(sum of each tier's array length) before anything changes.
+
 ```js
 // In a new or existing client/src/apidata.test.js describe block:
 import { _extract_country_counts } from './apidata'; // export it if not already
@@ -672,9 +680,32 @@ export function _extract_country_counts(countryTierCounts) {
 }
 ```
 
-(Export it if it wasn't already — Task 1's Step 6 test needs this.) Update
-its one call site (`fetch_country_node_counts`, same file) to pass
+(Export it if it wasn't already.) Update its one call site
+(`fetch_country_node_counts`, same file) to pass
 `cached.data.countryTierCounts` instead of `cached.data.countryRankings`.
+
+**This changes `_extract_country_counts`'s entire input contract, not just
+an internal detail** — Task 1's Step 6 test for this function was written
+against the OLD `countryRankings` shape (`{tiers: {CUMULUS: {metrics: {eps: [...]}}}}`)
+and will now fail, the same way Task 4 has to update Task 1's achievements
+fixtures. Update that one test (in `apidata.test.js`) to build a
+`countryTierCounts`-shaped fixture instead, while keeping the exact same
+expected output:
+
+```js
+describe('_extract_country_counts (characterization — current behavior)', () => {
+  it('counts nodes per country by summing each tier\'s count', () => {
+    const countryTierCounts = {
+      US: { country: 'United States', tiers: { CUMULUS: 2, STRATUS: 1 } },
+    };
+    const result = _extract_country_counts(countryTierCounts);
+    expect(result).toEqual([{ country: 'United States', countryCode: 'US', nodeCount: 3 }]);
+  });
+});
+```
+
+(This replaces, not adds to, Task 1's original version of this test — one
+test for this function, updated in place, matching its new real contract.)
 
 - [ ] **Step 4: Run to verify pass**
 
