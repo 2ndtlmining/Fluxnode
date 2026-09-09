@@ -201,15 +201,21 @@ export function lookupNodeInfo(ip, tier, { nodeGeoMap, nodeData } = {}) {
  * derived count: we already fetch the full transaction list to get the
  * coinbase, so this comes from the same call.
  *
- * In practice this often comes back empty. Node confirmations are NOT the
- * reason — they're a protocol-level special tx stored outside the normal
- * Merkle tree (see fetch_block_confirmations above), so the explorer's own
- * /api/txs/ endpoint this function's input comes from never returns them in
- * the first place; `otherTxs` can't contain confirmation noise to filter out.
- * The real explanation is simpler: genuine transparent wallet-to-wallet sends
- * are just rare relative to block cadence on this chain (most non-coinbase,
- * non-confirmation activity tends to be app-funding rather than a personal
- * send) — an empty section is not a sign this is broken.
+ * In practice this often comes back empty — genuine transparent wallet-to-
+ * wallet sends are just rare relative to block cadence on this chain (most
+ * non-coinbase activity tends to be app-funding rather than a personal send)
+ * — an empty section is not a sign this is broken.
+ *
+ * Node confirmations do NOT pollute this: contrary to an earlier version of
+ * this comment, the explorer's own /api/txs/ endpoint this function's input
+ * comes from DOES include them (live-verified 2026-09-10 against block
+ * 2,934,901 — 8 "Confirming a fluxnode" txs alongside the block's one real
+ * transfer). They're just shaped differently — no vin/vout, only fields like
+ * collateralOutput/ip/benchmarkTier (see fetch_block_confirmations above,
+ * which reads the same information from a separate daemon call). This
+ * function's own optional chaining (`tx?.vin?.[0]?.addr`, `tx?.vout || []`)
+ * already no-ops on that shape, so confirmation entries silently contribute
+ * zero transfers without needing any explicit filtering.
  */
 export function extractP2pTransfers(otherTxs) {
   const transfers = [];
