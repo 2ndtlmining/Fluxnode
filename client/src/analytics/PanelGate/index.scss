@@ -1,0 +1,23 @@
+// Smaller-footprint sibling of donor/PremiumGate's .premium-gate-locked —
+// this sits inside a tab's panel grid, not centered on a whole page.
+.panel-gate-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 20px;
+  text-align: center;
+  background: var(--surface-inset);
+  border-radius: var(--radius-md);
+}
+
+.panel-gate-locked-icon {
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+.panel-gate-locked-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
