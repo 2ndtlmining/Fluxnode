@@ -171,9 +171,7 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <PremiumGate feature='Analytics'>
-                          <Analytics />
-                        </PremiumGate>
+                        <Analytics />
                       </React.Suspense>
                     </ErrorBoundary>
                   }

@@ -4,6 +4,7 @@ import { AppsTab } from 'analytics/AppsTab';
 import { NetworkTab } from 'analytics/NetworkTab';
 import { DonorTab } from 'analytics/DonorTab';
 import { ChainActivityTab } from 'analytics/ChainActivityTab';
+import { PanelGate } from 'analytics/PanelGate';
 import './Analytics.scss';
 
 // Four tabs now (Apps, Network, Donor, Chain Activity) — Session 5 lands the
@@ -25,8 +26,16 @@ export default function Analytics() {
       <Tabs id="analytics-tabs" className="analytics-tabs" renderActiveTabPanelOnly>
         <Tab id="apps" title="Apps" panel={<AppsTab />} />
         <Tab id="network" title="Network" panel={<NetworkTab />} />
-        <Tab id="donor" title="Donor" panel={<DonorTab />} />
-        <Tab id="chain-activity" title="Chain Activity" panel={<ChainActivityTab />} />
+        <Tab id="donor" title="Donor" panel={
+          <PanelGate panelKey="donorTab" feature="the Donor tab">
+            <DonorTab />
+          </PanelGate>
+        } />
+        <Tab id="chain-activity" title="Chain Activity" panel={
+          <PanelGate panelKey="chainActivity" feature="Chain Activity">
+            <ChainActivityTab />
+          </PanelGate>
+        } />
       </Tabs>
     </div>
   );
