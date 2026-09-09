@@ -1,4 +1,5 @@
 import { categorizeRunningApps } from './runningAppsCategorized';
+import { componentCountKey } from 'fluxinfo';
 
 const specIndex = {
   FoldingAtRunOnFlux1: { repotag: 'yurinnick/folding-at-home:latest', category: 'computing' },
@@ -83,6 +84,29 @@ describe('categorizeRunningApps', () => {
   it('does not throw when nodesByIp or specIndex is missing entirely', () => {
     expect(() => categorizeRunningApps({ nameCounts: { a: 1 } }, undefined)).not.toThrow();
     expect(() => categorizeRunningApps({}, {})).not.toThrow();
+  });
+
+  it('reports enterpriseContainers separately from the ranking, for apps whose spec is Enterprise (repotag deliberately hidden)', () => {
+    const aggregate = {
+      nameCounts: { entApp: 2 },
+      componentCounts: { [componentCountKey('entApp', null)]: 2 },
+      nodesByIp: {},
+    };
+    const specIndex = { entApp: { category: 'enterprise', repotag: '', compose: null } };
+    const { enterpriseContainers, unresolvedContainers } = categorizeRunningApps(aggregate, specIndex);
+    expect(enterpriseContainers).toBe(2);
+    expect(unresolvedContainers).toBe(0);
+  });
+
+  it('reports unresolvedContainers separately, for apps with no spec found at all', () => {
+    const aggregate = {
+      nameCounts: { ghostApp: 1 },
+      componentCounts: { [componentCountKey('ghostApp', null)]: 1 },
+      nodesByIp: {},
+    };
+    const { enterpriseContainers, unresolvedContainers } = categorizeRunningApps(aggregate, {});
+    expect(enterpriseContainers).toBe(0);
+    expect(unresolvedContainers).toBe(1);
   });
 });
 

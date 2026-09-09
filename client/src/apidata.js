@@ -12,6 +12,7 @@ import {
   fetch_node_geolocation,
   buildWorkhorseNodes
 } from 'networkNodes';
+import { topInGroup } from 'main/Gamification/rankInGroup';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -67,6 +68,8 @@ export function create_global_store() {
     presearchRunningApps: 0,
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
+    enterpriseContainers: 0,
+    unresolvedContainers: 0,
     fluxBlockHeight: 0,
     daemon_version: 0,
     node_count: {
@@ -410,37 +413,53 @@ export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
   const fetchCurrency = async () => {
-    const res = await fetch('https://explorer.runonflux.io/api/currency');
-    const json = await res.json();
-    store.flux_price_usd = json.data.rate;
+    try {
+      const res = await fetch('https://explorer.runonflux.io/api/currency');
+      const json = await res.json();
+      store.flux_price_usd = json.data.rate;
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchWallet = async () => {
-    if (walletAddress) {
-      const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
-      const json = await res.json();
-      const balance = json['balance'];
-      store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+    try {
+      if (walletAddress) {
+        const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
+        const json = await res.json();
+        const balance = json['balance'];
+        store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+      }
+    } catch (error) {
+      console.log('error', error);
     }
   };
 
   const fetchNode = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount');
-    const json = await res.json();
-    const stats = json.data;
+    try {
+      const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount');
+      const json = await res.json();
+      const stats = json.data;
 
-    store.node_count.cumulus = stats['cumulus-enabled'];
-    store.node_count.nimbus = stats['nimbus-enabled'];
-    store.node_count.stratus = stats['stratus-enabled'];
+      store.node_count.cumulus = stats['cumulus-enabled'];
+      store.node_count.nimbus = stats['nimbus-enabled'];
+      store.node_count.stratus = stats['stratus-enabled'];
 
-    store.node_count.total = stats['total'];
+      store.node_count.total = stats['total'];
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchBenchVer = async () => {
-    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json');
-    if (res.status === 200) {
-      const json = await res.json();
-      store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json');
+      if (res.status === 200) {
+        const json = await res.json();
+        store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
+      }
+    } catch (error) {
+      console.log('error', error);
     }
   };
 
@@ -483,9 +502,13 @@ export async function fetch_global_stats(walletAddress = null) {
   };
 
   const fetchRichList = async () => {
-    const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
-    const json = await res.json();
-    store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+    try {
+      const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
+      const json = await res.json();
+      store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   /*
@@ -521,6 +544,8 @@ export async function fetch_global_stats(walletAddress = null) {
     store.streamrRunningApps = categorized.streamrRunningApps;
     store.presearchRunningApps = categorized.presearchRunningApps;
     store.wordpressCount = categorized.wordpressCount;
+    store.enterpriseContainers = categorized.enterpriseContainers;
+    store.unresolvedContainers = categorized.unresolvedContainers;
     store.topRunningApps = categorized.topRunningApps;
     store.runningCategoryMap = categorized.runningCategoryMap;
     store.runningCategoryTop = categorized.runningCategoryTop;
@@ -1078,18 +1103,32 @@ function _flagFromCountryCode(cc) {
   );
 }
 
-const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v3';
+const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v4';
 const GLOBAL_RANKINGS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const GLOBAL_RANKINGS_STALE_KEYS = ['globalPerfRankings_v3'];
+
+function _prune_stale_global_rankings_caches() {
+  for (const key of GLOBAL_RANKINGS_STALE_KEYS) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+  }
+}
 
 /**
  * Fetches and joins node list (tier), benchmark data, and geolocation for all
- * ~8000 Flux nodes. Builds per-tier and per-country performance rankings.
- * Results are cached in sessionStorage for 10 minutes.
+ * ~8000 Flux nodes. Builds a flat nodeData array plus two small precomputed
+ * aggregates (tierWinners, countryTierCounts) — see issue #153: the old
+ * pre-sorted tierRankings/countryRankings shape duplicated every node 12+
+ * times and was the single biggest sessionStorage-quota offender. Results
+ * are cached in sessionStorage for 10 minutes.
  *
- * Returns: { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts,
- * countryDominance, addressGeoMap } or null on failure.
+ * Returns: { nodeData, tierWinners, countryTierCounts, officialNodeCounts,
+ * countryDominance, nodeGeoMap, addressGeoMap } or null on failure.
  */
 export async function fetch_global_performance_rankings() {
+  _prune_stale_global_rankings_caches();
+
   // Return cached data if fresh
   try {
     const raw = sessionStorage.getItem(GLOBAL_RANKINGS_CACHE_KEY);
@@ -1202,64 +1241,45 @@ export async function fetch_global_performance_rankings() {
       });
     }
 
+    // Every consumer of this data (achievements.js's 6 dynamic functions,
+    // HomeOverview's TopDogsPanel, _extract_country_counts below) only
+    // ever needs ONE of: a specific wallet's own node's rank (computed
+    // on demand via rankInGroup, cheap since it's only ever a handful of
+    // nodes — see main/Gamification/rankInGroup.js), the single #1 node
+    // per tier/metric (tierWinners, precomputed here), or a country's
+    // node count (countryTierCounts, precomputed here). Nothing needs a
+    // pre-sorted rank list for the whole network — that used to cost 12+
+    // duplicated copies of every node (issue #153).
     const METRICS = ['eps', 'dws', 'down_speed', 'up_speed'];
     const TIERS = ['CUMULUS', 'NIMBUS', 'STRATUS'];
 
-    // Per-tier rankings
-    const tierRankings = {};
+    const tierWinners = {};
     for (const tier of TIERS) {
-      tierRankings[tier] = {};
+      tierWinners[tier] = {};
       const tierNodes = nodeData.filter((n) => n.tier === tier);
       for (const metric of METRICS) {
-        tierRankings[tier][metric] = [...tierNodes]
-          .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
-          .map((n, i) => ({ ip: n.ip, rank: i + 1, value: n[metric] }));
+        tierWinners[tier][metric] = topInGroup(tierNodes, metric);
       }
     }
 
-    // Per-country, per-tier rankings — nodes compete only within their own tier per country.
-    // Structure: countryRankings[cc].tiers[TIER].metrics[metric] = [{ip, rank, value}]
-    const countryRankings = {};
+    const countryTierCounts = {};
     for (const node of nodeData) {
       if (!node.geo?.countryCode) continue;
       const cc = node.geo.countryCode;
-      if (!countryRankings[cc]) {
-        countryRankings[cc] = {
-          country: node.geo.country,
-          countryCode: cc,
-          flag: node.geo.flag,
-          tiers: {},
-        };
-      }
-      const tier = node.tier;
-      if (!countryRankings[cc].tiers[tier]) {
-        countryRankings[cc].tiers[tier] = {
-          metrics: { eps: [], dws: [], down_speed: [], up_speed: [] },
-        };
-      }
-      for (const metric of METRICS) {
-        countryRankings[cc].tiers[tier].metrics[metric].push({ ip: node.ip, value: node[metric] || 0 });
-      }
-    }
-    // Sort and assign ranks within each country+tier+metric
-    for (const cc of Object.keys(countryRankings)) {
-      for (const tier of Object.keys(countryRankings[cc].tiers)) {
-        for (const metric of METRICS) {
-          countryRankings[cc].tiers[tier].metrics[metric]
-            .sort((a, b) => b.value - a.value)
-            .forEach((entry, i) => { entry.rank = i + 1; });
-        }
-      }
+      if (!countryTierCounts[cc]) countryTierCounts[cc] = { country: node.geo.country, tiers: {} };
+      countryTierCounts[cc].tiers[node.tier] = (countryTierCounts[cc].tiers[node.tier] || 0) + 1;
     }
 
-    const data = { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts, countryDominance, addressGeoMap };
+    const data = { nodeData, tierWinners, countryTierCounts, officialNodeCounts, countryDominance, addressGeoMap, nodeGeoMap };
 
     try {
       sessionStorage.setItem(
         GLOBAL_RANKINGS_CACHE_KEY,
         JSON.stringify({ data, timestamp: Date.now() })
       );
-    } catch {}
+    } catch (e) {
+      console.warn('[GlobalRankings] Cache write failed:', e?.message);
+    }
 
     return data;
   } catch (e) {
@@ -1277,6 +1297,38 @@ const BLOCKS_PER_DAY = 2880; // 30 sec/block
 const RAW_APP_SPECS_CACHE_KEY = 'homeAppSpecsRaw_v1';
 const RAW_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const RAW_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v2']; // old key cached the full computed (height-dependent) result
+
+// Fields any downstream consumer actually reads off a raw spec (#153) — see
+// appSpecs.js's specResources()/buildSpecIndex(), appCategories.js's
+// categorizeAppSpec(), and live/apidata.js's diffDeployedForEvents(). This is
+// only what gets WRITTEN to sessionStorage; the in-memory return value below
+// (`json.data`) stays full/untrimmed for every caller. `cpu`/`ram`/`hdd` are
+// required for the LEGACY no-compose branch of specResources() (an app with
+// no `compose` array reads its resources straight off the top-level spec —
+// dropping them would silently show "0.00 cores/0GB/0GB" for those apps on a
+// warm cache read, the same class of bug this file's appSpecs.js comment
+// already describes fixing once for enterprise apps). `description` is read
+// by live/apidata.js's diffDeployedForEvents() for the Live page's deploy
+// event detail panel.
+const SPEC_CACHE_FIELDS = ['name', 'height', 'expire', 'instances', 'enterprise', 'owner', 'repotag', 'cpu', 'ram', 'hdd', 'description'];
+const COMPOSE_CACHE_FIELDS = ['name', 'repotag', 'cpu', 'ram', 'hdd'];
+
+function _trimSpecForCache(spec) {
+  const trimmed = {};
+  for (const f of SPEC_CACHE_FIELDS) {
+    if (spec?.[f] !== undefined) trimmed[f] = spec[f];
+  }
+  if (Array.isArray(spec?.compose)) {
+    trimmed.compose = spec.compose.map((c) => {
+      const tc = {};
+      for (const f of COMPOSE_CACHE_FIELDS) {
+        if (c?.[f] !== undefined) tc[f] = c[f];
+      }
+      return tc;
+    });
+  }
+  return trimmed;
+}
 
 let _rawAppSpecsInFlight = null;
 
@@ -1324,11 +1376,19 @@ export async function fetch_global_app_specs_raw() {
       // whole Home page load down with it.
       if (json.status === 'error' || !Array.isArray(json.data)) return [];
 
+      const trimmedForCache = json.data.map(_trimSpecForCache);
       try {
-        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, JSON.stringify({ data: json.data, timestamp: Date.now() }));
-      } catch {}
+        const payload = JSON.stringify({ data: trimmedForCache, timestamp: Date.now() });
+        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, payload);
+      } catch (e) {
+        // Log the TRIMMED payload's size, not json.data's — trimmedForCache
+        // is what actually hit the quota, and can be several times smaller
+        // than the untrimmed array; logging the wrong number here would
+        // mislead exactly the debugging this warning exists for.
+        console.warn('[AppSpecs] Cache write failed:', e?.message, `(${JSON.stringify(trimmedForCache).length} bytes)`);
+      }
 
-      return json.data;
+      return json.data; // full, untrimmed — every in-memory caller keeps working exactly as before
     } catch (e) {
       console.warn('[AppSpecs] Failed to fetch:', e);
       return [];
@@ -1407,7 +1467,7 @@ export async function fetch_country_node_counts() {
     if (raw) {
       const cached = JSON.parse(raw);
       if (cached && Date.now() - cached.timestamp < GLOBAL_RANKINGS_CACHE_TTL) {
-        return _extract_country_counts(cached.data.countryRankings);
+        return _extract_country_counts(cached.data.countryTierCounts);
       }
     }
   } catch {}
@@ -1437,22 +1497,22 @@ export async function fetch_country_node_counts() {
     const data = Object.values(countryMap).sort((a, b) => b.nodeCount - a.nodeCount);
     try {
       sessionStorage.setItem(HOME_GEO_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch {}
+    } catch (e) {
+      console.warn('[Geo] Cache write failed:', e?.message);
+    }
     return data;
   } catch {
     return [];
   }
 }
 
-function _extract_country_counts(countryRankings) {
-  if (!countryRankings) return [];
-  return Object.values(countryRankings)
-    .map(({ country, countryCode, tiers }) => ({
+export function _extract_country_counts(countryTierCounts) {
+  if (!countryTierCounts) return [];
+  return Object.entries(countryTierCounts)
+    .map(([countryCode, { country, tiers }]) => ({
       country,
       countryCode,
-      nodeCount: Object.values(tiers).reduce(
-        (sum, tier) => sum + (tier.metrics.eps?.length || 0), 0
-      ),
+      nodeCount: Object.values(tiers).reduce((sum, c) => sum + c, 0),
     }))
     .sort((a, b) => b.nodeCount - a.nodeCount);
 }
@@ -1488,7 +1548,9 @@ export async function fetch_gpu_prices() {
     const data = { models, totalGPUs, totalComputers };
     try {
       sessionStorage.setItem(GPU_PRICES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch {}
+    } catch (e) {
+      console.warn('[GPU] Cache write failed:', e?.message);
+    }
     return data;
   } catch {
     return null;

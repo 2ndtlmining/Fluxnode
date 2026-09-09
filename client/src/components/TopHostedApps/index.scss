@@ -230,6 +230,21 @@
   }
 }
 
+// ── Footnote (Enterprise / unresolved counts) ─────────────────────────────────
+// Muted/secondary text treatment, consistent with .hov-empty and
+// .hov-header-title elsewhere in this panel family.
+
+.hov-top-apps-footnote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.07);
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
 // ── Bottom row: fixed 10-row height panel ─────────────────────────────────────
 // (duplicated from home/HomeOverview/index.scss's shared bottom-row rule,
 // which also covers ExpiringTodayPanel/DeployedTodayPanel via .hov-list —

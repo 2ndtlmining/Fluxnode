@@ -76,11 +76,23 @@ export function categorizeRunningApps(aggregate, specIndex) {
   // Image-level tallies, resolved per component (see the note above).
   const repoCounts = {}; // repotag -> count, for topRunningApps (unresolved names excluded)
   let wordpressCount = 0;
+  // A container can fail to resolve a repotag for two different reasons, and
+  // conflating them under a silent `continue` under-counts the network
+  // without telling the viewer why: an Enterprise app's spec exists but its
+  // compose is encrypted by design (nothing to rank, not an error), while a
+  // container with no spec found at all is genuinely unresolved/unknown.
+  let enterpriseContainers = 0;
+  let unresolvedContainers = 0;
 
   for (const [key, count] of Object.entries(componentCounts)) {
     const { name, component } = splitComponentCountKey(key);
-    const repotag = repotagForComponent(index[name], component);
-    if (!repotag) continue;
+    const spec = index[name];
+    const repotag = repotagForComponent(spec, component);
+    if (!repotag) {
+      if (spec?.category === 'enterprise') enterpriseContainers += count;
+      else unresolvedContainers += count;
+      continue;
+    }
 
     repoCounts[repotag] = (repoCounts[repotag] || 0) + count;
     if (repotag.split(':')[0] === WORDPRESS_REPO_BASE) {
@@ -124,6 +136,8 @@ export function categorizeRunningApps(aggregate, specIndex) {
     wordpressCount,
     streamrRunningApps: streamrNodes,
     presearchRunningApps: presearchNodes,
-    totalRunningApps
+    totalRunningApps,
+    enterpriseContainers,
+    unresolvedContainers
   };
 }

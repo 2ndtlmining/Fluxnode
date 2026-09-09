@@ -9,7 +9,7 @@
 > lives. Update this file's status lines as work lands; don't let a second copy of the
 > plan drift in a session's memory file instead.
 
-**Last updated:** 2026-09-06.
+**Last updated:** 2026-09-09.
 
 ---
 
@@ -181,16 +181,38 @@ Consolidated from the now-retired `PREMIUM_FEATURES_PLAN.md`.
   `docs/superpowers/plans/2026-09-06-analytics-session5-chain-activity.md` for full
   detail. **This closes out the Analytics tab set originally scoped in
   `PREMIUM_FEATURES_PLAN.md`** — Apps/Network/Donor/Chain Activity are all shipped.
+- **Issue #187 fix (fluxinfo Image field removed)** — PR #188 (2026-09-09,
+  merged). FluxOS v8.18 dropped the docker `Image` field from
+  `stats.runonflux.io/fluxinfo`; running-app categorization now joins each
+  container's name against `globalappsspecifications` instead. New module
+  `client/src/runningAppsCategorized.js`.
+- **Live Redesign Session D (Resilience + final polish)** — PR #190
+  (2026-09-09, merged). Closes the entire 4-session Live Redesign (Sessions
+  A-D, PR #184/#185/#186/#190) — `LIVE_REDESIGN_PLAN.md`'s scope is fully
+  shipped.
+- **Accuracy/reliability pass — Top Hosted Apps categories, #153, #189** —
+  PR #191 (2026-09-09, opened, awaiting merge). Top Hosted Apps now
+  distinguishes Enterprise
+  apps from genuinely-unresolved ones (footnote on `/home` and
+  `/analytics`'s Apps tab); closes **#153** (sessionStorage quota — full
+  `globalPerfRankings`/`tierRankings`/`countryRankings` redesign onto an
+  on-demand `nodeData` + `rankInGroup`/`topInGroup` model, live-measured
+  86.3%→46.7% of the ~5,120KB quota on the same real wallet) and **#189**
+  (unguarded `fetch_global_stats` fetchers that could zero the whole Home
+  page on one rate-limited endpoint). Full characterization test coverage
+  added for `achievements.js` (previously zero). See
+  `docs/superpowers/specs/2026-09-09-accuracy-and-reliability-fixes-design.md`
+  and `docs/superpowers/plans/2026-09-09-accuracy-and-reliability-fixes.md`.
 
 ## Known, filed elsewhere or unfiled (not scheduled)
 
 - `stats.runonflux.io/fluxinfo` intermittently returns HTTP 200 with `status:
   "error"` — resilience layer (retry → last-known-good → stale marker) already
   handles it; still genuinely flaky upstream, nothing to build.
-- Older backlog items from 2026-08-26 (split `apidata.js` #147, sessionStorage-quota
-  #153, Rust `/header` endpoint #145, Titan Info #47, iOS column width #141) — never
-  picked back up across several sessions since; re-check the issue tracker before
-  assuming still relevant.
+- Older backlog items from 2026-08-26, re-checked 2026-09-09: split
+  `apidata.js` (#147), Rust `/header` endpoint (#145), Titan Info (#47), iOS
+  column width (#141) — still not picked up; sessionStorage-quota (#153) and
+  the unguarded-fetch issue (#189) are now closed, see Changelog above.
 - Home-vs-VPS/datacenter detection (ipinfo.io-based) — deferred, unscheduled, not
   blocking anything (see the git history of the now-retired
   `PREMIUM_FEATURES_PLAN.md` for the full research if this gets picked up later).

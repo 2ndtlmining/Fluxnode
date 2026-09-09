@@ -192,14 +192,13 @@ describe('buildConfirmationEvents', () => {
 describe('lookupNodeInfo', () => {
   const globalRankings = {
     nodeGeoMap: { '1.2.3.4': { country: 'Germany', countryCode: 'DE' } },
-    tierRankings: {
-      CUMULUS: {
-        eps: [{ ip: '1.2.3.4', rank: 3, value: 900 }, { ip: '5.6.7.8', rank: 1, value: 950 }],
-        dws: [{ ip: '1.2.3.4', rank: 2, value: 210 }],
-        down_speed: [{ ip: '1.2.3.4', rank: 1, value: 87.5 }],
-        up_speed: [{ ip: '1.2.3.4', rank: 4, value: 41.2 }],
-      },
-    },
+    nodeData: [
+      { ip: '1.2.3.4', tier: 'CUMULUS', eps: 900, dws: 210, down_speed: 87.5, up_speed: 41.2, geo: null },
+      // Same ip, different tier — a node's ip is not globally unique across
+      // this array (an ip can theoretically reappear if reused/re-tiered),
+      // so the lookup must match on ip AND tier, not ip alone.
+      { ip: '1.2.3.4', tier: 'STRATUS', eps: 5, dws: 1, down_speed: 1, up_speed: 1, geo: null },
+    ],
   };
 
   it('resolves country and real benchmark numbers for a known node', () => {
@@ -224,6 +223,40 @@ describe('lookupNodeInfo', () => {
   it('handles a missing ip or tier gracefully', () => {
     expect(lookupNodeInfo(null, 'CUMULUS', globalRankings)).toEqual({ country: null, countryCode: null, benchmark: null });
     expect(lookupNodeInfo('1.2.3.4', null, globalRankings)).toEqual({ country: 'Germany', countryCode: 'DE', benchmark: null });
+  });
+
+  it('matches on ip AND tier, not ip alone, when the same ip appears under a different tier', () => {
+    const stratusInfo = lookupNodeInfo('1.2.3.4', 'STRATUS', globalRankings);
+    expect(stratusInfo.benchmark).toEqual({ eps: 5, dws: 1, down_speed: 1, up_speed: 1 });
+
+    const wrongTierInfo = lookupNodeInfo('1.2.3.4', 'NIMBUS', globalRankings);
+    expect(wrongTierInfo.benchmark).toBeNull();
+  });
+
+  it('takes the per-metric max across same-ip, same-tier duplicates (a host running several nodes on different ports)', () => {
+    // Live-verified 2026-09-09: buildConfirmationEvents strips the port off
+    // tx.ip, and nodeData carries no port either, so a host running several
+    // same-tier Flux nodes on different ports collapses to one ip here —
+    // exactly the shape that made rankInGroup's plain .find() pick an
+    // arbitrary duplicate instead of the real best one. The OLD per-metric
+    // sorted-array lookup found each metric's own highest value among such
+    // duplicates independently, so the correct composite benchmark object
+    // can genuinely mix values from different physical ports.
+    const sharedHost = {
+      nodeGeoMap: { '5.230.173.194': { country: 'Germany', countryCode: 'DE' } },
+      nodeData: [
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 460.28, dws: 212.26, down_speed: 4296.66, up_speed: 798.48, geo: null },
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 2143.16, dws: 236.6, down_speed: 3981.93, up_speed: 39.51, geo: null },
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 265.64, dws: 817.72, down_speed: 50.51, up_speed: 39.93, geo: null },
+      ],
+    };
+    const info = lookupNodeInfo('5.230.173.194', 'CUMULUS', sharedHost);
+    expect(info.benchmark).toEqual({
+      eps: 2143.16, // the 2nd entry's eps is the highest of the three
+      dws: 817.72, // the 3rd entry's dws is the highest of the three
+      down_speed: 4296.66, // the 1st entry's down_speed is the highest of the three
+      up_speed: 798.48, // the 1st entry's up_speed is the highest of the three
+    });
   });
 });
 

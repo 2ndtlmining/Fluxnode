@@ -7,6 +7,8 @@ import {
   wallet_health_full,
   fetch_global_app_specs,
   fetch_global_app_specs_raw,
+  _extract_country_counts,
+  fetch_global_stats,
 } from './apidata';
 
 import {
@@ -268,5 +270,305 @@ describe('fetch_global_app_specs_raw / fetch_global_app_specs', () => {
       expect(out.deployedToday).toHaveLength(1);
       expect(out.networkCategories).toHaveLength(1);
     });
+  });
+});
+
+describe('fetch_global_app_specs_raw caches a trimmed payload (#153)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  it('strips fields no consumer reads before writing to sessionStorage, but returns the full spec to the caller', async () => {
+    const fullSpec = {
+      name: 'app1', height: 100, expire: 1000, instances: 3, enterprise: '', owner: 'zid1',
+      contacts: ['x'], description: 'long text', geolocation: ['a'], hash: 'abc', nodes: [], staticip: false, version: 8,
+      compose: [{ name: 'c1', repotag: 'img:latest', cpu: 1, ram: 512, hdd: 5, commands: [], containerData: '/x', containerPorts: [], domains: [''], environmentParameters: [], ports: [], repoauth: '', description: 'x' }],
+    };
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [fullSpec] }) });
+
+    const result = await fetch_global_app_specs_raw();
+    expect(result[0].name).toBe('app1'); // in-memory return is untouched
+    expect(result[0]).toHaveProperty('contacts'); // and keeps every other field too
+    expect(result[0]).toHaveProperty('description');
+
+    const cached = JSON.parse(sessionStorage.getItem('homeAppSpecsRaw_v1')).data[0];
+    expect(cached).not.toHaveProperty('contacts');
+    expect(cached).not.toHaveProperty('geolocation');
+    expect(cached).not.toHaveProperty('hash');
+    expect(cached).not.toHaveProperty('nodes');
+    expect(cached).not.toHaveProperty('staticip');
+    expect(cached).not.toHaveProperty('version');
+    expect(cached.compose[0]).not.toHaveProperty('commands');
+    expect(cached.compose[0]).not.toHaveProperty('containerData');
+    expect(cached.compose[0]).not.toHaveProperty('domains');
+    expect(cached.compose[0]).not.toHaveProperty('description');
+    // fields every consumer needs stay present:
+    expect(cached).toMatchObject({ name: 'app1', height: 100, expire: 1000, instances: 3, enterprise: '', owner: 'zid1', description: 'long text' });
+    expect(cached.compose[0]).toMatchObject({ name: 'c1', repotag: 'img:latest', cpu: 1, ram: 512, hdd: 5 });
+  });
+
+  /*
+   * Regression test for the corrected allowlist (#153, task 8): specResources()
+   * (appSpecs.js) has a LEGACY branch for specs with no `compose` array at all
+   * — it reads spec.cpu/spec.ram/spec.hdd/spec.repotag straight off the
+   * top-level spec object. The original allowlist kept `repotag` but dropped
+   * `cpu`/`ram`/`hdd`, which would have made a warm-cache reload of a legacy
+   * no-compose app silently report "0.00 cores / 0GB RAM / 0GB storage"
+   * instead of its real figures. This proves a cache WRITE-then-READ round
+   * trip for exactly that shape still carries cpu/ram/hdd through.
+   */
+  it('keeps cpu/ram/hdd on a legacy no-compose spec through a cache write+read round trip', async () => {
+    const legacySpec = {
+      name: 'legacyApp', height: 200, instances: 1, owner: 'zid2',
+      repotag: 'legacy/image:1', cpu: 2, ram: 4096, hdd: 20,
+    };
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [legacySpec] }) });
+
+    await fetch_global_app_specs_raw();
+
+    const cached = JSON.parse(sessionStorage.getItem('homeAppSpecsRaw_v1')).data[0];
+    // Not stripped: the legacy branch of specResources() needs these directly
+    // off the top-level spec (no `compose` array to fall back to).
+    expect(cached.cpu).toBe(2);
+    expect(cached.ram).toBe(4096);
+    expect(cached.hdd).toBe(20);
+    expect(cached.repotag).toBe('legacy/image:1');
+    expect(cached).not.toHaveProperty('compose');
+
+    // And a subsequent warm-cache read (within TTL) hands the trimmed-but-
+    // still-correct spec straight back out to callers.
+    const warmRead = await fetch_global_app_specs_raw();
+    expect(warmRead[0]).toMatchObject({ name: 'legacyApp', cpu: 2, ram: 4096, hdd: 20, repotag: 'legacy/image:1' });
+  });
+
+  it('logs loudly instead of swallowing a sessionStorage quota-exceeded error on write', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [{ name: 'app1', height: 100 }] }) });
+
+    const result = await fetch_global_app_specs_raw();
+
+    expect(result).toEqual([{ name: 'app1', height: 100 }]); // the fetch itself still succeeds
+    expect(warn).toHaveBeenCalledWith('[AppSpecs] Cache write failed:', 'QuotaExceededError', expect.stringContaining('bytes'));
+  });
+});
+
+describe('sessionStorage cache-write failures are logged, not swallowed (#153)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('fetch_global_performance_rankings logs a [GlobalRankings] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('getFluxNodes')) return Promise.resolve({ json: async () => ({ fluxNodes: [] }) });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('getzelnodecount')) return Promise.resolve({ json: async () => ({ data: {} }) });
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+
+    const { fetch_global_performance_rankings } = require('./apidata');
+    const result = await fetch_global_performance_rankings();
+
+    expect(result).not.toBeNull(); // the fetch/compute itself still succeeds
+    expect(warn).toHaveBeenCalledWith('[GlobalRankings] Cache write failed:', 'QuotaExceededError');
+  });
+
+  it('fetch_country_node_counts logs a [Geo] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [] }) });
+
+    const { fetch_country_node_counts } = require('./apidata');
+    const result = await fetch_country_node_counts();
+
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledWith('[Geo] Cache write failed:', 'QuotaExceededError');
+  });
+
+  it('fetch_gpu_prices logs a [GPU] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ([{ number_of_gpus: 2, number_of_computers: 1 }]),
+    });
+
+    const { fetch_gpu_prices } = require('./apidata');
+    const result = await fetch_gpu_prices();
+
+    expect(result).not.toBeNull();
+    expect(warn).toHaveBeenCalledWith('[GPU] Cache write failed:', 'QuotaExceededError');
+  });
+});
+
+/*
+ * _extract_country_counts (issue #153) — Task 3 changed this function's
+ * entire input contract from the old exploded countryRankings shape to the
+ * much smaller countryTierCounts shape. This test replaces (not adds to)
+ * Task 1's original version, keeping the exact same expected output.
+ */
+describe('_extract_country_counts (characterization — current behavior)', () => {
+  it("counts nodes per country by summing each tier's count", () => {
+    const countryTierCounts = {
+      US: { country: 'United States', tiers: { CUMULUS: 2, STRATUS: 1 } },
+    };
+    const result = _extract_country_counts(countryTierCounts);
+    expect(result).toEqual([{ country: 'United States', countryCode: 'US', nodeCount: 3 }]);
+  });
+});
+
+/*
+ * fetch_global_performance_rankings (issue #153 redesign) — replaces the
+ * old pre-sorted, massively-duplicated tierRankings/countryRankings cache
+ * with a flat nodeData array plus two small precomputed aggregates
+ * (tierWinners, countryTierCounts). See Task 3 brief.
+ */
+describe('fetch_global_performance_rankings (redesigned shape)', () => {
+  // 10.0.0.3 is a second CUMULUS node in the US (same tier+country as
+  // 10.0.0.1), deliberately given lower metric values than 10.0.0.1 across
+  // the board. This pins two things the original one-node-per-tier fixture
+  // could not: tierWinners.CUMULUS must still pick 10.0.0.1 (the higher
+  // value, not the last-seen or minimum entry), and countryTierCounts.US's
+  // CUMULUS count must become 2 (proving the accumulator adds rather than
+  // overwrites). NIMBUS has zero nodes in this fixture, pinning the null
+  // branch of tierWinners.
+  const FLUX_NODES = { fluxNodes: [
+    { ip: '10.0.0.1:16127', tier: 'cumulus', payment_address: 't1a' },
+    { ip: '10.0.0.2:16127', tier: 'stratus', payment_address: 't1b' },
+    { ip: '10.0.0.3:16127', tier: 'cumulus', payment_address: 't1c' },
+  ] };
+  const BENCH_DATA = [
+    { benchmark: { bench: { ipaddress: '10.0.0.1:16127', eps: 100, ddwrite: 10, download_speed: 50, upload_speed: 20 } } },
+    { benchmark: { bench: { ipaddress: '10.0.0.2:16127', eps: 200, ddwrite: 20, download_speed: 60, upload_speed: 30 } } },
+    { benchmark: { bench: { ipaddress: '10.0.0.3:16127', eps: 60, ddwrite: 8, download_speed: 30, upload_speed: 15 } } },
+  ];
+  const GEO_DATA = [
+    { geolocation: { ip: '10.0.0.1', country: 'United States', countryCode: 'US', continent: 'NA' } },
+    { geolocation: { ip: '10.0.0.2', country: 'Germany', countryCode: 'DE', continent: 'EU' } },
+    { geolocation: { ip: '10.0.0.3', country: 'United States', countryCode: 'US', continent: 'NA' } },
+  ];
+  const NODE_COUNT = { data: { 'cumulus-enabled': 2, 'nimbus-enabled': 0, 'stratus-enabled': 1, total: 3 } };
+
+  function mockFetchByUrl() {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('getFluxNodes')) return Promise.resolve({ json: async () => FLUX_NODES });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ json: async () => ({ status: 'success', data: BENCH_DATA }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ json: async () => ({ status: 'success', data: GEO_DATA }) });
+      if (u.includes('getzelnodecount')) return Promise.resolve({ json: async () => NODE_COUNT });
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+  }
+
+  let fetch_global_performance_rankings;
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.resetModules();
+    sessionStorage.clear();
+    mockFetchByUrl();
+    fetch_global_performance_rankings = require('./apidata').fetch_global_performance_rankings;
+  });
+
+  it('resolves nodeData as one entry per benchmarked node, no duplication', async () => {
+    const result = await fetch_global_performance_rankings();
+    expect(result.nodeData).toHaveLength(3);
+    expect(result.nodeData.find((n) => n.ip === '10.0.0.1')).toMatchObject({ tier: 'CUMULUS', eps: 100 });
+    expect(result.tierRankings).toBeUndefined();
+    expect(result.countryRankings).toBeUndefined();
+  });
+
+  it('tierWinners gives the single highest-value node per tier+metric', async () => {
+    const result = await fetch_global_performance_rankings();
+    // Two CUMULUS nodes now (10.0.0.1 eps 100, 10.0.0.3 eps 60, added later
+    // in fixture order) — 10.0.0.1 must still win, proving this picks the
+    // highest value rather than the last-seen or minimum entry.
+    expect(result.tierWinners.CUMULUS.eps).toEqual({ ip: '10.0.0.1', value: 100 });
+    // Only one node in STRATUS, so it trivially wins its own tier.
+    expect(result.tierWinners.STRATUS.eps).toEqual({ ip: '10.0.0.2', value: 200 });
+    // NIMBUS has zero nodes in this fixture — the { ip, value } | null contract's
+    // null branch, which a single-winner-per-tier fixture would never exercise.
+    expect(result.tierWinners.NIMBUS.eps).toBeNull();
+  });
+
+  it('countryTierCounts matches nodeData grouped by country+tier', async () => {
+    const result = await fetch_global_performance_rankings();
+    // Two CUMULUS nodes in the US (10.0.0.1, 10.0.0.3) — proves the
+    // accumulator adds per node rather than overwriting with 1 each time.
+    expect(result.countryTierCounts.US.tiers.CUMULUS).toBe(2);
+    expect(result.countryTierCounts.DE.tiers.STRATUS).toBe(1);
+  });
+
+  it('bumps the cache key to v4 and prunes the old v3 entry', async () => {
+    sessionStorage.setItem('globalPerfRankings_v3', JSON.stringify({ data: { stale: true }, timestamp: Date.now() }));
+    await fetch_global_performance_rankings();
+    expect(sessionStorage.getItem('globalPerfRankings_v3')).toBeNull();
+    expect(sessionStorage.getItem('globalPerfRankings_v4')).not.toBeNull();
+    const cachedV4 = JSON.parse(sessionStorage.getItem('globalPerfRankings_v4'));
+    expect(cachedV4.data.nodeData).toHaveLength(3);
+    expect(cachedV4.data.tierRankings).toBeUndefined();
+    expect(cachedV4.data.countryRankings).toBeUndefined();
+  });
+
+  afterEach(() => {
+    // A direct `global.fetch = jest.fn()` assignment (as opposed to
+    // `jest.spyOn`) is never tracked by jest.restoreAllMocks() — it only
+    // restores spies. Restore the pre-suite reference explicitly so this
+    // describe block's mock can't leak into whatever runs after it.
+    global.fetch = originalFetch;
+  });
+});
+
+describe('fetch_global_stats resilience (#189)', () => {
+  it('a single failing fetch (e.g. rate-limited currency endpoint) does not prevent other fields from populating', async () => {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('/api/currency')) return Promise.reject(new Error('429 rate limited'));
+      if (u.includes('/daemon/getzelnodecount')) return Promise.resolve({ ok: true, json: async () => ({ data: { 'cumulus-enabled': 10, 'nimbus-enabled': 5, 'stratus-enabled': 3, total: 18 } }) });
+      if (u.includes('/daemon/getinfo')) return Promise.resolve({ ok: true, json: async () => ({ data: { blocks: 999, version: 5.1 } }) });
+      if (u.includes('/api/addr/')) return Promise.resolve({ ok: true, json: async () => ({ balance: 1234.56 }) });
+      if (u.includes('/api/statistics/richest-addresses-list')) return Promise.resolve({ ok: true, json: async () => ([]) });
+      if (u.includes('package.json')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ version: '1.2.3' }) });
+      if (u.includes('/apps/globalappsspecifications')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('viewdeterministiczelnodelist')) return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      if (u.includes('benchmarkinfo.json')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ version: '1.0.0' }) });
+      if (u.includes('projection=apps.resources')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=flux')) return Promise.resolve({ ok: true, json: async () => ({ status: 'error', data: [] }) });
+      if (u.includes('frontendData')) return Promise.resolve({ ok: true, json: async () => ({ latest_price: 0.25 }) });
+      // Default fallback for any other fetch
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const store = await fetch_global_stats('t1Hs7jYsXmGXg2c3sW9Vk3nQp8pqRs4tU5vW6xYz7aA');
+    // The currency fetch failed, so flux_price_usd should remain at the default (0)
+    expect(store.flux_price_usd).toBe(0);
+    // But other fields should still be populated by successful fetches
+    expect(store.node_count.cumulus).toBe(10);
+    expect(store.node_count.nimbus).toBe(5);
+    expect(store.node_count.stratus).toBe(3);
+    expect(store.node_count.total).toBe(18);
+    expect(store.current_block_height).toBe(999);
+    expect(store.wallet_amount_flux).toBe(1234.56);
   });
 });
