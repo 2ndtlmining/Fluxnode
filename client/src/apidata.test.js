@@ -295,19 +295,30 @@ describe('_extract_country_counts (characterization — current behavior)', () =
  * (tierWinners, countryTierCounts). See Task 3 brief.
  */
 describe('fetch_global_performance_rankings (redesigned shape)', () => {
+  // 10.0.0.3 is a second CUMULUS node in the US (same tier+country as
+  // 10.0.0.1), deliberately given lower metric values than 10.0.0.1 across
+  // the board. This pins two things the original one-node-per-tier fixture
+  // could not: tierWinners.CUMULUS must still pick 10.0.0.1 (the higher
+  // value, not the last-seen or minimum entry), and countryTierCounts.US's
+  // CUMULUS count must become 2 (proving the accumulator adds rather than
+  // overwrites). NIMBUS has zero nodes in this fixture, pinning the null
+  // branch of tierWinners.
   const FLUX_NODES = { fluxNodes: [
     { ip: '10.0.0.1:16127', tier: 'cumulus', payment_address: 't1a' },
     { ip: '10.0.0.2:16127', tier: 'stratus', payment_address: 't1b' },
+    { ip: '10.0.0.3:16127', tier: 'cumulus', payment_address: 't1c' },
   ] };
   const BENCH_DATA = [
     { benchmark: { bench: { ipaddress: '10.0.0.1:16127', eps: 100, ddwrite: 10, download_speed: 50, upload_speed: 20 } } },
     { benchmark: { bench: { ipaddress: '10.0.0.2:16127', eps: 200, ddwrite: 20, download_speed: 60, upload_speed: 30 } } },
+    { benchmark: { bench: { ipaddress: '10.0.0.3:16127', eps: 60, ddwrite: 8, download_speed: 30, upload_speed: 15 } } },
   ];
   const GEO_DATA = [
     { geolocation: { ip: '10.0.0.1', country: 'United States', countryCode: 'US', continent: 'NA' } },
     { geolocation: { ip: '10.0.0.2', country: 'Germany', countryCode: 'DE', continent: 'EU' } },
+    { geolocation: { ip: '10.0.0.3', country: 'United States', countryCode: 'US', continent: 'NA' } },
   ];
-  const NODE_COUNT = { data: { 'cumulus-enabled': 1, 'nimbus-enabled': 0, 'stratus-enabled': 1, total: 2 } };
+  const NODE_COUNT = { data: { 'cumulus-enabled': 2, 'nimbus-enabled': 0, 'stratus-enabled': 1, total: 3 } };
 
   function mockFetchByUrl() {
     global.fetch = jest.fn((url) => {
@@ -331,7 +342,7 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
 
   it('resolves nodeData as one entry per benchmarked node, no duplication', async () => {
     const result = await fetch_global_performance_rankings();
-    expect(result.nodeData).toHaveLength(2);
+    expect(result.nodeData).toHaveLength(3);
     expect(result.nodeData.find((n) => n.ip === '10.0.0.1')).toMatchObject({ tier: 'CUMULUS', eps: 100 });
     expect(result.tierRankings).toBeUndefined();
     expect(result.countryRankings).toBeUndefined();
@@ -339,14 +350,22 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
 
   it('tierWinners gives the single highest-value node per tier+metric', async () => {
     const result = await fetch_global_performance_rankings();
-    // Only one node per tier in this fixture, so it trivially wins its own tier.
+    // Two CUMULUS nodes now (10.0.0.1 eps 100, 10.0.0.3 eps 60, added later
+    // in fixture order) — 10.0.0.1 must still win, proving this picks the
+    // highest value rather than the last-seen or minimum entry.
     expect(result.tierWinners.CUMULUS.eps).toEqual({ ip: '10.0.0.1', value: 100 });
+    // Only one node in STRATUS, so it trivially wins its own tier.
     expect(result.tierWinners.STRATUS.eps).toEqual({ ip: '10.0.0.2', value: 200 });
+    // NIMBUS has zero nodes in this fixture — the { ip, value } | null contract's
+    // null branch, which a single-winner-per-tier fixture would never exercise.
+    expect(result.tierWinners.NIMBUS.eps).toBeNull();
   });
 
   it('countryTierCounts matches nodeData grouped by country+tier', async () => {
     const result = await fetch_global_performance_rankings();
-    expect(result.countryTierCounts.US.tiers.CUMULUS).toBe(1);
+    // Two CUMULUS nodes in the US (10.0.0.1, 10.0.0.3) — proves the
+    // accumulator adds per node rather than overwriting with 1 each time.
+    expect(result.countryTierCounts.US.tiers.CUMULUS).toBe(2);
     expect(result.countryTierCounts.DE.tiers.STRATUS).toBe(1);
   });
 
@@ -355,5 +374,13 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
     await fetch_global_performance_rankings();
     expect(sessionStorage.getItem('globalPerfRankings_v3')).toBeNull();
     expect(sessionStorage.getItem('globalPerfRankings_v4')).not.toBeNull();
+    const cachedV4 = JSON.parse(sessionStorage.getItem('globalPerfRankings_v4'));
+    expect(cachedV4.data.nodeData).toHaveLength(3);
+    expect(cachedV4.data.tierRankings).toBeUndefined();
+    expect(cachedV4.data.countryRankings).toBeUndefined();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 });

@@ -192,14 +192,9 @@ describe('buildConfirmationEvents', () => {
 describe('lookupNodeInfo', () => {
   const globalRankings = {
     nodeGeoMap: { '1.2.3.4': { country: 'Germany', countryCode: 'DE' } },
-    tierRankings: {
-      CUMULUS: {
-        eps: [{ ip: '1.2.3.4', rank: 3, value: 900 }, { ip: '5.6.7.8', rank: 1, value: 950 }],
-        dws: [{ ip: '1.2.3.4', rank: 2, value: 210 }],
-        down_speed: [{ ip: '1.2.3.4', rank: 1, value: 87.5 }],
-        up_speed: [{ ip: '1.2.3.4', rank: 4, value: 41.2 }],
-      },
-    },
+    nodeData: [
+      { ip: '1.2.3.4', tier: 'CUMULUS', eps: 900, dws: 210, down_speed: 87.5, up_speed: 41.2, geo: null },
+    ],
   };
 
   it('resolves country and real benchmark numbers for a known node', () => {

@@ -165,19 +165,14 @@ const BENCHMARK_METRICS = ['eps', 'dws', 'down_speed', 'up_speed'];
  * stats — that's exactly the reachability/proxy-mode fragility the coinbase-
  * based approach was built to get away from.
  */
-export function lookupNodeInfo(ip, tier, { nodeGeoMap, tierRankings } = {}) {
+export function lookupNodeInfo(ip, tier, { nodeGeoMap, nodeData } = {}) {
   const geo = ip ? nodeGeoMap?.[ip] : null;
 
-  const tierMetrics = tier ? tierRankings?.[tier] : null;
+  const node = ip && tier ? (nodeData || []).find((n) => n.ip === ip && n.tier === tier) : null;
   let benchmark = null;
-  if (ip && tierMetrics) {
-    for (const metric of BENCHMARK_METRICS) {
-      const entry = Array.isArray(tierMetrics[metric]) ? tierMetrics[metric].find((r) => r.ip === ip) : null;
-      if (entry) {
-        if (!benchmark) benchmark = {};
-        benchmark[metric] = entry.value;
-      }
-    }
+  if (node) {
+    benchmark = {};
+    for (const metric of BENCHMARK_METRICS) benchmark[metric] = node[metric];
   }
 
   return { country: geo?.country || null, countryCode: geo?.countryCode || null, benchmark };
