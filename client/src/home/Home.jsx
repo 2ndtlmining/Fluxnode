@@ -267,9 +267,9 @@ class Home extends React.Component {
       selectedHistoryItemIndex: -1
     });
 
-    this.payoutTimer.pauseAndHide();
-    this.bestUptime.loading();
-    this.mostHosted.loading();
+    if (this.payoutTimer) this.payoutTimer.pauseAndHide();
+    if (this.bestUptime) this.bestUptime.loading();
+    if (this.mostHosted) this.mostHosted.loading();
 
     const oldAddress = this.state.activeAddress;
     const walletView = this.walletNodes.current;
@@ -291,7 +291,7 @@ class Home extends React.Component {
       const isWalletAvailable = oldAddress != null;
       this.setState({ isWalletAvailable });
 
-      if (isWalletAvailable) {
+      if (isWalletAvailable && this.payoutTimer) {
         this.payoutTimer.resumeAndShow();
       }
 
@@ -366,9 +366,9 @@ class Home extends React.Component {
     // WalletNodes to compute — out of scope here, filed separately.
     if (walletView) {
       walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
-        highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
-        bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
-        mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+        highestRankedNode && this.payoutTimer && this.payoutTimer.receiveNode(highestRankedNode);
+        bestUptimeNode && this.bestUptime && this.bestUptime.receiveNode(bestUptimeNode);
+        mostHostedNode && this.mostHosted && this.mostHosted.receiveNode(mostHostedNode);
       });
     }
 
