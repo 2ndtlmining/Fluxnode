@@ -40,7 +40,7 @@ import {
 // eps values, index 0..18: node0 is the clear #1 (100), node1 ties node2 at
 // 50 (tie case — node1 appears first in this array, so under the current
 // stable-sort behavior node1 must rank ABOVE node2 on a tie), nodes 3..17
-// descend from 45 to 3, node18 is the clear last (1), node19 has NO
+// descend from 45 to 5, node18 is the clear last (1), node19 has NO
 // benchmark entry at all (simulates an offline/unbenchmarked node — must
 // be absent from tierRankings.CUMULUS.eps entirely, not present with a 0).
 function buildCumulusTierRankings() {
@@ -64,6 +64,15 @@ const CUMULUS_EPS_RANKINGS = buildCumulusTierRankings();
 
 // dws/down_speed/up_speed: reuse the same shape so tests can pick whichever
 // metric is convenient — only `eps` needs the carefully-tuned tie/edge values.
+//
+// NOTE: in the real data shape (apidata.js:1212-1217) all four per-tier metric
+// arrays (eps/dws/down_speed/up_speed) are always built from the same
+// `tierNodes` list, so they always share identical length/membership. This
+// fixture deliberately diverges — eps has 19 entries (CUMULUS_EPS_RANKINGS,
+// node19 omitted to model an unbenchmarked node) while dws/down_speed/up_speed
+// (built via FLAT_RANKINGS below) have 20 — purely to exercise that one
+// "unbenchmarked node" case. Don't read that divergence as a general
+// invariant of the real shape.
 const FLAT_RANKINGS = (n) =>
   Array.from({ length: 20 }, (_, i) => ({ ip: `10.0.0.${i}`, rank: i + 1, value: n - i }));
 
@@ -97,6 +106,11 @@ describe('computeTierPerformanceAchievements (characterization — current behav
     const results = computeTierPerformanceAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS);
     const medals = results.filter((r) => r.id.startsWith('global_CUMULUS_eps_'));
     expect(medals.every((m) => !m.earned)).toBe(true);
+    // progress (achievements.js:199-202): bestRank=11, totalInTier=20 (from
+    // OFFICIAL_NODE_COUNTS.CUMULUS) →
+    // (1 - (11-1)/20) * 100 = (1 - 0.5) * 100 = 50
+    const gold = medals.find((m) => m.id === 'global_CUMULUS_eps_gold');
+    expect(gold.progress).toBe(50);
   });
 
   it('breaks a tie the same way the current stable-sort ranking does — first-appearing node wins the better rank', () => {
@@ -119,10 +133,21 @@ describe('computeTierPerformanceAchievements (characterization — current behav
     // CORRECTED vs brief: TIER_DISPLAY.CUMULUS = 'Cumulus' (title case), not 'CUMULUS'.
     expect(eps[0].description).toBe('No Cumulus nodes with benchmark data found');
   });
+
+  it('falls back to the benchmarked-array length when officialNodeCounts is missing (achievements.js:174)', () => {
+    // officialNodeCounts?.[tier] || metricRankings.length — omit officialNodeCounts
+    // entirely so totalInTier must come from CUMULUS_EPS_RANKINGS.length (19),
+    // NOT OFFICIAL_NODE_COUNTS.CUMULUS (20), proving the fallback branch ran.
+    const wallet = [walletNode('10.0.0.0')]; // eps rank 1
+    const results = computeTierPerformanceAchievements(wallet, TIER_RANKINGS, undefined);
+    const gold = results.find((r) => r.id === 'global_CUMULUS_eps_gold');
+    expect(gold.earned).toBe(true);
+    expect(gold.progressLabel).toBe('Global rank #1 of 19 Cumulus nodes');
+  });
 });
 
 describe('computeTierWorstPerformanceAchievements / computeWoodenSpoonAchievements (characterization)', () => {
-  it('awards Potato (dead last) only to the true last-ranked node, using the TRUE total, not a trimmed approximation', () => {
+  it('awards Potato (dead last) to the true last-ranked node — earned boundary checked against the benchmarked count (metricTotal), not the true/official count (only the display string uses that)', () => {
     // 10.0.0.18 is eps rank 19 of 19 benchmarked CUMULUS nodes (node19 is
     // deliberately unbenchmarked, so the eps array itself has 19 entries) —
     // the actual last position in the benchmark pool.
@@ -130,9 +155,15 @@ describe('computeTierWorstPerformanceAchievements / computeWoodenSpoonAchievemen
     const worst = computeTierWorstPerformanceAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS);
     const potato = worst.find((r) => r.id === 'slow_CUMULUS_potato');
     expect(potato.earned).toBe(true);
+    // progress (achievements.js:344): Math.min(100, rank / metricTotal * 100)
+    // = Math.min(100, 19 / 19 * 100) = 100
+    expect(potato.progress).toBe(100);
     const spoon = computeWoodenSpoonAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS)
       .find((r) => r.id === 'wooden_spoon_CUMULUS_eps');
     expect(spoon.earned).toBe(true);
+    // progress (achievements.js:422): Math.max(0, Math.min(100, worstRank /
+    // metricRankings.length * 100)) = Math.min(100, 19 / 19 * 100) = 100
+    expect(spoon.progress).toBe(100);
     // CORRECTED vs brief: rank is #19 (of the 19-entry benchmark array), not
     // #20 — the display total (20) comes from officialNodeCounts and is a
     // separate number from the rank, which is computed against the 19-entry
@@ -148,6 +179,47 @@ describe('computeTierWorstPerformanceAchievements / computeWoodenSpoonAchievemen
       .find((r) => r.id === 'wooden_spoon_CUMULUS_eps');
     expect(spoon.earned).toBe(false);
   });
+
+  // ── Tortoise / Toaster levels (achievements.js:348-365) — the existing
+  // tests above only ever exercise the Potato (dead-last) level. rank/
+  // metricTotal for this fixture's eps pool: 10.0.0.16 -> rank 17,
+  // 10.0.0.17 -> rank 18, 10.0.0.18 -> rank 19, metricTotal = 19 (verified
+  // by hand and by re-running buildCumulusTierRankings' exact sort/map logic).
+  //
+  // Thresholds (achievements.js:350, :362): tortoise earned when
+  // rank > metricTotal * 0.90 = 17.1; toaster earned when
+  // rank > metricTotal * 0.75 = 14.25.
+  it('rank 18 of 19 (10.0.0.17): Tortoise is earned but Potato is not (18 > 17.1 but 18 < 19)', () => {
+    const wallet = [walletNode('10.0.0.17')];
+    const worst = computeTierWorstPerformanceAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_potato').earned).toBe(false);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_tortoise').earned).toBe(true);
+  });
+
+  it('rank 17 of 19 (10.0.0.16): Toaster is earned but Tortoise is not (17 > 14.25 but 17 < 17.1)', () => {
+    const wallet = [walletNode('10.0.0.16')];
+    const worst = computeTierWorstPerformanceAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_tortoise').earned).toBe(false);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_toaster').earned).toBe(true);
+
+    // pctFromBottom (achievements.js:333):
+    // ((metricTotal - rank + 1) / metricTotal * 100).toFixed(1)
+    // = ((19 - 17 + 1) / 19 * 100).toFixed(1) = (3 / 19 * 100).toFixed(1)
+    // = (15.789473...).toFixed(1) = '15.8'
+    // progressLabel (achievements.js:382):
+    // `Bottom ${pctFromBottom}% of ${displayTotal} ${tierLabel} nodes · ${metricLabel}`
+    // displayTotal = officialNodeCounts.CUMULUS.toLocaleString() = '20'
+    const toaster = worst.find((r) => r.id === 'slow_CUMULUS_toaster');
+    expect(toaster.progressLabel).toBe('Bottom 15.8% of 20 Cumulus nodes · EPS');
+  });
+
+  it('rank 1 of 19 (10.0.0.0): none of Potato/Tortoise/Toaster are earned — comfortably not near the bottom', () => {
+    const wallet = [walletNode('10.0.0.0')];
+    const worst = computeTierWorstPerformanceAchievements(wallet, TIER_RANKINGS, OFFICIAL_NODE_COUNTS);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_potato').earned).toBe(false);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_tortoise').earned).toBe(false);
+    expect(worst.find((r) => r.id === 'slow_CUMULUS_toaster').earned).toBe(false);
+  });
 });
 
 describe('computeTryHardAchievements (characterization — top-5%-of-19-benchmarked = rank 1)', () => {
@@ -160,6 +232,13 @@ describe('computeTryHardAchievements (characterization — top-5%-of-19-benchmar
       .find((r) => r.id === 'try_hard_CUMULUS_eps');
     expect(r1.earned).toBe(true);
     expect(r2.earned).toBe(false);
+    // progress (achievements.js:465): Math.max(0, Math.min(100,
+    //   (1 - (bestRank - 1) / Math.max(topFivePctThreshold, 1)) * 100))
+    // topFivePctThreshold = Math.ceil(19 * 0.05) = 1
+    // r1: bestRank=1 -> (1 - 0/1) * 100 = 100
+    // r2: bestRank=2 -> (1 - 1/1) * 100 = 0
+    expect(r1.progress).toBe(100);
+    expect(r2.progress).toBe(0);
   });
 
   it('with a larger pool (200 nodes), top 5% is rank 10 — reachable well beyond any small fixed top-N', () => {
@@ -213,7 +292,8 @@ describe('computeDictatorAchievements (characterization)', () => {
   };
 
   it('awards Dictator when the wallet node count meets or exceeds the leader count', () => {
-    const globalRankings = { countryDominance: { US: { leaderCount: 2 } }, nodeGeoMap };
+    // countryDominance[cc] shape per apidata.js:1179 is { leaderCount, country }.
+    const globalRankings = { countryDominance: { US: { leaderCount: 2, country: 'United States' } }, nodeGeoMap };
     const wallet = [walletNode('10.0.0.0'), walletNode('10.0.0.1')];
     const results = computeDictatorAchievements(wallet, globalRankings);
     const dictator = results.find((r) => r.id === 'dictator_US');
@@ -222,7 +302,8 @@ describe('computeDictatorAchievements (characterization)', () => {
   });
 
   it('does not award Dictator when the wallet node count is below the leader count', () => {
-    const globalRankings = { countryDominance: { US: { leaderCount: 3 } }, nodeGeoMap };
+    // countryDominance[cc] shape per apidata.js:1179 is { leaderCount, country }.
+    const globalRankings = { countryDominance: { US: { leaderCount: 3, country: 'United States' } }, nodeGeoMap };
     const wallet = [walletNode('10.0.0.0')];
     const results = computeDictatorAchievements(wallet, globalRankings);
     const dictator = results.find((r) => r.id === 'dictator_US');
