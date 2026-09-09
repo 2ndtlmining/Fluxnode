@@ -42,10 +42,14 @@ the same architecture the spec approved, not a design change.
 - `client/src/` only — no Rust API changes anywhere in this plan.
 - No new npm dependency.
 - Test with `cd client && CI=true npx react-scripts test --watchAll=false`,
-  build with `npx react-scripts build`. Baseline going into this plan:
-  **359 tests, build exit 0, exactly 4 pre-existing baseline warning files**
-  (`Navbar/index.jsx`, `NodeGridTable/index.jsx`, `LayoutContext.jsx`,
-  `WalletNodes/index.jsx`). Anything beyond those four is new work.
+  build with `npx react-scripts build`. Baseline going into this plan
+  (verified fresh in this worktree, post-#187-and-Live-Session-D-merge):
+  **367 tests, 23 suites, build exit 0, exactly 4 pre-existing baseline
+  warning files** (`Navbar/index.jsx`, `NodeGridTable/index.jsx`,
+  `LayoutContext.jsx`, `WalletNodes/index.jsx`). Anything beyond those four
+  is new work. (An earlier draft of this plan cited 359 — that number
+  predates both prior branches being merged together onto `main`; 367 is
+  the real current baseline.)
 - Part C.3 (Tasks 3-6) must not change any achievement's earned/not-earned
   outcome, progress percentage, or displayed description text for any
   input that was valid before this plan. Task 1's characterization tests
