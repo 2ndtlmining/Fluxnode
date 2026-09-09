@@ -38,7 +38,7 @@ section is a pointer, not a restatement.
   `docs/superpowers/plans/2026-09-08-live-session-c.md` for the full task
   breakdown.
 - [x] **Session D — Resilience + final polish.** Depends on all three prior sessions;
-  runs the full manual QA matrix. Shipped in PR #<fill in after opening the PR> — see
+  runs the full manual QA matrix. Shipped in PR #190 — see
   `docs/superpowers/plans/2026-09-09-live-session-d.md` for the full task
   breakdown.
 
