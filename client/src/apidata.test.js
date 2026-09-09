@@ -273,6 +273,154 @@ describe('fetch_global_app_specs_raw / fetch_global_app_specs', () => {
   });
 });
 
+describe('fetch_global_app_specs_raw caches a trimmed payload (#153)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  it('strips fields no consumer reads before writing to sessionStorage, but returns the full spec to the caller', async () => {
+    const fullSpec = {
+      name: 'app1', height: 100, expire: 1000, instances: 3, enterprise: '', owner: 'zid1',
+      contacts: ['x'], description: 'long text', geolocation: ['a'], hash: 'abc', nodes: [], staticip: false, version: 8,
+      compose: [{ name: 'c1', repotag: 'img:latest', cpu: 1, ram: 512, hdd: 5, commands: [], containerData: '/x', containerPorts: [], domains: [''], environmentParameters: [], ports: [], repoauth: '', description: 'x' }],
+    };
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [fullSpec] }) });
+
+    const result = await fetch_global_app_specs_raw();
+    expect(result[0].name).toBe('app1'); // in-memory return is untouched
+    expect(result[0]).toHaveProperty('contacts'); // and keeps every other field too
+    expect(result[0]).toHaveProperty('description');
+
+    const cached = JSON.parse(sessionStorage.getItem('homeAppSpecsRaw_v1')).data[0];
+    expect(cached).not.toHaveProperty('contacts');
+    expect(cached).not.toHaveProperty('geolocation');
+    expect(cached).not.toHaveProperty('hash');
+    expect(cached).not.toHaveProperty('nodes');
+    expect(cached).not.toHaveProperty('staticip');
+    expect(cached).not.toHaveProperty('version');
+    expect(cached.compose[0]).not.toHaveProperty('commands');
+    expect(cached.compose[0]).not.toHaveProperty('containerData');
+    expect(cached.compose[0]).not.toHaveProperty('domains');
+    expect(cached.compose[0]).not.toHaveProperty('description');
+    // fields every consumer needs stay present:
+    expect(cached).toMatchObject({ name: 'app1', height: 100, expire: 1000, instances: 3, enterprise: '', owner: 'zid1', description: 'long text' });
+    expect(cached.compose[0]).toMatchObject({ name: 'c1', repotag: 'img:latest', cpu: 1, ram: 512, hdd: 5 });
+  });
+
+  /*
+   * Regression test for the corrected allowlist (#153, task 8): specResources()
+   * (appSpecs.js) has a LEGACY branch for specs with no `compose` array at all
+   * — it reads spec.cpu/spec.ram/spec.hdd/spec.repotag straight off the
+   * top-level spec object. The original allowlist kept `repotag` but dropped
+   * `cpu`/`ram`/`hdd`, which would have made a warm-cache reload of a legacy
+   * no-compose app silently report "0.00 cores / 0GB RAM / 0GB storage"
+   * instead of its real figures. This proves a cache WRITE-then-READ round
+   * trip for exactly that shape still carries cpu/ram/hdd through.
+   */
+  it('keeps cpu/ram/hdd on a legacy no-compose spec through a cache write+read round trip', async () => {
+    const legacySpec = {
+      name: 'legacyApp', height: 200, instances: 1, owner: 'zid2',
+      repotag: 'legacy/image:1', cpu: 2, ram: 4096, hdd: 20,
+    };
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [legacySpec] }) });
+
+    await fetch_global_app_specs_raw();
+
+    const cached = JSON.parse(sessionStorage.getItem('homeAppSpecsRaw_v1')).data[0];
+    // Not stripped: the legacy branch of specResources() needs these directly
+    // off the top-level spec (no `compose` array to fall back to).
+    expect(cached.cpu).toBe(2);
+    expect(cached.ram).toBe(4096);
+    expect(cached.hdd).toBe(20);
+    expect(cached.repotag).toBe('legacy/image:1');
+    expect(cached).not.toHaveProperty('compose');
+
+    // And a subsequent warm-cache read (within TTL) hands the trimmed-but-
+    // still-correct spec straight back out to callers.
+    const warmRead = await fetch_global_app_specs_raw();
+    expect(warmRead[0]).toMatchObject({ name: 'legacyApp', cpu: 2, ram: 4096, hdd: 20, repotag: 'legacy/image:1' });
+  });
+
+  it('logs loudly instead of swallowing a sessionStorage quota-exceeded error on write', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [{ name: 'app1', height: 100 }] }) });
+
+    const result = await fetch_global_app_specs_raw();
+
+    expect(result).toEqual([{ name: 'app1', height: 100 }]); // the fetch itself still succeeds
+    expect(warn).toHaveBeenCalledWith('[AppSpecs] Cache write failed:', 'QuotaExceededError', expect.stringContaining('bytes'));
+  });
+});
+
+describe('sessionStorage cache-write failures are logged, not swallowed (#153)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('fetch_global_performance_rankings logs a [GlobalRankings] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('getFluxNodes')) return Promise.resolve({ json: async () => ({ fluxNodes: [] }) });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('getzelnodecount')) return Promise.resolve({ json: async () => ({ data: {} }) });
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+
+    const { fetch_global_performance_rankings } = require('./apidata');
+    const result = await fetch_global_performance_rankings();
+
+    expect(result).not.toBeNull(); // the fetch/compute itself still succeeds
+    expect(warn).toHaveBeenCalledWith('[GlobalRankings] Cache write failed:', 'QuotaExceededError');
+  });
+
+  it('fetch_country_node_counts logs a [Geo] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ status: 'success', data: [] }) });
+
+    const { fetch_country_node_counts } = require('./apidata');
+    const result = await fetch_country_node_counts();
+
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledWith('[Geo] Cache write failed:', 'QuotaExceededError');
+  });
+
+  it('fetch_gpu_prices logs a [GPU] warning on a cache write failure', async () => {
+    jest.resetModules();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ([{ number_of_gpus: 2, number_of_computers: 1 }]),
+    });
+
+    const { fetch_gpu_prices } = require('./apidata');
+    const result = await fetch_gpu_prices();
+
+    expect(result).not.toBeNull();
+    expect(warn).toHaveBeenCalledWith('[GPU] Cache write failed:', 'QuotaExceededError');
+  });
+});
+
 /*
  * _extract_country_counts (issue #153) — Task 3 changed this function's
  * entire input contract from the old exploded countryRankings shape to the

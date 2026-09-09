@@ -1277,7 +1277,9 @@ export async function fetch_global_performance_rankings() {
         GLOBAL_RANKINGS_CACHE_KEY,
         JSON.stringify({ data, timestamp: Date.now() })
       );
-    } catch {}
+    } catch (e) {
+      console.warn('[GlobalRankings] Cache write failed:', e?.message);
+    }
 
     return data;
   } catch (e) {
@@ -1295,6 +1297,38 @@ const BLOCKS_PER_DAY = 2880; // 30 sec/block
 const RAW_APP_SPECS_CACHE_KEY = 'homeAppSpecsRaw_v1';
 const RAW_APP_SPECS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const RAW_APP_SPECS_STALE_KEYS = ['homeAppSpecs_v2']; // old key cached the full computed (height-dependent) result
+
+// Fields any downstream consumer actually reads off a raw spec (#153) — see
+// appSpecs.js's specResources()/buildSpecIndex(), appCategories.js's
+// categorizeAppSpec(), and live/apidata.js's diffDeployedForEvents(). This is
+// only what gets WRITTEN to sessionStorage; the in-memory return value below
+// (`json.data`) stays full/untrimmed for every caller. `cpu`/`ram`/`hdd` are
+// required for the LEGACY no-compose branch of specResources() (an app with
+// no `compose` array reads its resources straight off the top-level spec —
+// dropping them would silently show "0.00 cores/0GB/0GB" for those apps on a
+// warm cache read, the same class of bug this file's appSpecs.js comment
+// already describes fixing once for enterprise apps). `description` is read
+// by live/apidata.js's diffDeployedForEvents() for the Live page's deploy
+// event detail panel.
+const SPEC_CACHE_FIELDS = ['name', 'height', 'expire', 'instances', 'enterprise', 'owner', 'repotag', 'cpu', 'ram', 'hdd', 'description'];
+const COMPOSE_CACHE_FIELDS = ['name', 'repotag', 'cpu', 'ram', 'hdd'];
+
+function _trimSpecForCache(spec) {
+  const trimmed = {};
+  for (const f of SPEC_CACHE_FIELDS) {
+    if (spec[f] !== undefined) trimmed[f] = spec[f];
+  }
+  if (Array.isArray(spec.compose)) {
+    trimmed.compose = spec.compose.map((c) => {
+      const tc = {};
+      for (const f of COMPOSE_CACHE_FIELDS) {
+        if (c[f] !== undefined) tc[f] = c[f];
+      }
+      return tc;
+    });
+  }
+  return trimmed;
+}
 
 let _rawAppSpecsInFlight = null;
 
@@ -1343,10 +1377,13 @@ export async function fetch_global_app_specs_raw() {
       if (json.status === 'error' || !Array.isArray(json.data)) return [];
 
       try {
-        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, JSON.stringify({ data: json.data, timestamp: Date.now() }));
-      } catch {}
+        const trimmedForCache = json.data.map(_trimSpecForCache);
+        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, JSON.stringify({ data: trimmedForCache, timestamp: Date.now() }));
+      } catch (e) {
+        console.warn('[AppSpecs] Cache write failed:', e?.message, `(${JSON.stringify(json.data).length} bytes)`);
+      }
 
-      return json.data;
+      return json.data; // full, untrimmed — every in-memory caller keeps working exactly as before
     } catch (e) {
       console.warn('[AppSpecs] Failed to fetch:', e);
       return [];
@@ -1455,7 +1492,9 @@ export async function fetch_country_node_counts() {
     const data = Object.values(countryMap).sort((a, b) => b.nodeCount - a.nodeCount);
     try {
       sessionStorage.setItem(HOME_GEO_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch {}
+    } catch (e) {
+      console.warn('[Geo] Cache write failed:', e?.message);
+    }
     return data;
   } catch {
     return [];
@@ -1504,7 +1543,9 @@ export async function fetch_gpu_prices() {
     const data = { models, totalGPUs, totalComputers };
     try {
       sessionStorage.setItem(GPU_PRICES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch {}
+    } catch (e) {
+      console.warn('[GPU] Cache write failed:', e?.message);
+    }
     return data;
   } catch {
     return null;
