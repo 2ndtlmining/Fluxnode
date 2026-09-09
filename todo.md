@@ -37,8 +37,10 @@ section is a pointer, not a restatement.
   model. Shipped in PR #186 — see
   `docs/superpowers/plans/2026-09-08-live-session-c.md` for the full task
   breakdown.
-- [ ] **Session D — Resilience + final polish.** Depends on all three prior sessions;
-  runs the full manual QA matrix.
+- [x] **Session D — Resilience + final polish.** Depends on all three prior sessions;
+  runs the full manual QA matrix. Shipped in PR #190 — see
+  `docs/superpowers/plans/2026-09-09-live-session-d.md` for the full task
+  breakdown.
 
 Process: same as every prior session in this repo — `superpowers:writing-plans` →
 `superpowers:subagent-driven-development` (fresh implementer per task, task review,

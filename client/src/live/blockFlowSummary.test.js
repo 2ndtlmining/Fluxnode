@@ -36,16 +36,16 @@ describe('buildBlockFlowSummary', () => {
       height: 100,
       hash: 'h100',
       at: 123,
-      rewards: { count: 0, totalFlux: 0, tiers: [] },
+      rewards: { count: 0, totalFlux: 0, tiers: [], unavailable: false },
       deployments: { count: 0, instances: 0, apps: [] },
-      p2p: { count: 0, totalFlux: 0, transfers: [] },
-      confirmations: { count: 0, byTier: [] },
+      p2p: { count: 0, totalFlux: 0, transfers: [], unavailable: false },
+      confirmations: { count: 0, byTier: [], unavailable: false },
     });
   });
 
   it('treats a block with no events array the same as an empty one', () => {
     const summary = buildBlockFlowSummary({ height: 1, hash: 'h', at: 1 });
-    expect(summary.rewards).toEqual({ count: 0, totalFlux: 0, tiers: [] });
+    expect(summary.rewards).toEqual({ count: 0, totalFlux: 0, tiers: [], unavailable: false });
   });
 
   it('sums reward totals and lists tiers in fixed order including Dev Fund', () => {
@@ -117,5 +117,22 @@ describe('buildBlockFlowSummary', () => {
   it('ignores event types it does not recognize rather than throwing', () => {
     const block = { height: 1, hash: 'h', at: 1, events: [{ id: 'x', type: 'unknown-future-type' }] };
     expect(() => buildBlockFlowSummary(block)).not.toThrow();
+  });
+
+  it('marks rewards/p2p unavailable when the block carries that flag, leaves confirmations/deployments alone', () => {
+    const block = { height: 5, hash: 'h', at: 1, events: [], unavailable: { reward: true, p2p: true, confirm: false } };
+    const summary = buildBlockFlowSummary(block);
+    expect(summary.rewards.unavailable).toBe(true);
+    expect(summary.p2p.unavailable).toBe(true);
+    expect(summary.confirmations.unavailable).toBe(false);
+    expect(summary.deployments.unavailable).toBeUndefined();
+  });
+
+  it('defaults every category to not-unavailable when the block has no unavailable flag at all', () => {
+    const block = { height: 5, hash: 'h', at: 1, events: [] };
+    const summary = buildBlockFlowSummary(block);
+    expect(summary.rewards.unavailable).toBe(false);
+    expect(summary.p2p.unavailable).toBe(false);
+    expect(summary.confirmations.unavailable).toBe(false);
   });
 });

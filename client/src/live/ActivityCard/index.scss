@@ -3,11 +3,17 @@
   z-index: 1;
   width: 100%;
   max-width: 300px;
+  // Off spacing-scale but deliberately left alone (Task 4 spacing cleanup):
+  // FlowCanvas/index.scss's grid-template-rows reserves 320px/260px rows
+  // sized off this card's *expanded* min-height, not this idle value, so
+  // 145px itself isn't part of that coordination — but it's a component
+  // sizing value, not a padding/gap/margin spacing value, so it's out of
+  // scope for the 4/8/12/16/20/24/32/40/48px spacing scale this pass covers.
   min-height: 145px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 18px;
+  padding: 16px;
   border-radius: var(--radius-md);
   background: var(--surface-primary);
   border: 1px solid var(--border-primary);
@@ -123,11 +129,39 @@
   flex: 1;
 }
 
+// ── Temporarily unavailable (spec §79: informative, not alarming) ────────
+// Reuses the confirmations amber (categoryMeta.js / DETAIL_SECTIONS's
+// "confirm" color, #eab308) as one calm "source is delayed" tone shared by
+// every category, rather than each card's own --card-accent — this is a
+// data-availability signal, not a per-category highlight, so it stays fixed
+// regardless of which quadrant it appears in.
+.live-flow-card--unavailable {
+  border-color: color-mix(in srgb, #eab308 40%, var(--border-primary));
+  background: color-mix(in srgb, #eab308 6%, var(--surface-primary));
+}
+
+// An expanded + unavailable card is a real, reachable state (the expanded
+// body shows the unavailable notice rather than a fabricated zero), so the
+// amber border has to survive it. `.live-flow-card--expanded` also sets
+// border-color at equal single-class specificity and is declared earlier, so
+// it would otherwise win by source order and leave an amber-tinted card with
+// a category-accent border. Reasserted here at two-class specificity —
+// same pattern as the quadrant-specific `--expanded` overrides above.
+.live-flow-card--unavailable.live-flow-card--expanded {
+  border-color: color-mix(in srgb, #eab308 40%, var(--border-primary));
+}
+
+.live-flow-card-unavailable {
+  font-size: var(--live-fs-sm);
+  color: var(--text-secondary);
+  flex: 1;
+}
+
 .live-flow-card-expanded-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -183,7 +217,7 @@
   gap: 8px;
   font-size: var(--live-fs-base);
   color: var(--text-secondary);
-  padding: 6px 0;
+  padding: 8px 0;
 
   // Border sits between consecutive rows only (not after the last one,
   // whether or not a trailing .live-flow-expanded-note div follows it —
@@ -309,7 +343,7 @@
 @media (max-width: 1199px) {
   .live-flow-card {
     min-height: 120px;
-    padding: 12px 14px;
+    padding: 12px;
   }
 
   .live-flow-card-primary {

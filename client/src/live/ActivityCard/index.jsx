@@ -115,7 +115,7 @@ const EXPANDED_BODY_COMPONENT = {
  * category summary and expansion presentation").
  */
 export const ActivityCard = React.forwardRef(function ActivityCard(
-  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, summary, isExpanded, isDimmed, isPulsing, onToggle, onViewDetails },
+  { quadrant, categoryKey, def, count, primary, secondary, emptyLabel, unavailable, unavailableLabel, summary, isExpanded, isDimmed, isPulsing, onToggle, onViewDetails },
   ref
 ) {
   const Icon = def.Icon;
@@ -139,7 +139,8 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
   const classes = [
     'live-flow-card',
     `live-flow-card--${quadrant}`,
-    isEmpty && 'live-flow-card--empty',
+    isEmpty && !unavailable && 'live-flow-card--empty',
+    unavailable && 'live-flow-card--unavailable',
     isExpanded && 'live-flow-card--expanded',
     isDimmed && 'live-flow-card--dimmed',
     isPulsing && 'live-flow-card--pulse',
@@ -153,7 +154,7 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
       role="button"
       tabIndex={0}
       aria-expanded={isExpanded}
-      aria-label={`${def.label}, ${count} — ${isExpanded ? 'expanded, activate to collapse' : 'activate to expand'}`}
+      aria-label={`${def.label}, ${unavailable ? 'temporarily unavailable' : count} — ${isExpanded ? 'expanded, activate to collapse' : 'activate to expand'}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
@@ -167,7 +168,19 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
 
       {isExpanded ? (
         <div className="live-flow-card-expanded-body">
-          {(() => {
+          {/*
+            `unavailable` is checked here too, not just in the collapsed
+            branches below. Keeping `isExpanded` outermost is deliberate — a
+            card already open when a poll finds the source still down must not
+            have its expanded chrome yanked away mid-view — but the expanded
+            body itself must never render an ExpandedBody from a summary that
+            was only ever zero-filled: a card *opened* while already
+            unavailable would otherwise print a confident "0.00 FLUX total",
+            which is the exact failure-vs-empty conflation spec §42 forbids.
+          */}
+          {unavailable ? (
+            <div className="live-flow-card-unavailable">{unavailableLabel}</div>
+          ) : (() => {
             const ExpandedBody = EXPANDED_BODY_COMPONENT[categoryKey];
             return ExpandedBody ? <ExpandedBody summary={summary} /> : null;
           })()}
@@ -184,6 +197,8 @@ export const ActivityCard = React.forwardRef(function ActivityCard(
             View full details <ArrowRight size={12} />
           </button>
         </div>
+      ) : unavailable ? (
+        <div className="live-flow-card-unavailable">{unavailableLabel}</div>
       ) : isEmpty ? (
         <div className="live-flow-card-empty">{emptyLabel}</div>
       ) : (

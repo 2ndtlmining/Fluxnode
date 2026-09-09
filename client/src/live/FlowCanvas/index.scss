@@ -8,6 +8,15 @@
     'reward  .      deploy'
     '.       block  .'
     'p2p     .      confirm';
+  // Card rows are reserved at the *expanded* card min-height (ActivityCard's
+  // --expanded modifier, 320px at this breakpoint) rather than left to
+  // auto-size from the idle 145px card. Without this, expanding a card grows
+  // its row and pushes ChainRail/DetailsPanel down the page (spec §49); with
+  // it, the row is already 320px tall and align-items: center simply
+  // recenters the card within unchanged track height. Idle state trades some
+  // extra breathing room around the (still centered) block for that
+  // stability — acceptable per spec §79's "calm, premium" framing.
+  grid-template-rows: 320px auto 320px;
   align-items: center;
   justify-items: center;
   gap: 28px 24px;
@@ -65,6 +74,11 @@
     gap: 16px;
     padding: 24px 16px;
     min-height: 460px;
+    // ActivityCard's own 1199px breakpoint shrinks --expanded min-height to
+    // 260px (from 320px) at this width, so the reserved row height must
+    // shrink to match or the canvas would over-reserve (still stable, but
+    // not tight).
+    grid-template-rows: 260px auto 260px;
   }
 }
 
@@ -77,6 +91,11 @@
       'deploy'
       'p2p'
       'confirm';
+    // Cards stack in normal document flow below 900px, so this is
+    // intentionally NOT reserved (spec §48 never asks mobile expansion to be
+    // non-disruptive the way the desktop grid canvas does) — reset to auto
+    // so each row sizes from its (single) card's actual content height.
+    grid-template-rows: auto;
     min-height: 0;
     padding: 20px 16px;
   }

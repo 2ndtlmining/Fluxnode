@@ -38,9 +38,9 @@ export async function fetch_block_transactions(blockHash) {
     const txs = Array.isArray(json?.txs) ? json.txs : [];
     const coinbase = txs.find((t) => t.isCoinBase) || txs[0] || null;
     const others = txs.filter((t) => t !== coinbase);
-    return { coinbase, others };
+    return { ok: true, coinbase, others };
   } catch {
-    return { coinbase: null, others: [] };
+    return { ok: false, coinbase: null, others: [] };
   }
 }
 
@@ -133,9 +133,9 @@ export async function fetch_block_confirmations(blockHash) {
     const res = await fetch(`${DAEMON_GETBLOCK_ENDPOINT}/${blockHash}`);
     const json = await res.json();
     const txs = Array.isArray(json?.data?.tx) ? json.data.tx : [];
-    return txs.filter((t) => t && typeof t === 'object' && t.type === CONFIRMING_TX_TYPE);
+    return { ok: true, confirmingTxs: txs.filter((t) => t && typeof t === 'object' && t.type === CONFIRMING_TX_TYPE) };
   } catch {
-    return [];
+    return { ok: false, confirmingTxs: [] };
   }
 }
 
@@ -298,4 +298,15 @@ function composeRepos(spec) {
 // accumulating events across polls.
 export function attachEventsToBlocks(blocks, eventsByHeight) {
   return (blocks || []).map((block) => ({ ...block, events: eventsByHeight?.[block.height] || [] }));
+}
+
+// Attaches recorded per-source failure flags (keyed by block height) onto each fetched
+// block, mirroring attachEventsToBlocks above. `null` (not an empty object) for a block
+// nothing went wrong on — most blocks, always — so downstream code's `block.unavailable
+// != null` reads as a genuine "something's wrong with this one" check.
+export function attachUnavailabilityToBlocks(blocks, unavailableByHeight) {
+  return (blocks || []).map((block) => ({
+    ...block,
+    unavailable: unavailableByHeight?.[block.height] || null,
+  }));
 }
