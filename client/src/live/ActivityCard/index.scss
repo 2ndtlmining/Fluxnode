@@ -3,11 +3,17 @@
   z-index: 1;
   width: 100%;
   max-width: 300px;
+  // Off spacing-scale but deliberately left alone (Task 4 spacing cleanup):
+  // FlowCanvas/index.scss's grid-template-rows reserves 320px/260px rows
+  // sized off this card's *expanded* min-height, not this idle value, so
+  // 145px itself isn't part of that coordination — but it's a component
+  // sizing value, not a padding/gap/margin spacing value, so it's out of
+  // scope for the 4/8/12/16/20/24/32/40/48px spacing scale this pass covers.
   min-height: 145px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 18px;
+  padding: 16px;
   border-radius: var(--radius-md);
   background: var(--surface-primary);
   border: 1px solid var(--border-primary);
@@ -144,7 +150,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -200,7 +206,7 @@
   gap: 8px;
   font-size: var(--live-fs-base);
   color: var(--text-secondary);
-  padding: 6px 0;
+  padding: 8px 0;
 
   // Border sits between consecutive rows only (not after the last one,
   // whether or not a trailing .live-flow-expanded-note div follows it —
@@ -326,7 +332,7 @@
 @media (max-width: 1199px) {
   .live-flow-card {
     min-height: 120px;
-    padding: 12px 14px;
+    padding: 12px;
   }
 
   .live-flow-card-primary {

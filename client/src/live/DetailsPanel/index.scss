@@ -14,7 +14,7 @@
 .live-detail-sections {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .live-detail-section {
@@ -81,8 +81,13 @@
 .live-detail-section-body {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 2px 14px 12px;
+  gap: 4px;
+  // Horizontal padding rounded 14px -> 16px to match the section header's
+  // own 16px horizontal padding directly above (12px 16px) — keeps the
+  // combined left/right inset from the section edge unchanged overall
+  // (16 body + 8 row, after the .live-detail-row edit below, == the prior
+  // 14 body + 10 row), so content doesn't visibly shift.
+  padding: 2px 16px 12px;
   animation: live-detail-expand-in 0.15s ease-out;
 }
 
@@ -109,8 +114,11 @@
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  // Matches .live-detail-section-header's own gap (12px) for the same
+  // auto/1fr/auto/auto grid template, so row columns line up under the
+  // header's columns.
+  gap: 12px;
+  padding: 8px;
   border-radius: 6px;
   background: var(--surface-primary);
   font-size: var(--live-fs-base);
@@ -209,7 +217,7 @@
 .live-detail-specs {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   font-size: var(--live-fs-sm);
   color: var(--text-tertiary);
 }

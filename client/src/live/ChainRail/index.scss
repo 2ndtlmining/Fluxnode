@@ -24,7 +24,11 @@
   align-items: center;
   gap: 0;
   overflow-x: auto;
-  padding: 6px 4px 10px;
+  // Top/bottom rounded up (not down) from the pre-cleanup 6px/10px: overflow-x
+  // auto implicitly makes overflow-y auto too, and this track needs enough
+  // clearance to avoid clipping the "LIVE" marker (-6px above a block) and
+  // the selected/hover block's downward box-shadow.
+  padding: 8px 4px 12px;
 }
 
 .live-feed-empty {
@@ -68,9 +72,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  // 122px is intentionally left off the spacing scale: it's tied to
+  // CHAIN_BLOCK_SLOT_WIDTH (150) in Live.jsx's ResizeObserver-driven
+  // block-count math (see that constant's own comment) — changing it here
+  // without also updating and re-verifying that math risks silently
+  // breaking how many blocks fit in the rail on resize.
   width: 122px;
-  padding: 16px 10px 13px;
+  padding: 16px 8px 12px;
   border-radius: var(--radius-md);
   background: var(--surface-inset);
   border: 2px solid transparent;
