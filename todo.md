@@ -46,17 +46,32 @@ Process: same as every prior session in this repo — `superpowers:writing-plans
 `superpowers:subagent-driven-development` (fresh implementer per task, task review,
 final whole-branch review) → PR.
 
-### Track 2 — Analytics "Premium Feel" Visual Refresh (proposed, needs a decision pass before planning starts)
+### Track 2 — Analytics rework (in progress, scope expanded 2026-09-09)
 
-**Status: reviewed and scoped below, but NOT yet brainstormed/confirmed with the
-user** — the findings and proposed direction below are my analysis from a live visual
-pass (2026-09-06) plus a code read of the current SCSS/design-token system, not
-settled decisions. Genuine aesthetic choices here (palette, whether to add a charting
-library, how aggressive the redesign gets) need the same confirm-before-plan treatment
-every other piece of new work in this repo has gotten — run
-`superpowers:brainstorming` on this before writing an implementation plan. Queued
-**after** Track 1 per your instruction — pick it up once Live Redesign is done, or
-sooner if you'd rather interleave (same as Analytics/Live were interleaved before).
+**Status: brainstorming underway, one sub-piece already shipped.** Track 1 (Live
+Redesign) is fully done — see above. Track 2 started as a proposed "premium feel"
+visual refresh (2026-09-06 analysis below) and was expanded 2026-09-09 to also cover:
+bringing `/home` features into `/analytics` where it makes sense, rethinking the
+wallet-unlock UX for donor-gated content, and Chain Activity's sync-status messaging.
+
+- [x] **Chain Activity sync-status messaging** — split off as its own bounded fix
+  (existing flow, no spec needed) since it was small and independently valuable.
+  **PR #192** (2026-09-09, open). The `/api/v1/chain-activity` endpoint used to
+  hardcode `success: true` regardless of what was on disk, so a scanner that had
+  never run, stalled (most likely rate-limited by `explorer.runonflux.io`, a
+  documented failure mode of that API), or a frontend that couldn't reach the API
+  at all were all indistinguishable — same silent "Still building history" message
+  every time. Backend now tracks and exposes real scan health
+  (`last_attempt_at`/`last_success_at`/`last_outcome`); frontend shows an accurate
+  banner instead, hidden when healthy.
+- [ ] **Visual refresh + home→analytics migration + wallet-unlock UX** — the bigger,
+  still-architectural piece. Genuine aesthetic and IA choices here (palette, whether
+  to add a charting library, exactly what moves from `/home` to `/analytics` and
+  where it lands, how the unlock flow should work) need the same confirm-before-plan
+  treatment every other piece of work in this repo gets — run
+  `superpowers:brainstorming` on this before writing an implementation plan. The
+  2026-09-06 findings below are background/analysis for that pass, not settled
+  decisions.
 
 #### Why: what's actually wrong, specifically
 
