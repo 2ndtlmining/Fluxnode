@@ -282,16 +282,27 @@ pub mod api_v1 {
             daily: Vec<services::chain_activity::DailyCount>,
             team_txs: Vec<services::chain_activity::TeamTx>,
             last_scanned_height: i64,
+            // Real health of the background scanner, not just whatever's on
+            // disk — `success` above only ever means "this HTTP request
+            // itself succeeded", it says nothing about whether the scanner
+            // is keeping up. See ScanStatus's own doc comment.
+            last_attempt_at: i64,
+            last_success_at: i64,
+            last_outcome: services::chain_activity::ScanOutcome,
         }
 
         // Synchronous read of whatever the background scanner has already
         // persisted — never triggers a scan on the request path.
         pub async fn handler() -> impl IntoResponse {
+            let scan_status = services::chain_activity::load_scan_status();
             let body = ChainActivityResultBody {
                 success: true,
                 daily: services::chain_activity::load_daily_rollup(),
                 team_txs: services::chain_activity::load_team_txs(),
                 last_scanned_height: services::chain_activity::load_checkpoint().last_scanned_height,
+                last_attempt_at: scan_status.last_attempt_at,
+                last_success_at: scan_status.last_success_at,
+                last_outcome: scan_status.last_outcome,
             };
             (StatusCode::OK, Json(body))
         }
