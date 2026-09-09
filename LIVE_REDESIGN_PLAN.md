@@ -58,6 +58,11 @@ sessions.
 - [x] **Session B — Interaction + motion** (spec Phases 3-4, §§12-14, 19, 22, 24-25, 50-52)
 - [x] **Session C — History + details integration** (spec Phases 5-6, §§26-32, 37-39, 63-65)
 - [x] **Session D — Resilience + final polish** (spec Phases 7-8, §§40-49, 53-54, 76-80)
+  - §42 is satisfied for Rewards / P2P / Confirmations, not Deployments: §42's own
+    worked example category, Cloud Deployments, is deliberately excluded from this
+    session's unavailable-tracking — its data is shared with `/home` and `/analytics`,
+    so changing its error contract is out of scope for a `/live`-only session (see
+    Task 1's scope note in `docs/superpowers/plans/2026-09-09-live-session-d.md`).
 
 ---
 

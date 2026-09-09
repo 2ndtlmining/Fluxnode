@@ -1,4 +1,6 @@
 import {
+  fetch_block_transactions,
+  fetch_block_confirmations,
   extractRewardsFromCoinbase,
   buildRewardEvents,
   buildConfirmationEvents,
@@ -25,6 +27,47 @@ function realCoinbaseTx() {
     ],
   };
 }
+
+/*
+ * The `{ ok, ... }` return shape is the contract the whole unavailable-vs-empty
+ * distinction rests on: `ok:false` means "this source failed, say so", while
+ * `ok:true` with empty data means "nothing happened here, which is normal".
+ * Exercised through a real `global.fetch` stub (the repo's existing convention,
+ * see currency.test.js / fluxinfoResilience.test.js) so the actual try/catch
+ * boundary is under test, not just a hand-built result object.
+ */
+describe('fetch_block_transactions / fetch_block_confirmations ok contract', () => {
+  const realFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  describe('fetch_block_transactions', () => {
+    it('returns ok:false with no data when the fetch throws', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+      await expect(fetch_block_transactions('somehash')).resolves.toEqual({ ok: false, coinbase: null, others: [] });
+    });
+
+    it('returns ok:true for a valid response that simply has no transactions', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ txs: [] }) });
+      await expect(fetch_block_transactions('somehash')).resolves.toEqual({ ok: true, coinbase: null, others: [] });
+    });
+  });
+
+  describe('fetch_block_confirmations', () => {
+    it('returns ok:false with no data when the fetch throws', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+      await expect(fetch_block_confirmations('somehash')).resolves.toEqual({ ok: false, confirmingTxs: [] });
+    });
+
+    it('returns ok:true for a valid response with no confirming transactions in the block', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ data: { tx: [] } }) });
+      await expect(fetch_block_confirmations('somehash')).resolves.toEqual({ ok: true, confirmingTxs: [] });
+    });
+  });
+});
 
 describe('extractRewardsFromCoinbase', () => {
   it('identifies all three tier outputs by percentage share, plus the Dev Fund output by exact address', () => {

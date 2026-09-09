@@ -140,6 +140,17 @@
   background: color-mix(in srgb, #eab308 6%, var(--surface-primary));
 }
 
+// An expanded + unavailable card is a real, reachable state (the expanded
+// body shows the unavailable notice rather than a fabricated zero), so the
+// amber border has to survive it. `.live-flow-card--expanded` also sets
+// border-color at equal single-class specificity and is declared earlier, so
+// it would otherwise win by source order and leave an amber-tinted card with
+// a category-accent border. Reasserted here at two-class specificity —
+// same pattern as the quadrant-specific `--expanded` overrides above.
+.live-flow-card--unavailable.live-flow-card--expanded {
+  border-color: color-mix(in srgb, #eab308 40%, var(--border-primary));
+}
+
 .live-flow-card-unavailable {
   font-size: var(--live-fs-sm);
   color: var(--text-secondary);

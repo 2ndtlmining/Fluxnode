@@ -120,8 +120,14 @@ export default function Live() {
         ]);
 
         blockFetchStatusRef.current[block.height] = { ok: txsOk && confirmOk };
-        unavailableByHeightRef.current[block.height] =
-          txsOk && confirmOk ? undefined : { reward: !txsOk, p2p: !txsOk, confirm: !confirmOk };
+        if (txsOk && confirmOk) {
+          // Actually remove the key rather than leaving a present-but-undefined
+          // own property, matching the `delete` idiom used on this same map by
+          // the retention trim below.
+          delete unavailableByHeightRef.current[block.height];
+        } else {
+          unavailableByHeightRef.current[block.height] = { reward: !txsOk, p2p: !txsOk, confirm: !confirmOk };
+        }
 
         const rewards = extractRewardsFromCoinbase(coinbase);
         const events = [
