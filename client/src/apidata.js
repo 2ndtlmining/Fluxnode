@@ -68,6 +68,8 @@ export function create_global_store() {
     presearchRunningApps: 0,
     uniqueWalletAddressesCount: 0,
     wordpressCount: 0,
+    enterpriseContainers: 0,
+    unresolvedContainers: 0,
     fluxBlockHeight: 0,
     daemon_version: 0,
     node_count: {
@@ -522,6 +524,8 @@ export async function fetch_global_stats(walletAddress = null) {
     store.streamrRunningApps = categorized.streamrRunningApps;
     store.presearchRunningApps = categorized.presearchRunningApps;
     store.wordpressCount = categorized.wordpressCount;
+    store.enterpriseContainers = categorized.enterpriseContainers;
+    store.unresolvedContainers = categorized.unresolvedContainers;
     store.topRunningApps = categorized.topRunningApps;
     store.runningCategoryMap = categorized.runningCategoryMap;
     store.runningCategoryTop = categorized.runningCategoryTop;

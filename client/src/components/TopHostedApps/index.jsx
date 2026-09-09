@@ -30,6 +30,8 @@ export function TopHostedApps({ gstore }) {
   const images = gstore.topRunningApps || [];
   const isLoading = images.length === 0 && gstore.node_count.total > 0;
   const maxCount = images[0]?.nodeCount || 1;
+  const enterpriseContainers = gstore.enterpriseContainers || 0;
+  const unresolvedContainers = gstore.unresolvedContainers || 0;
 
   return (
     <div className="hov-panel hov-panel--top-apps">
@@ -55,6 +57,20 @@ export function TopHostedApps({ gstore }) {
           ))
         )}
       </div>
+      {images.length > 0 && (enterpriseContainers > 0 || unresolvedContainers > 0) && (
+        <div className="hov-top-apps-footnote">
+          {enterpriseContainers > 0 && (
+            <span title="Enterprise apps ship an encrypted spec — there is no image to rank.">
+              {fmtNum(enterpriseContainers)} Enterprise apps — image hidden by design
+            </span>
+          )}
+          {unresolvedContainers > 0 && (
+            <span title="Running, but no matching spec was found for this app.">
+              {fmtNum(unresolvedContainers)} unresolved
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
