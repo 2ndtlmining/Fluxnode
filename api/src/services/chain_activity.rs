@@ -40,6 +40,7 @@ pub const DATA_DIR: &str = "data";
 pub const DAILY_ROLLUP_FILE: &str = "chain_activity_daily.json";
 pub const TEAM_TX_FILE: &str = "chain_activity_team_tx.json";
 pub const CHECKPOINT_FILE: &str = "chain_activity_checkpoint.json";
+pub const SCAN_STATUS_FILE: &str = "chain_activity_scan_status.json";
 
 const EXPLORER_BASE: &str = "https://explorer.runonflux.io/api";
 const APP_SPECS_URL: &str = "https://api.runonflux.io/apps/globalappsspecifications";
@@ -202,6 +203,47 @@ pub struct TeamTx {
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct Checkpoint {
     pub last_scanned_height: i64,
+}
+
+/*
+ * Whether the LAST run_scan_cycle() attempt actually made it to the tip, not
+ * whether any data exists — the /chain-activity endpoint used to hardcode
+ * success: true regardless of what was on disk, so a genuinely-stalled
+ * scanner (most often this API's own documented rate-limit bans — see
+ * get_with_backoff's comment) was indistinguishable from "still building
+ * initial history", both from the frontend's perspective.
+ *
+ * `Stalled` and `Unreachable` are honest, not maximally specific: a batch
+ * that made no progress could be a 429 ban, a timeout, or a transient
+ * explorer 500 — get_with_backoff already collapses all of those to `None`
+ * before run_scan_cycle ever sees them, and disentangling that further
+ * would mean threading a real error type through several more layers than
+ * this fix's scope covers. `Stalled` names the most likely cause (this
+ * API's own well-documented rate-limiting) without claiming certainty.
+ */
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScanOutcome {
+    NeverRun,
+    CaughtUp,
+    Stalled,
+    Unreachable,
+}
+
+impl Default for ScanOutcome {
+    fn default() -> Self {
+        ScanOutcome::NeverRun
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+pub struct ScanStatus {
+    // Unix seconds. 0 (the Default) means "never attempted" — real timestamps
+    // post-2026 are all comfortably >0, so 0 doubles as a safe sentinel
+    // without needing an Option here or in the JSON the frontend reads.
+    pub last_attempt_at: i64,
+    pub last_success_at: i64,
+    pub last_outcome: ScanOutcome,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -396,6 +438,21 @@ pub fn save_checkpoint(last_scanned_height: i64) -> std::io::Result<()> {
     write_json_atomic(Path::new(DATA_DIR), CHECKPOINT_FILE, &Checkpoint { last_scanned_height })
 }
 
+pub fn load_scan_status() -> ScanStatus {
+    read_json_or_default(Path::new(DATA_DIR), SCAN_STATUS_FILE)
+}
+
+pub fn save_scan_status(status: &ScanStatus) -> std::io::Result<()> {
+    write_json_atomic(Path::new(DATA_DIR), SCAN_STATUS_FILE, status)
+}
+
+pub fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
 pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
     let url = format!("{}/blocks?limit=1", EXPLORER_BASE);
     let res = get_with_backoff(client, &url).await?;
@@ -521,12 +578,40 @@ async fn scan_range(
  * a cold-start replica catching up — same code path either way, just a
  * different `start_height` depending on how far behind the checkpoint is.
  */
+/*
+ * Pure decision of the persisted ScanStatus after one attempt, given what
+ * happened — kept separate from run_scan_cycle's network/IO orchestration so
+ * the actual rule ("only CaughtUp advances last_success_at, every outcome
+ * advances last_attempt_at, everything else about `previous` is preserved")
+ * is unit-testable without a live client or filesystem.
+ */
+fn next_scan_status(previous: ScanStatus, attempt_at: i64, outcome: ScanOutcome) -> ScanStatus {
+    ScanStatus {
+        last_attempt_at: attempt_at,
+        last_success_at: if outcome == ScanOutcome::CaughtUp { attempt_at } else { previous.last_success_at },
+        last_outcome: outcome,
+    }
+}
+
+fn persist_scan_status(status: ScanStatus) {
+    if let Err(e) = save_scan_status(&status) {
+        eprintln!("[chain_activity] failed to save scan status: {}", e);
+    }
+}
+
 pub async fn run_scan_cycle() {
+    let attempt_at = unix_now();
+    let previous_status = load_scan_status();
+
     let client = create_client();
 
     let tip_height = match fetch_tip_height(&client).await {
         Some(h) => h,
-        None => return, // explorer unreachable this cycle — try again next interval
+        None => {
+            // explorer unreachable this cycle — try again next interval
+            persist_scan_status(next_scan_status(previous_status, attempt_at, ScanOutcome::Unreachable));
+            return;
+        }
     };
 
     let checkpoint = load_checkpoint();
@@ -537,7 +622,9 @@ pub async fn run_scan_cycle() {
     let start_height = checkpoint.last_scanned_height.max(earliest_allowed);
 
     if start_height >= tip_height {
-        return; // already caught up to the tip
+        // already caught up to the tip — nothing to scan is itself success
+        persist_scan_status(next_scan_status(previous_status, attempt_at, ScanOutcome::CaughtUp));
+        return;
     }
 
     let deployment_heights = fetch_deployment_heights(&client).await;
@@ -545,6 +632,7 @@ pub async fn run_scan_cycle() {
     let mut team_txs = load_team_txs();
 
     let mut checkpoint_height = start_height;
+    let mut stalled = false;
 
     while checkpoint_height < tip_height {
         let batch_end = (checkpoint_height + SCAN_BATCH_SIZE).min(tip_height);
@@ -570,9 +658,13 @@ pub async fn run_scan_cycle() {
             // A gap was hit within this batch — stop the cycle here rather than
             // continuing to fire requests at an API that may still be rate-limiting
             // us. The next scheduled cycle resumes from this checkpoint.
+            stalled = true;
             break;
         }
     }
+
+    let outcome = if stalled { ScanOutcome::Stalled } else { ScanOutcome::CaughtUp };
+    persist_scan_status(next_scan_status(previous_status, attempt_at, outcome));
 
     println!(
         "[chain_activity] scanned up to {} (checkpoint now {})",
@@ -785,5 +877,62 @@ mod tests {
         let read_back: Checkpoint = read_json_or_default(&dir, "bad.json");
         assert_eq!(read_back, Checkpoint::default());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn scan_status_default_is_never_run_with_zeroed_timestamps() {
+        let status = ScanStatus::default();
+        assert_eq!(status.last_outcome, ScanOutcome::NeverRun);
+        assert_eq!(status.last_attempt_at, 0);
+        assert_eq!(status.last_success_at, 0);
+    }
+
+    #[test]
+    fn scan_status_round_trips_through_write_and_read() {
+        let dir = temp_test_dir("scan_status_roundtrip");
+        let status = ScanStatus { last_attempt_at: 1000, last_success_at: 900, last_outcome: ScanOutcome::Stalled };
+        write_json_atomic(&dir, "status.json", &status).expect("write should succeed");
+        let read_back: ScanStatus = read_json_or_default(&dir, "status.json");
+        assert_eq!(read_back, status);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn scan_outcome_serializes_as_snake_case_matching_the_frontend_contract() {
+        assert_eq!(serde_json::to_string(&ScanOutcome::NeverRun).unwrap(), "\"never_run\"");
+        assert_eq!(serde_json::to_string(&ScanOutcome::CaughtUp).unwrap(), "\"caught_up\"");
+        assert_eq!(serde_json::to_string(&ScanOutcome::Stalled).unwrap(), "\"stalled\"");
+        assert_eq!(serde_json::to_string(&ScanOutcome::Unreachable).unwrap(), "\"unreachable\"");
+    }
+
+    #[test]
+    fn next_scan_status_caught_up_advances_both_timestamps() {
+        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::Stalled };
+        let next = next_scan_status(previous, 200, ScanOutcome::CaughtUp);
+        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 200, last_outcome: ScanOutcome::CaughtUp });
+    }
+
+    #[test]
+    fn next_scan_status_stalled_advances_attempt_but_preserves_last_success() {
+        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
+        let next = next_scan_status(previous, 200, ScanOutcome::Stalled);
+        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Stalled });
+    }
+
+    #[test]
+    fn next_scan_status_unreachable_advances_attempt_but_preserves_last_success() {
+        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
+        let next = next_scan_status(previous, 200, ScanOutcome::Unreachable);
+        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Unreachable });
+    }
+
+    #[test]
+    fn next_scan_status_from_never_run_stalled_leaves_last_success_at_zero() {
+        // The realistic cold-start-then-immediately-rate-limited case: a
+        // replica whose scanner has never once caught up should still show
+        // last_success_at: 0 (never), not silently inherit attempt_at.
+        let previous = ScanStatus::default();
+        let next = next_scan_status(previous, 500, ScanOutcome::Stalled);
+        assert_eq!(next, ScanStatus { last_attempt_at: 500, last_success_at: 0, last_outcome: ScanOutcome::Stalled });
     }
 }
