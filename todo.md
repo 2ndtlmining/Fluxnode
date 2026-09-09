@@ -191,7 +191,7 @@ Consolidated from the now-retired `PREMIUM_FEATURES_PLAN.md`.
   A-D, PR #184/#185/#186/#190) — `LIVE_REDESIGN_PLAN.md`'s scope is fully
   shipped.
 - **Accuracy/reliability pass — Top Hosted Apps categories, #153, #189** —
-  PR #191 (2026-09-09, opened, awaiting merge). Top Hosted Apps now
+  PR #191 (2026-09-09, merged). Top Hosted Apps now
   distinguishes Enterprise
   apps from genuinely-unresolved ones (footnote on `/home` and
   `/analytics`'s Apps tab); closes **#153** (sessionStorage quota — full
