@@ -6,6 +6,43 @@
   gap: 16px;
 }
 
+.ca-sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.ca-sync-banner-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ca-sync-banner--info .ca-sync-banner-dot {
+  background: var(--accent-blue);
+}
+
+.ca-sync-banner--warning {
+  border-color: rgba(224, 146, 5, 0.35);
+}
+.ca-sync-banner--warning .ca-sync-banner-dot {
+  background: var(--accent-amber);
+}
+
+.ca-sync-banner--error {
+  border-color: rgba(220, 58, 58, 0.35);
+}
+.ca-sync-banner--error .ca-sync-banner-dot {
+  background: var(--accent-red);
+}
+
 .ca-range-toggle {
   display: flex;
   gap: 6px;

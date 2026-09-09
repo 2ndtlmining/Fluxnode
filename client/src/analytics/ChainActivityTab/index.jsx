@@ -1,7 +1,50 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, filterDailyRange, summarizeDaily } from 'analytics/chainActivity';
+import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo } from 'analytics/chainActivity';
 import './index.scss';
+
+/*
+ * The one thing this whole tab used to be silent about: whether "no data"
+ * means the scanner is genuinely still building history, or something is
+ * actually wrong. See chainActivity.js's fetch_chain_activity doc comment
+ * for what each syncStatus value means. Hidden entirely once healthy
+ * (caught_up) — this is a "something to know about" banner, not a
+ * permanent status fixture.
+ */
+const SYNC_STATUS_COPY = {
+  api_unreachable: {
+    tone: 'error',
+    text: "Couldn't reach the activity service — this may be temporary.",
+  },
+  never_run: {
+    tone: 'info',
+    text: "Chain activity hasn't started syncing yet — check back shortly.",
+  },
+  stalled: {
+    tone: 'warning',
+    text: 'Sync is behind, possibly rate-limited by the block explorer.',
+  },
+  unreachable: {
+    tone: 'warning',
+    text: "Sync couldn't reach the block explorer on its last attempt.",
+  },
+};
+
+function SyncStatusBanner({ syncStatus, lastSuccessAt }) {
+  const copy = SYNC_STATUS_COPY[syncStatus];
+  if (!copy) return null; // caught_up (healthy) or an unrecognized future value — stay silent
+
+  const agoText = relativeTimeAgo(lastSuccessAt);
+  return (
+    <div className={`ca-sync-banner ca-sync-banner--${copy.tone}`}>
+      <span className="ca-sync-banner-dot" />
+      <span>
+        {copy.text}
+        {agoText ? ` Last successful update: ${agoText}.` : ''}
+      </span>
+    </div>
+  );
+}
 
 const RANGE_OPTIONS = [
   { label: '24H', days: 1 },
@@ -17,12 +60,17 @@ function pct(n, total) {
   return total > 0 ? ((n / total) * 100).toFixed(0) : '0';
 }
 
-function UtilitySummary({ daily, rangeDays, rangeLabel }) {
+function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
   const ranged = filterDailyRange(daily, rangeDays);
   const { utilityBlocks, emptyBlocks } = summarizeDaily(ranged);
   const total = utilityBlocks + emptyBlocks;
   const isPartial = daily.length > 0 && ranged.length < rangeDays;
   const badgeText = isPartial ? `${rangeLabel} (${ranged.length}d available)` : rangeLabel;
+  // "Still building history" is only accurate for a genuinely healthy,
+  // still-backfilling scanner — once the banner above is already showing a
+  // real problem, repeating an falsely-reassuring message here would
+  // contradict it.
+  const stillBuilding = syncStatus === 'never_run' || syncStatus === 'caught_up';
 
   return (
     <div className="hov-panel ca-utility-panel">
@@ -32,7 +80,9 @@ function UtilitySummary({ daily, rangeDays, rangeLabel }) {
       </div>
       {total === 0 ? (
         <div className="hov-empty">
-          {daily.length === 0 ? 'Still building history — check back shortly' : 'No blocks in this range yet'}
+          {daily.length === 0
+            ? (stillBuilding ? 'Still building history — check back shortly' : 'No data available')
+            : 'No blocks in this range yet'}
         </div>
       ) : (
         <>
@@ -83,7 +133,14 @@ function TeamTxList({ teamTxs, rangeDays, lastScannedHeight }) {
 }
 
 export function ChainActivityTab() {
-  const [data, setData] = useState({ daily: [], teamTxs: [], lastScannedHeight: 0 });
+  const [data, setData] = useState({
+    daily: [],
+    teamTxs: [],
+    lastScannedHeight: 0,
+    lastAttemptAt: 0,
+    lastSuccessAt: 0,
+    syncStatus: 'never_run',
+  });
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(1);
 
@@ -116,6 +173,7 @@ export function ChainActivityTab() {
 
   return (
     <div className="chain-activity-tab">
+      <SyncStatusBanner syncStatus={data.syncStatus} lastSuccessAt={data.lastSuccessAt} />
       <div className="ca-range-toggle">
         {RANGE_OPTIONS.map((r) => (
           <button
@@ -128,7 +186,7 @@ export function ChainActivityTab() {
           </button>
         ))}
       </div>
-      <UtilitySummary daily={data.daily} rangeDays={rangeDays} rangeLabel={activeRange.label} />
+      <UtilitySummary daily={data.daily} rangeDays={rangeDays} rangeLabel={activeRange.label} syncStatus={data.syncStatus} />
       <TeamTxList teamTxs={data.teamTxs} rangeDays={rangeDays} lastScannedHeight={data.lastScannedHeight} />
     </div>
   );
