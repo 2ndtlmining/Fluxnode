@@ -155,7 +155,7 @@ function _bestRankInCountry(walletCountryNodes, metricRankings) {
  * Only generated for tiers where the wallet has nodes.
  * officialNodeCounts comes from getzelnodecount (same source as dashboard header).
  */
-function computeTierPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
+export function computeTierPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
 
@@ -216,7 +216,7 @@ function computeTierPerformanceAchievements(walletNodes, tierRankings, officialN
  * Compute global per-country performance achievements.
  * ONLY generated for countries where the wallet has at least one node.
  */
-function computeCountryPerformanceAchievements(walletNodes, countryRankings, nodeGeoMap, enablePrivacyMode = false) {
+export function computeCountryPerformanceAchievements(walletNodes, countryRankings, nodeGeoMap, enablePrivacyMode = false) {
   if (!countryRankings || !nodeGeoMap) return [];
   const results = [];
 
@@ -292,7 +292,7 @@ function computeCountryPerformanceAchievements(walletNodes, countryRankings, nod
 // One set of 3 difficulty levels per tier — based on the wallet's WORST node
 // across any metric. Thresholds use metricRankings.length (benchmarked nodes).
 
-function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
+export function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
 
@@ -391,7 +391,7 @@ function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, offi
 // One per tier × metric — awarded when the wallet's worst node in that tier is
 // ranked dead last for that specific metric (more granular than Potato).
 
-function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
+export function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
@@ -431,7 +431,7 @@ function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeC
 // One per tier × metric — awarded when the wallet's best node in that tier
 // ranks in the top 5% for that metric (stacks with medal achievements).
 
-function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
+export function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
   if (!tierRankings) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
@@ -474,7 +474,7 @@ function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCount
 // One per country where the wallet has nodes.
 // Earned when the wallet has more nodes in that country than any other single wallet.
 
-function computeDictatorAchievements(walletNodes, globalRankings) {
+export function computeDictatorAchievements(walletNodes, globalRankings) {
   if (!globalRankings?.countryDominance || !globalRankings?.nodeGeoMap) return [];
   const { countryDominance, nodeGeoMap } = globalRankings;
 

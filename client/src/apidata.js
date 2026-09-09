@@ -1444,7 +1444,7 @@ export async function fetch_country_node_counts() {
   }
 }
 
-function _extract_country_counts(countryRankings) {
+export function _extract_country_counts(countryRankings) {
   if (!countryRankings) return [];
   return Object.values(countryRankings)
     .map(({ country, countryCode, tiers }) => ({

@@ -7,6 +7,7 @@ import {
   wallet_health_full,
   fetch_global_app_specs,
   fetch_global_app_specs_raw,
+  _extract_country_counts,
 } from './apidata';
 
 import {
@@ -268,5 +269,27 @@ describe('fetch_global_app_specs_raw / fetch_global_app_specs', () => {
       expect(out.deployedToday).toHaveLength(1);
       expect(out.networkCategories).toHaveLength(1);
     });
+  });
+});
+
+/*
+ * Characterization test for _extract_country_counts (issue #153 prep).
+ * Task 3 changes this function's entire input contract (from countryRankings
+ * to a much smaller countryTierCounts shape) as part of the globalPerfRankings
+ * redesign, and will REPLACE this test in place with an equivalent one against
+ * the new shape — this is expected, not a conflict. This test is written
+ * against the CURRENT shape regardless, since it proves today's nodeCount
+ * arithmetic (sum of each tier's eps array length) before anything changes.
+ */
+describe('_extract_country_counts (characterization — current behavior)', () => {
+  it("counts nodes per country by summing each tier's eps array length", () => {
+    const countryRankings = {
+      US: { country: 'United States', countryCode: 'US', tiers: {
+        CUMULUS: { metrics: { eps: [{ ip: 'a' }, { ip: 'b' }] } },
+        STRATUS: { metrics: { eps: [{ ip: 'c' }] } },
+      } },
+    };
+    const result = _extract_country_counts(countryRankings);
+    expect(result).toEqual([{ country: 'United States', countryCode: 'US', nodeCount: 3 }]);
   });
 });
