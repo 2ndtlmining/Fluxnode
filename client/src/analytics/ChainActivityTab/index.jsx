@@ -68,7 +68,7 @@ function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
   const badgeText = isPartial ? `${rangeLabel} (${ranged.length}d available)` : rangeLabel;
   // "Still building history" is only accurate for a genuinely healthy,
   // still-backfilling scanner — once the banner above is already showing a
-  // real problem, repeating an falsely-reassuring message here would
+  // real problem, repeating a falsely-reassuring message here would
   // contradict it.
   const stillBuilding = syncStatus === 'never_run' || syncStatus === 'caught_up';
 
