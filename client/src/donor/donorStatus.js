@@ -1,5 +1,11 @@
 import { ADDRESS_FLUX } from 'content/index';
-import { DONOR_THRESHOLD_FLUX, DONOR_WINDOW_DAYS, DONOR_MAX_PAGES_FETCHED, DONOR_STATUS_CACHE_TTL_MS } from 'donor/config';
+import {
+  DONOR_THRESHOLD_FLUX,
+  DONOR_WINDOW_DAYS,
+  DONOR_MAX_PAGES_FETCHED,
+  DONOR_STATUS_CACHE_TTL_MS,
+  OLD_ADDRESS_FLUX,
+} from 'donor/config';
 
 const WINDOW_MS = DONOR_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
@@ -41,7 +47,11 @@ export function computeDonorStatus(records, nowMs = Date.now()) {
 }
 
 const TXS_BY_ADDRESS_ENDPOINT = 'https://explorer.runonflux.io/api/txs';
-const DONOR_STATUS_CACHE_KEY = 'donorStatus_v1';
+// v2: fetch_donor_status now sums donations to BOTH the current and old
+// donation address (see donor/config.js's OLD_ADDRESS_FLUX) — bumped so a
+// wallet's pre-fix single-address cache entry can't silently under-count
+// for up to DONOR_STATUS_CACHE_TTL_MS after this ships.
+const DONOR_STATUS_CACHE_KEY = 'donorStatus_v2';
 
 async function safeFetchJson(url) {
   try {
@@ -86,21 +96,20 @@ function writeDonorStatusCache(address, data) {
 }
 
 /*
- * Pages through the donation address's own transaction history (same
+ * Pages through ONE donation address's own transaction history (same
  * endpoint apidata.js's fetch_total_donations already uses), stopping as
  * soon as a transaction older than the DONOR_WINDOW_DAYS window is reached
  * — confirmed 2026-09-05 that this API returns newest-first, so early-stop
  * is safe. Unlike fetch_total_donations (which only counts matching tx
- * occurrences), this sums the real FLUX amount paid to the donation address
- * by `walletAddress` specifically.
+ * occurrences), this sums the real FLUX amount paid to `donationAddress` by
+ * `walletAddress` specifically.
+ *
+ * Extracted so fetch_donor_status can scan more than one donation address
+ * (see OLD_ADDRESS_FLUX below) with the same logic instead of duplicating
+ * it.
  */
-export async function fetch_donor_status(walletAddress) {
-  const cached = readDonorStatusCache(walletAddress);
-  if (cached) return cached;
-
-  const nowMs = Date.now();
-  const windowStartSec = Math.floor((nowMs - WINDOW_MS) / 1000);
-  const baseUrl = `${TXS_BY_ADDRESS_ENDPOINT}?address=${ADDRESS_FLUX}`;
+async function scanDonationsTo(walletAddress, donationAddress, windowStartSec) {
+  const baseUrl = `${TXS_BY_ADDRESS_ENDPOINT}?address=${donationAddress}`;
 
   const records = [];
   let pageNum = 0;
@@ -122,7 +131,7 @@ export async function fetch_donor_status(walletAddress) {
       }
       const sentByWallet = (tx.vin || []).some((v) => v.addr === walletAddress);
       if (!sentByWallet) continue;
-      const amount = sumVoutToAddress(tx, ADDRESS_FLUX);
+      const amount = sumVoutToAddress(tx, donationAddress);
       if (amount > 0) records.push({ date: tx.time * 1000, amount });
     }
 
@@ -132,11 +141,39 @@ export async function fetch_donor_status(walletAddress) {
   // A scan only counts as a trustworthy answer if it either reached the
   // window boundary (hitWindowEdge) or genuinely exhausted every page the
   // explorer reports (pageNum >= pagesTotal). Anything else — a fetch
-  // failing partway through, or hitting the page cap — is incomplete and
-  // must never be cached or reported as a confident "not a donor". A
-  // positive result is always trustworthy even from a partial scan, since
-  // more data can only raise totalInWindow, never lower it.
+  // failing partway through, or hitting the page cap — is incomplete.
   const scanComplete = hitWindowEdge || pageNum >= pagesTotal;
+  return { records, scanComplete };
+}
+
+/*
+ * Checks every donation address this project has ever used — the current
+ * one (ADDRESS_FLUX) and OLD_ADDRESS_FLUX (see donor/config.js for why) —
+ * and sums matching donations from either toward the same threshold. Scans
+ * run sequentially, not concurrently, matching this function's existing
+ * one-request-at-a-time pattern rather than doubling the burst size against
+ * an explorer API already known to be rate-limit-sensitive.
+ */
+export async function fetch_donor_status(walletAddress) {
+  const cached = readDonorStatusCache(walletAddress);
+  if (cached) return cached;
+
+  const nowMs = Date.now();
+  const windowStartSec = Math.floor((nowMs - WINDOW_MS) / 1000);
+
+  const records = [];
+  let scanComplete = true;
+  for (const donationAddress of [ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
+    const scan = await scanDonationsTo(walletAddress, donationAddress, windowStartSec);
+    records.push(...scan.records);
+    scanComplete = scanComplete && scan.scanComplete;
+  }
+
+  // A positive result is always trustworthy even from a partial scan, since
+  // more data can only raise totalInWindow, never lower it — so an
+  // unreachable/incomplete scan on either address must never be cached or
+  // reported as a confident "not a donor" unless the OTHER address already
+  // independently qualified the wallet.
   const computed = computeDonorStatus(records, nowMs);
   const result = { ...computed, verified: scanComplete || computed.isDonor };
 
