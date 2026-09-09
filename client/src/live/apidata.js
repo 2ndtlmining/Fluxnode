@@ -168,11 +168,24 @@ const BENCHMARK_METRICS = ['eps', 'dws', 'down_speed', 'up_speed'];
 export function lookupNodeInfo(ip, tier, { nodeGeoMap, nodeData } = {}) {
   const geo = ip ? nodeGeoMap?.[ip] : null;
 
-  const node = ip && tier ? (nodeData || []).find((n) => n.ip === ip && n.tier === tier) : null;
+  // A bare ip can legitimately match more than one nodeData entry: a host
+  // running several same-tier Flux nodes on different ports all collapse to
+  // one ip here (nodeData carries no port — buildConfirmationEvents strips
+  // it too, at the top of this file). The OLD per-metric sorted-array
+  // lookup independently found each metric's highest value among such
+  // duplicates (tierMetrics[metric].find() on an array already sorted
+  // descending for that metric); a plain single-entry .find() here would
+  // instead pick whichever duplicate happens to be first in nodeData's
+  // unsorted fetch order — the exact bug class rankInGroup had, live-
+  // verified elsewhere in this plan. Take the per-metric max across all
+  // matches to replicate the old composite-per-metric behavior exactly.
+  const matches = ip && tier ? (nodeData || []).filter((n) => n.ip === ip && n.tier === tier) : [];
   let benchmark = null;
-  if (node) {
+  if (matches.length > 0) {
     benchmark = {};
-    for (const metric of BENCHMARK_METRICS) benchmark[metric] = node[metric];
+    for (const metric of BENCHMARK_METRICS) {
+      benchmark[metric] = matches.reduce((best, n) => ((n[metric] || 0) > best ? n[metric] || 0 : best), 0);
+    }
   }
 
   return { country: geo?.country || null, countryCode: geo?.countryCode || null, benchmark };

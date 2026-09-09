@@ -232,6 +232,32 @@ describe('lookupNodeInfo', () => {
     const wrongTierInfo = lookupNodeInfo('1.2.3.4', 'NIMBUS', globalRankings);
     expect(wrongTierInfo.benchmark).toBeNull();
   });
+
+  it('takes the per-metric max across same-ip, same-tier duplicates (a host running several nodes on different ports)', () => {
+    // Live-verified 2026-09-09: buildConfirmationEvents strips the port off
+    // tx.ip, and nodeData carries no port either, so a host running several
+    // same-tier Flux nodes on different ports collapses to one ip here —
+    // exactly the shape that made rankInGroup's plain .find() pick an
+    // arbitrary duplicate instead of the real best one. The OLD per-metric
+    // sorted-array lookup found each metric's own highest value among such
+    // duplicates independently, so the correct composite benchmark object
+    // can genuinely mix values from different physical ports.
+    const sharedHost = {
+      nodeGeoMap: { '5.230.173.194': { country: 'Germany', countryCode: 'DE' } },
+      nodeData: [
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 460.28, dws: 212.26, down_speed: 4296.66, up_speed: 798.48, geo: null },
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 2143.16, dws: 236.6, down_speed: 3981.93, up_speed: 39.51, geo: null },
+        { ip: '5.230.173.194', tier: 'CUMULUS', eps: 265.64, dws: 817.72, down_speed: 50.51, up_speed: 39.93, geo: null },
+      ],
+    };
+    const info = lookupNodeInfo('5.230.173.194', 'CUMULUS', sharedHost);
+    expect(info.benchmark).toEqual({
+      eps: 2143.16, // the 2nd entry's eps is the highest of the three
+      dws: 817.72, // the 3rd entry's dws is the highest of the three
+      down_speed: 4296.66, // the 1st entry's down_speed is the highest of the three
+      up_speed: 798.48, // the 1st entry's up_speed is the highest of the three
+    });
+  });
 });
 
 describe('extractP2pTransfers', () => {
