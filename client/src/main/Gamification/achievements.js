@@ -6,6 +6,7 @@ import { TbBuildingSkyscraper, TbActivityHeartbeat, TbBrowser } from 'react-icon
 import { categorizeAppSpec } from './appCategories';
 import { fv_compare } from 'main/flux_version';
 import { hide_sensitive_number } from '../../utils';
+import { rankInGroup, topInGroup } from './rankInGroup';
 
 export const TIER = {
   BRONZE: 'bronze',
@@ -89,65 +90,51 @@ const MEDAL_RANKS = [
 const TIER_DISPLAY = { CUMULUS: 'Cumulus', NIMBUS: 'Nimbus', STRATUS: 'Stratus' };
 
 // Find wallet's best global rank for (tier, metric) across all wallet nodes in that tier
-function _bestRankInTier(walletTierNodes, metricRankings) {
-  let bestRank = null;
-  let bestIp = null;
-  let bestValue = 0;
-  let bestNodeDisplay = null;
-
+function _bestRankInTier(walletTierNodes, nodeData, tier, metricKey) {
+  const groupNodes = nodeData.filter((n) => n.tier === tier);
+  let best = null;
   for (const node of walletTierNodes) {
     const ip = node.ip_full?.host;
     if (!ip) continue;
-    const entry = metricRankings.find((r) => r.ip === ip);
-    if (!entry) continue;
-    if (bestRank === null || entry.rank < bestRank) {
-      bestRank = entry.rank;
-      bestIp = ip;
-      bestValue = entry.value;
-      bestNodeDisplay = node.ip_display;
+    const result = rankInGroup(groupNodes, ip, metricKey);
+    if (!result) continue;
+    if (best === null || result.rank < best.bestRank) {
+      best = { bestRank: result.rank, bestIp: ip, bestValue: result.value, bestNodeDisplay: node.ip_display };
     }
   }
-  return { bestRank, bestIp, bestValue, bestNodeDisplay };
+  return best || { bestRank: null, bestIp: null, bestValue: 0, bestNodeDisplay: null };
 }
 
 // Find wallet's WORST global rank for (tier, metric) — inverse of _bestRankInTier
-function _worstRankInTier(walletTierNodes, metricRankings) {
-  let worstRank = null;
-  let worstValue = 0;
-  let worstNodeDisplay = null;
-
+function _worstRankInTier(walletTierNodes, nodeData, tier, metricKey) {
+  const groupNodes = nodeData.filter((n) => n.tier === tier);
+  let worst = null;
   for (const node of walletTierNodes) {
     const ip = node.ip_full?.host;
     if (!ip) continue;
-    const entry = metricRankings.find((r) => r.ip === ip);
-    if (!entry) continue;
-    if (worstRank === null || entry.rank > worstRank) {
-      worstRank = entry.rank;
-      worstValue = entry.value;
-      worstNodeDisplay = node.ip_display;
+    const result = rankInGroup(groupNodes, ip, metricKey);
+    if (!result) continue;
+    if (worst === null || result.rank > worst.worstRank) {
+      worst = { worstRank: result.rank, worstValue: result.value, worstNodeDisplay: node.ip_display };
     }
   }
-  return { worstRank, worstValue, worstNodeDisplay };
+  return worst || { worstRank: null, worstValue: 0, worstNodeDisplay: null };
 }
 
 // Find wallet's best rank in a country for a metric
-function _bestRankInCountry(walletCountryNodes, metricRankings) {
-  let bestRank = null;
-  let bestValue = 0;
-  let bestNodeDisplay = null;
-
+function _bestRankInCountry(walletCountryNodes, nodeData, tier, countryCode, metricKey) {
+  const groupNodes = nodeData.filter((n) => n.tier === tier && n.geo?.countryCode === countryCode);
+  let best = null;
   for (const node of walletCountryNodes) {
     const ip = node.ip_full?.host;
     if (!ip) continue;
-    const entry = metricRankings.find((r) => r.ip === ip);
-    if (!entry) continue;
-    if (bestRank === null || entry.rank < bestRank) {
-      bestRank = entry.rank;
-      bestValue = entry.value;
-      bestNodeDisplay = node.ip_display;
+    const result = rankInGroup(groupNodes, ip, metricKey);
+    if (!result) continue;
+    if (best === null || result.rank < best.bestRank) {
+      best = { bestRank: result.rank, bestValue: result.value, bestNodeDisplay: node.ip_display };
     }
   }
-  return { bestRank, bestValue, bestNodeDisplay };
+  return best || { bestRank: null, bestValue: 0, bestNodeDisplay: null };
 }
 
 /**
@@ -155,27 +142,26 @@ function _bestRankInCountry(walletCountryNodes, metricRankings) {
  * Only generated for tiers where the wallet has nodes.
  * officialNodeCounts comes from getzelnodecount (same source as dashboard header).
  */
-export function computeTierPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
-  if (!tierRankings) return [];
+export function computeTierPerformanceAchievements(walletNodes, nodeData, officialNodeCounts, enablePrivacyMode = false) {
+  if (!nodeData) return [];
   const results = [];
 
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
     const walletTierNodes = walletNodes.filter((n) => n.tier === tier);
     if (walletTierNodes.length === 0) continue;
-    const rankings = tierRankings[tier];
-    if (!rankings) continue;
+    const groupNodes = nodeData.filter((n) => n.tier === tier);
+    if (groupNodes.length === 0) continue;
 
     for (const metric of PERF_METRICS) {
-      const metricRankings = rankings[metric.key] || [];
-      if (metricRankings.length === 0) continue;
-
       // Use official enabled-node count from getzelnodecount to match dashboard header.
-      // Fall back to benchmark array length if unavailable.
-      const totalInTier = officialNodeCounts?.[tier] || metricRankings.length;
+      // Fall back to benchmarked node count if unavailable.
+      const totalInTier = officialNodeCounts?.[tier] || groupNodes.length;
 
       const { bestRank, bestValue, bestNodeDisplay } = _bestRankInTier(
         walletTierNodes,
-        metricRankings
+        nodeData,
+        tier,
+        metric.key
       );
 
       for (const { rank: medalRank, tier: medalTier } of MEDAL_RANKS) {
@@ -216,8 +202,8 @@ export function computeTierPerformanceAchievements(walletNodes, tierRankings, of
  * Compute global per-country performance achievements.
  * ONLY generated for countries where the wallet has at least one node.
  */
-export function computeCountryPerformanceAchievements(walletNodes, countryRankings, nodeGeoMap, enablePrivacyMode = false) {
-  if (!countryRankings || !nodeGeoMap) return [];
+export function computeCountryPerformanceAchievements(walletNodes, nodeData, nodeGeoMap, enablePrivacyMode = false) {
+  if (!nodeData || !nodeGeoMap) return [];
   const results = [];
 
   // Group wallet nodes by country AND tier — nodes only compete within their own tier per country
@@ -238,22 +224,22 @@ export function computeCountryPerformanceAchievements(walletNodes, countryRankin
   }
 
   for (const [, { cc, tier, nodes: walletCountryTierNodes }] of walletByCountryTier.entries()) {
-    const countryData = countryRankings[cc];
-    if (!countryData?.tiers) continue;
-    const tierData = countryData.tiers[tier];
-    if (!tierData) continue;
-
     const nodeTierLabel = TIER_DISPLAY[tier]; // e.g. 'Stratus'
-    const country = countryData.country;
+    // Display name for the country — nodeGeoMap is already a parameter here,
+    // so reuse it rather than threading in countryTierCounts as well.
+    const country = Object.values(nodeGeoMap).find((g) => g.countryCode === cc)?.country;
 
     for (const metric of PERF_METRICS) {
-      const metricRankings = tierData.metrics[metric.key] || [];
-      const totalInGroup = metricRankings.length;
+      const groupNodes = nodeData.filter((n) => n.tier === tier && n.geo?.countryCode === cc);
+      const totalInGroup = groupNodes.length;
       if (totalInGroup === 0) continue;
 
       const { bestRank, bestValue, bestNodeDisplay } = _bestRankInCountry(
         walletCountryTierNodes,
-        metricRankings
+        nodeData,
+        tier,
+        cc,
+        metric.key
       );
       if (bestRank === null) continue;
 
@@ -292,15 +278,15 @@ export function computeCountryPerformanceAchievements(walletNodes, countryRankin
 // One set of 3 difficulty levels per tier — based on the wallet's WORST node
 // across any metric. Thresholds use metricRankings.length (benchmarked nodes).
 
-export function computeTierWorstPerformanceAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
-  if (!tierRankings) return [];
+export function computeTierWorstPerformanceAchievements(walletNodes, nodeData, officialNodeCounts, enablePrivacyMode = false) {
+  if (!nodeData) return [];
   const results = [];
 
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
     const walletTierNodes = walletNodes.filter((n) => n.tier === tier);
     if (walletTierNodes.length === 0) continue;
-    const rankings = tierRankings[tier];
-    if (!rankings) continue;
+    const groupNodes = nodeData.filter((n) => n.tier === tier);
+    if (groupNodes.length === 0) continue;
 
     const tierLabel = TIER_DISPLAY[tier];
 
@@ -308,15 +294,13 @@ export function computeTierWorstPerformanceAchievements(walletNodes, tierRanking
     let worst = null; // { rank, metricLabel, metricTotal, nodeDisplay, value, unit }
 
     for (const metric of PERF_METRICS) {
-      const metricRankings = rankings[metric.key] || [];
-      if (metricRankings.length === 0) continue;
-      const { worstRank, worstValue, worstNodeDisplay } = _worstRankInTier(walletTierNodes, metricRankings);
+      const { worstRank, worstValue, worstNodeDisplay } = _worstRankInTier(walletTierNodes, nodeData, tier, metric.key);
       if (worstRank === null) continue;
       if (worst === null || worstRank > worst.rank) {
         worst = {
           rank: worstRank,
           metricLabel: metric.label,
-          metricTotal: metricRankings.length,
+          metricTotal: groupNodes.length,
           nodeDisplay: worstNodeDisplay,
           value: worstValue,
           unit: metric.unit,
@@ -391,22 +375,20 @@ export function computeTierWorstPerformanceAchievements(walletNodes, tierRanking
 // One per tier × metric — awarded when the wallet's worst node in that tier is
 // ranked dead last for that specific metric (more granular than Potato).
 
-export function computeWoodenSpoonAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
-  if (!tierRankings) return [];
+export function computeWoodenSpoonAchievements(walletNodes, nodeData, officialNodeCounts, enablePrivacyMode = false) {
+  if (!nodeData) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
     const walletTierNodes = walletNodes.filter((n) => n.tier === tier);
     if (walletTierNodes.length === 0) continue;
-    const rankings = tierRankings[tier];
-    if (!rankings) continue;
+    const groupNodes = nodeData.filter((n) => n.tier === tier);
+    if (groupNodes.length === 0) continue;
     const tierLabel = TIER_DISPLAY[tier];
     for (const metric of PERF_METRICS) {
-      const metricRankings = rankings[metric.key] || [];
-      if (metricRankings.length === 0) continue;
-      const totalInTier = officialNodeCounts?.[tier] || metricRankings.length;
-      const { worstRank, worstValue, worstNodeDisplay } = _worstRankInTier(walletTierNodes, metricRankings);
+      const totalInTier = officialNodeCounts?.[tier] || groupNodes.length;
+      const { worstRank, worstValue, worstNodeDisplay } = _worstRankInTier(walletTierNodes, nodeData, tier, metric.key);
       if (worstRank === null) continue;
-      const earned = worstRank >= metricRankings.length;
+      const earned = worstRank >= groupNodes.length;
       const valueStr = worstValue > 0 ? worstValue.toFixed(2) + metric.unit : 'N/A';
       results.push({
         id: `wooden_spoon_${tier}_${metric.key}`,
@@ -419,7 +401,7 @@ export function computeWoodenSpoonAchievements(walletNodes, tierRankings, offici
         tier: TIER.GOLD,
         category: 'performance',
         earned,
-        progress: Math.max(0, Math.min(100, (worstRank / metricRankings.length) * 100)),
+        progress: Math.max(0, Math.min(100, (worstRank / groupNodes.length) * 100)),
         progressLabel: `Rank #${worstRank.toLocaleString()} of ${totalInTier.toLocaleString()} ${tierLabel} nodes · ${metric.label}`,
       });
     }
@@ -431,26 +413,24 @@ export function computeWoodenSpoonAchievements(walletNodes, tierRankings, offici
 // One per tier × metric — awarded when the wallet's best node in that tier
 // ranks in the top 5% for that metric (stacks with medal achievements).
 
-export function computeTryHardAchievements(walletNodes, tierRankings, officialNodeCounts, enablePrivacyMode = false) {
-  if (!tierRankings) return [];
+export function computeTryHardAchievements(walletNodes, nodeData, officialNodeCounts, enablePrivacyMode = false) {
+  if (!nodeData) return [];
   const results = [];
   for (const tier of ['CUMULUS', 'NIMBUS', 'STRATUS']) {
     const walletTierNodes = walletNodes.filter((n) => n.tier === tier);
     if (walletTierNodes.length === 0) continue;
-    const rankings = tierRankings[tier];
-    if (!rankings) continue;
+    const groupNodes = nodeData.filter((n) => n.tier === tier);
+    if (groupNodes.length === 0) continue;
     const tierLabel = TIER_DISPLAY[tier];
     for (const metric of PERF_METRICS) {
-      const metricRankings = rankings[metric.key] || [];
-      if (metricRankings.length === 0) continue;
-      const totalInTier = officialNodeCounts?.[tier] || metricRankings.length;
-      const topFivePctThreshold = Math.ceil(metricRankings.length * 0.05);
+      const totalInTier = officialNodeCounts?.[tier] || groupNodes.length;
+      const topFivePctThreshold = Math.ceil(groupNodes.length * 0.05);
       if (topFivePctThreshold < 1) continue; // safety guard for empty pools
-      const { bestRank, bestValue, bestNodeDisplay } = _bestRankInTier(walletTierNodes, metricRankings);
+      const { bestRank, bestValue, bestNodeDisplay } = _bestRankInTier(walletTierNodes, nodeData, tier, metric.key);
       if (bestRank === null) continue;
       const earned = bestRank <= topFivePctThreshold;
       const valueStr = bestValue > 0 ? bestValue.toFixed(2) + metric.unit : 'N/A';
-      const topPct = ((topFivePctThreshold / metricRankings.length) * 100).toFixed(0);
+      const topPct = ((topFivePctThreshold / groupNodes.length) * 100).toFixed(0);
       results.push({
         id: `try_hard_${tier}_${metric.key}`,
         name: `${tierLabel} ${metric.label} Try Hard`,
@@ -714,25 +694,25 @@ export function computeAchievements(gstore, walletNodes, walletPASummary, totalD
 
   const tierPerf = computeTierPerformanceAchievements(
     walletNodes,
-    globalRankings.tierRankings,
+    globalRankings.nodeData,
     globalRankings.officialNodeCounts,
     enablePrivacyMode
   );
   const countryPerf = computeCountryPerformanceAchievements(
     walletNodes,
-    globalRankings.countryRankings,
+    globalRankings.nodeData,
     globalRankings.nodeGeoMap,
     enablePrivacyMode
   );
   const worstTierPerf = computeTierWorstPerformanceAchievements(
     walletNodes,
-    globalRankings.tierRankings,
+    globalRankings.nodeData,
     globalRankings.officialNodeCounts,
     enablePrivacyMode
   );
   const dictator = computeDictatorAchievements(walletNodes, globalRankings);
-  const woodenSpoon = computeWoodenSpoonAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts, enablePrivacyMode);
-  const tryHard = computeTryHardAchievements(walletNodes, globalRankings.tierRankings, globalRankings.officialNodeCounts, enablePrivacyMode);
+  const woodenSpoon = computeWoodenSpoonAchievements(walletNodes, globalRankings.nodeData, globalRankings.officialNodeCounts, enablePrivacyMode);
+  const tryHard = computeTryHardAchievements(walletNodes, globalRankings.nodeData, globalRankings.officialNodeCounts, enablePrivacyMode);
 
   return [...staticAchievements, ...tierPerf, ...countryPerf, ...worstTierPerf, ...dictator, ...woodenSpoon, ...tryHard];
 }
