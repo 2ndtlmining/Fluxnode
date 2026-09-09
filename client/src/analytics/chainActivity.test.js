@@ -1,4 +1,4 @@
-import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo } from './chainActivity';
+import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo, scanProgressPct } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -10,6 +10,8 @@ const EMPTY_RESULT = {
   lastScannedHeight: 0,
   lastAttemptAt: 0,
   lastSuccessAt: 0,
+  scanStartHeight: 0,
+  scanTargetHeight: 0,
   syncStatus: 'api_unreachable',
 };
 
@@ -57,6 +59,54 @@ describe('fetch_chain_activity', () => {
     const result = await fetch_chain_activity();
     expect(result.syncStatus).toBe('stalled');
     expect(result.lastSuccessAt).toBe(1788800000); // preserved even though the latest attempt stalled
+  });
+
+  it('passes through in_progress, distinguishable from never_run', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      success: true,
+      daily: [],
+      team_txs: [],
+      last_scanned_height: 200,
+      last_attempt_at: 1788900000,
+      last_success_at: 0,
+      last_outcome: 'in_progress',
+    }));
+
+    const result = await fetch_chain_activity();
+    expect(result.syncStatus).toBe('in_progress');
+    expect(result.lastAttemptAt).toBe(1788900000);
+  });
+
+  it('passes through the scan range while a scan is in progress', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      success: true,
+      daily: [],
+      team_txs: [],
+      last_scanned_height: 1200,
+      last_attempt_at: 1788900000,
+      last_success_at: 0,
+      last_outcome: 'in_progress',
+      scan_start_height: 1000,
+      scan_target_height: 2000,
+    }));
+
+    const result = await fetch_chain_activity();
+    expect(result.scanStartHeight).toBe(1000);
+    expect(result.scanTargetHeight).toBe(2000);
+  });
+
+  it('defaults the scan range to 0/0 when the backend omits it (not currently in progress)', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      success: true,
+      daily: [],
+      team_txs: [],
+      last_scanned_height: 500,
+      last_outcome: 'caught_up',
+    }));
+
+    const result = await fetch_chain_activity();
+    expect(result.scanStartHeight).toBe(0);
+    expect(result.scanTargetHeight).toBe(0);
   });
 
   it('defaults syncStatus to never_run when the backend omits last_outcome (older API version)', async () => {
@@ -115,6 +165,24 @@ describe('relativeTimeAgo', () => {
 
   it('formats days', () => {
     expect(relativeTimeAgo(NOW - 2 * 86400)).toBe('2d ago');
+  });
+});
+
+describe('scanProgressPct', () => {
+  it('computes percent of the current scan\'s own range covered so far', () => {
+    expect(scanProgressPct({ lastScannedHeight: 1200, scanStartHeight: 1000, scanTargetHeight: 2000 })).toBe(20);
+  });
+
+  it('returns 0 when there is no real range yet (target not resolved)', () => {
+    expect(scanProgressPct({ lastScannedHeight: 0, scanStartHeight: 0, scanTargetHeight: 0 })).toBe(0);
+  });
+
+  it('clamps at 100 rather than going over if lastScannedHeight is somehow past the target', () => {
+    expect(scanProgressPct({ lastScannedHeight: 2500, scanStartHeight: 1000, scanTargetHeight: 2000 })).toBe(100);
+  });
+
+  it('clamps at 0 rather than going negative if lastScannedHeight is somehow before the start', () => {
+    expect(scanProgressPct({ lastScannedHeight: 500, scanStartHeight: 1000, scanTargetHeight: 2000 })).toBe(0);
   });
 });
 

@@ -220,11 +220,26 @@ pub struct Checkpoint {
  * would mean threading a real error type through several more layers than
  * this fix's scope covers. `Stalled` names the most likely cause (this
  * API's own well-documented rate-limiting) without claiming certainty.
+ *
+ * `InProgress`: a genuine cold-start backfill (checkpoint 0, full
+ * RETENTION_BLOCKS window) can take MANY MINUTES even with no rate-
+ * limiting at all — 2+ explorer requests per block, SCAN_CONCURRENCY=2 by
+ * design (see its own comment) — and get_with_backoff's retry budget alone
+ * can stretch a single request past a minute under real 429s (live-
+ * confirmed 2026-09-09: this API's rate limit is real and can affect a
+ * scanner's own requests, not just a human's browser testing). Without
+ * this state, a scan that has been legitimately running and retrying for
+ * several minutes is indistinguishable from one that never started at all
+ * — exactly the ambiguity this whole ScanStatus mechanism exists to
+ * remove. Persisted immediately when a cycle starts, before any of that
+ * potentially-long work, and overwritten with the real terminal outcome
+ * once the cycle actually finishes.
  */
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ScanOutcome {
     NeverRun,
+    InProgress,
     CaughtUp,
     Stalled,
     Unreachable,
@@ -244,6 +259,16 @@ pub struct ScanStatus {
     pub last_attempt_at: i64,
     pub last_success_at: i64,
     pub last_outcome: ScanOutcome,
+    // The height range the CURRENT in-progress attempt is scanning, so a
+    // viewer can see real "X of Y blocks" progress rather than just "it's
+    // running" — combined with the checkpoint's own last_scanned_height
+    // (already exposed alongside this), progress = (last_scanned_height -
+    // scan_start_height) / (scan_target_height - scan_start_height). Both 0
+    // whenever last_outcome isn't InProgress: the range only means something
+    // while a scan is actually active, and a stale leftover range on a
+    // finished/never-run status would be misleading, not just unused.
+    pub scan_start_height: i64,
+    pub scan_target_height: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -590,7 +615,22 @@ fn next_scan_status(previous: ScanStatus, attempt_at: i64, outcome: ScanOutcome)
         last_attempt_at: attempt_at,
         last_success_at: if outcome == ScanOutcome::CaughtUp { attempt_at } else { previous.last_success_at },
         last_outcome: outcome,
+        // Always reset here — a caller that knows the current scan's real
+        // range calls with_scan_range() right after, which is the only
+        // place these ever get a nonzero value.
+        scan_start_height: 0,
+        scan_target_height: 0,
     }
+}
+
+// Attaches the height range an in-progress scan is actively covering, once
+// known (the tip height isn't available until after fetch_tip_height
+// succeeds, one step after the InProgress status above is already
+// persisted) — a separate small pure function rather than folding into
+// next_scan_status itself, since only the InProgress path ever has a range
+// to attach.
+fn with_scan_range(status: ScanStatus, start_height: i64, target_height: i64) -> ScanStatus {
+    ScanStatus { scan_start_height: start_height, scan_target_height: target_height, ..status }
 }
 
 fn persist_scan_status(status: ScanStatus) {
@@ -602,6 +642,14 @@ fn persist_scan_status(status: ScanStatus) {
 pub async fn run_scan_cycle() {
     let attempt_at = unix_now();
     let previous_status = load_scan_status();
+
+    // Persisted BEFORE any of the potentially-long work below — a cold-start
+    // backfill (or a run fighting this API's real rate limits) can take
+    // several minutes to reach any of the exit points further down, and
+    // without this write, an in-progress attempt is indistinguishable from
+    // one that never started. Every other exit path below overwrites this
+    // with the real terminal outcome once the cycle actually finishes.
+    persist_scan_status(next_scan_status(previous_status.clone(), attempt_at, ScanOutcome::InProgress));
 
     let client = create_client();
 
@@ -626,6 +674,19 @@ pub async fn run_scan_cycle() {
         persist_scan_status(next_scan_status(previous_status, attempt_at, ScanOutcome::CaughtUp));
         return;
     }
+
+    // Now that the real range is known, attach it to the InProgress status
+    // already on disk — this is what lets a viewer (or docker logs) see
+    // real "X of Y blocks" progress instead of just "it's running".
+    persist_scan_status(with_scan_range(
+        next_scan_status(previous_status.clone(), attempt_at, ScanOutcome::InProgress),
+        start_height,
+        tip_height,
+    ));
+    println!(
+        "[chain_activity] scan starting: {} blocks to cover ({} -> {})",
+        tip_height - start_height, start_height, tip_height
+    );
 
     let deployment_heights = fetch_deployment_heights(&client).await;
     let mut daily = load_daily_rollup();
@@ -653,6 +714,21 @@ pub async fn run_scan_cycle() {
 
         let made_progress = new_checkpoint > checkpoint_height;
         checkpoint_height = new_checkpoint;
+
+        // One line per batch (every SCAN_BATCH_SIZE=300 blocks at most) so
+        // watching `docker logs` during a long cold-start backfill shows
+        // real, live progress instead of total silence until the final
+        // summary line — the same visibility gap the in_progress status
+        // fixes for the HTTP endpoint, but for an operator tailing logs.
+        let pct = if tip_height > start_height {
+            ((checkpoint_height - start_height) as f64 / (tip_height - start_height) as f64 * 100.0).round()
+        } else {
+            100.0
+        };
+        println!(
+            "[chain_activity] batch done: checkpoint {} / tip {} ({:.0}% of this cycle's range)",
+            checkpoint_height, tip_height, pct
+        );
 
         if !made_progress || new_checkpoint < batch_end {
             // A gap was hit within this batch — stop the cycle here rather than
@@ -890,7 +966,10 @@ mod tests {
     #[test]
     fn scan_status_round_trips_through_write_and_read() {
         let dir = temp_test_dir("scan_status_roundtrip");
-        let status = ScanStatus { last_attempt_at: 1000, last_success_at: 900, last_outcome: ScanOutcome::Stalled };
+        let status = ScanStatus {
+            last_attempt_at: 1000, last_success_at: 900, last_outcome: ScanOutcome::Stalled,
+            ..Default::default()
+        };
         write_json_atomic(&dir, "status.json", &status).expect("write should succeed");
         let read_back: ScanStatus = read_json_or_default(&dir, "status.json");
         assert_eq!(read_back, status);
@@ -900,6 +979,7 @@ mod tests {
     #[test]
     fn scan_outcome_serializes_as_snake_case_matching_the_frontend_contract() {
         assert_eq!(serde_json::to_string(&ScanOutcome::NeverRun).unwrap(), "\"never_run\"");
+        assert_eq!(serde_json::to_string(&ScanOutcome::InProgress).unwrap(), "\"in_progress\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::CaughtUp).unwrap(), "\"caught_up\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::Stalled).unwrap(), "\"stalled\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::Unreachable).unwrap(), "\"unreachable\"");
@@ -907,23 +987,57 @@ mod tests {
 
     #[test]
     fn next_scan_status_caught_up_advances_both_timestamps() {
-        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::Stalled };
+        let previous = ScanStatus {
+            last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::Stalled,
+            ..Default::default()
+        };
         let next = next_scan_status(previous, 200, ScanOutcome::CaughtUp);
-        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 200, last_outcome: ScanOutcome::CaughtUp });
+        assert_eq!(next, ScanStatus {
+            last_attempt_at: 200, last_success_at: 200, last_outcome: ScanOutcome::CaughtUp,
+            ..Default::default()
+        });
     }
 
     #[test]
     fn next_scan_status_stalled_advances_attempt_but_preserves_last_success() {
-        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
+        let previous = ScanStatus {
+            last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp,
+            ..Default::default()
+        };
         let next = next_scan_status(previous, 200, ScanOutcome::Stalled);
-        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Stalled });
+        assert_eq!(next, ScanStatus {
+            last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Stalled,
+            ..Default::default()
+        });
     }
 
     #[test]
     fn next_scan_status_unreachable_advances_attempt_but_preserves_last_success() {
-        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
+        let previous = ScanStatus {
+            last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp,
+            ..Default::default()
+        };
         let next = next_scan_status(previous, 200, ScanOutcome::Unreachable);
-        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Unreachable });
+        assert_eq!(next, ScanStatus {
+            last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Unreachable,
+            ..Default::default()
+        });
+    }
+
+    #[test]
+    fn next_scan_status_in_progress_advances_attempt_but_preserves_last_success() {
+        // The write run_scan_cycle makes immediately on starting, before any
+        // network work — must look exactly like Stalled/Unreachable's
+        // preserve-last-success behavior, not like a fresh CaughtUp.
+        let previous = ScanStatus {
+            last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp,
+            ..Default::default()
+        };
+        let next = next_scan_status(previous, 200, ScanOutcome::InProgress);
+        assert_eq!(next, ScanStatus {
+            last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::InProgress,
+            ..Default::default()
+        });
     }
 
     #[test]
@@ -933,6 +1047,37 @@ mod tests {
         // last_success_at: 0 (never), not silently inherit attempt_at.
         let previous = ScanStatus::default();
         let next = next_scan_status(previous, 500, ScanOutcome::Stalled);
-        assert_eq!(next, ScanStatus { last_attempt_at: 500, last_success_at: 0, last_outcome: ScanOutcome::Stalled });
+        assert_eq!(next, ScanStatus {
+            last_attempt_at: 500, last_success_at: 0, last_outcome: ScanOutcome::Stalled,
+            ..Default::default()
+        });
+    }
+
+    #[test]
+    fn next_scan_status_always_resets_the_scan_range_even_from_a_previous_in_progress() {
+        // A terminal outcome (or a fresh InProgress at the start of a NEW
+        // cycle) ends whatever range the LAST in-progress attempt was
+        // covering — leaving it on disk would misreport progress against a
+        // range that no longer applies.
+        let previous = ScanStatus {
+            last_attempt_at: 100, last_success_at: 0, last_outcome: ScanOutcome::InProgress,
+            scan_start_height: 500, scan_target_height: 1000,
+        };
+        let next = next_scan_status(previous, 200, ScanOutcome::CaughtUp);
+        assert_eq!(next.scan_start_height, 0);
+        assert_eq!(next.scan_target_height, 0);
+    }
+
+    #[test]
+    fn with_scan_range_sets_the_range_and_preserves_everything_else() {
+        let status = ScanStatus {
+            last_attempt_at: 200, last_success_at: 100, last_outcome: ScanOutcome::InProgress,
+            ..Default::default()
+        };
+        let with_range = with_scan_range(status, 500, 1000);
+        assert_eq!(with_range, ScanStatus {
+            last_attempt_at: 200, last_success_at: 100, last_outcome: ScanOutcome::InProgress,
+            scan_start_height: 500, scan_target_height: 1000,
+        });
     }
 }

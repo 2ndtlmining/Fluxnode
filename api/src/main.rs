@@ -289,6 +289,12 @@ pub mod api_v1 {
             last_attempt_at: i64,
             last_success_at: i64,
             last_outcome: services::chain_activity::ScanOutcome,
+            // Both 0 unless last_outcome is currently in_progress — see
+            // ScanStatus's own field doc comment. Combined with
+            // last_scanned_height above, a viewer computes real "X of Y
+            // blocks" progress instead of just knowing a scan is running.
+            scan_start_height: i64,
+            scan_target_height: i64,
         }
 
         // Synchronous read of whatever the background scanner has already
@@ -302,6 +308,8 @@ pub mod api_v1 {
                 last_scanned_height: services::chain_activity::load_checkpoint().last_scanned_height,
                 last_attempt_at: scan_status.last_attempt_at,
                 last_success_at: scan_status.last_success_at,
+                scan_start_height: scan_status.scan_start_height,
+                scan_target_height: scan_status.scan_target_height,
                 last_outcome: scan_status.last_outcome,
             };
             (StatusCode::OK, Json(body))

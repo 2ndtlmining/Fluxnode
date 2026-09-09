@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo } from 'analytics/chainActivity';
+import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo, scanProgressPct } from 'analytics/chainActivity';
 import './index.scss';
 
 /*
@@ -20,6 +20,10 @@ const SYNC_STATUS_COPY = {
     tone: 'info',
     text: "Chain activity hasn't started syncing yet — check back shortly.",
   },
+  in_progress: {
+    tone: 'info',
+    text: 'Sync is running — a first-time backfill can take several minutes.',
+  },
   stalled: {
     tone: 'warning',
     text: 'Sync is behind, possibly rate-limited by the block explorer.',
@@ -30,16 +34,22 @@ const SYNC_STATUS_COPY = {
   },
 };
 
-function SyncStatusBanner({ syncStatus, lastSuccessAt }) {
+function SyncStatusBanner({ syncStatus, lastSuccessAt, lastScannedHeight, scanStartHeight, scanTargetHeight }) {
   const copy = SYNC_STATUS_COPY[syncStatus];
   if (!copy) return null; // caught_up (healthy) or an unrecognized future value — stay silent
 
   const agoText = relativeTimeAgo(lastSuccessAt);
+  const hasRange = syncStatus === 'in_progress' && scanTargetHeight > scanStartHeight;
+  const progressText = hasRange
+    ? ` Block ${fmtNum(lastScannedHeight)} of ${fmtNum(scanTargetHeight)} (${scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight })}%).`
+    : '';
+
   return (
     <div className={`ca-sync-banner ca-sync-banner--${copy.tone}`}>
       <span className="ca-sync-banner-dot" />
       <span>
         {copy.text}
+        {progressText}
         {agoText ? ` Last successful update: ${agoText}.` : ''}
       </span>
     </div>
@@ -70,7 +80,7 @@ function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
   // still-backfilling scanner — once the banner above is already showing a
   // real problem, repeating a falsely-reassuring message here would
   // contradict it.
-  const stillBuilding = syncStatus === 'never_run' || syncStatus === 'caught_up';
+  const stillBuilding = syncStatus === 'never_run' || syncStatus === 'in_progress' || syncStatus === 'caught_up';
 
   return (
     <div className="hov-panel ca-utility-panel">
@@ -139,6 +149,8 @@ export function ChainActivityTab() {
     lastScannedHeight: 0,
     lastAttemptAt: 0,
     lastSuccessAt: 0,
+    scanStartHeight: 0,
+    scanTargetHeight: 0,
     syncStatus: 'never_run',
   });
   const [loading, setLoading] = useState(true);
@@ -173,7 +185,13 @@ export function ChainActivityTab() {
 
   return (
     <div className="chain-activity-tab">
-      <SyncStatusBanner syncStatus={data.syncStatus} lastSuccessAt={data.lastSuccessAt} />
+      <SyncStatusBanner
+        syncStatus={data.syncStatus}
+        lastSuccessAt={data.lastSuccessAt}
+        lastScannedHeight={data.lastScannedHeight}
+        scanStartHeight={data.scanStartHeight}
+        scanTargetHeight={data.scanTargetHeight}
+      />
       <div className="ca-range-toggle">
         {RANGE_OPTIONS.map((r) => (
           <button
