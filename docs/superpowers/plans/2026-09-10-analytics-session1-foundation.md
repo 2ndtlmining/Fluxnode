@@ -488,10 +488,15 @@ function NoWalletState() {
 }
 ```
 
-Also remove the now-unused `Button` import and `useState`/`dialogOpen` if
-nothing else in the file uses them — check before deleting (`Button` is
-still used elsewhere in this file for `PayoutCard`'s "View wallet" action,
-confirm with a search before removing the import).
+Also remove the `Button` import from this file's import line (`import {
+Spinner, Button } from '@blueprintjs/core';`) — confirmed (pre-flight
+check, `grep -n "Button" DonorTab/index.jsx`) its only use in this file was
+the one inside the old `NoWalletState` this step just replaced, so it's
+unused after this edit. **Do not** remove `useState` — it's genuinely still
+used throughout the rest of this file (`loading`, `nodes`, `utilization`,
+`appCategories`, `networkPct` state, lines 175-184) — only the local
+`dialogOpen`/`setDialogOpen` pair inside the old `NoWalletState` goes away
+with the rest of that function body.
 
 - [ ] **Step 5: Delete `DonorUnlockDialog`**
 
