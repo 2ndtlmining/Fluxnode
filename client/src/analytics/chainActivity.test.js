@@ -59,6 +59,22 @@ describe('fetch_chain_activity', () => {
     expect(result.lastSuccessAt).toBe(1788800000); // preserved even though the latest attempt stalled
   });
 
+  it('passes through in_progress, distinguishable from never_run', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      success: true,
+      daily: [],
+      team_txs: [],
+      last_scanned_height: 200,
+      last_attempt_at: 1788900000,
+      last_success_at: 0,
+      last_outcome: 'in_progress',
+    }));
+
+    const result = await fetch_chain_activity();
+    expect(result.syncStatus).toBe('in_progress');
+    expect(result.lastAttemptAt).toBe(1788900000);
+  });
+
   it('defaults syncStatus to never_run when the backend omits last_outcome (older API version)', async () => {
     global.fetch.mockResolvedValueOnce(mockJsonResponse({
       success: true,

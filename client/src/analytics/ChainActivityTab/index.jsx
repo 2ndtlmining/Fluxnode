@@ -20,6 +20,10 @@ const SYNC_STATUS_COPY = {
     tone: 'info',
     text: "Chain activity hasn't started syncing yet — check back shortly.",
   },
+  in_progress: {
+    tone: 'info',
+    text: 'Sync is running — a first-time backfill can take several minutes.',
+  },
   stalled: {
     tone: 'warning',
     text: 'Sync is behind, possibly rate-limited by the block explorer.',
@@ -70,7 +74,7 @@ function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
   // still-backfilling scanner — once the banner above is already showing a
   // real problem, repeating a falsely-reassuring message here would
   // contradict it.
-  const stillBuilding = syncStatus === 'never_run' || syncStatus === 'caught_up';
+  const stillBuilding = syncStatus === 'never_run' || syncStatus === 'in_progress' || syncStatus === 'caught_up';
 
   return (
     <div className="hov-panel ca-utility-panel">

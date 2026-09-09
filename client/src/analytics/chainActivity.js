@@ -14,12 +14,17 @@ import { FLUXNODE_INFO_API_URL } from 'app-buildinfo';
  *     (network error, the backend down, a non-JSON body). This never
  *     reaches the backend's own outcome, so it can't be one of the four
  *     below.
- *   - 'never_run' | 'caught_up' | 'stalled' | 'unreachable' — passed
- *     straight through from the backend's own last_outcome, once a
- *     response WAS received. 'unreachable' here means the SCANNER
+ *   - 'never_run' | 'in_progress' | 'caught_up' | 'stalled' | 'unreachable'
+ *     — passed straight through from the backend's own last_outcome, once
+ *     a response WAS received. 'unreachable' here means the SCANNER
  *     couldn't reach the block explorer on its last attempt — a different
  *     thing from 'api_unreachable' above, which is about reaching our own
- *     API at all. See ScanOutcome's doc comment in chain_activity.rs.
+ *     API at all. 'in_progress' means a scan is actively running right
+ *     now (persisted the instant a cycle starts, before any of its
+ *     potentially minutes-long work) — a genuine cold-start backfill, or
+ *     one fighting this API's real rate limits, needs this or it looks
+ *     identical to 'never_run' for however long that takes. See
+ *     ScanOutcome's doc comment in chain_activity.rs.
  */
 export async function fetch_chain_activity() {
   const empty = {

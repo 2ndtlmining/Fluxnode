@@ -220,11 +220,26 @@ pub struct Checkpoint {
  * would mean threading a real error type through several more layers than
  * this fix's scope covers. `Stalled` names the most likely cause (this
  * API's own well-documented rate-limiting) without claiming certainty.
+ *
+ * `InProgress`: a genuine cold-start backfill (checkpoint 0, full
+ * RETENTION_BLOCKS window) can take MANY MINUTES even with no rate-
+ * limiting at all — 2+ explorer requests per block, SCAN_CONCURRENCY=2 by
+ * design (see its own comment) — and get_with_backoff's retry budget alone
+ * can stretch a single request past a minute under real 429s (live-
+ * confirmed 2026-09-09: this API's rate limit is real and can affect a
+ * scanner's own requests, not just a human's browser testing). Without
+ * this state, a scan that has been legitimately running and retrying for
+ * several minutes is indistinguishable from one that never started at all
+ * — exactly the ambiguity this whole ScanStatus mechanism exists to
+ * remove. Persisted immediately when a cycle starts, before any of that
+ * potentially-long work, and overwritten with the real terminal outcome
+ * once the cycle actually finishes.
  */
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ScanOutcome {
     NeverRun,
+    InProgress,
     CaughtUp,
     Stalled,
     Unreachable,
@@ -603,6 +618,14 @@ pub async fn run_scan_cycle() {
     let attempt_at = unix_now();
     let previous_status = load_scan_status();
 
+    // Persisted BEFORE any of the potentially-long work below — a cold-start
+    // backfill (or a run fighting this API's real rate limits) can take
+    // several minutes to reach any of the exit points further down, and
+    // without this write, an in-progress attempt is indistinguishable from
+    // one that never started. Every other exit path below overwrites this
+    // with the real terminal outcome once the cycle actually finishes.
+    persist_scan_status(next_scan_status(previous_status.clone(), attempt_at, ScanOutcome::InProgress));
+
     let client = create_client();
 
     let tip_height = match fetch_tip_height(&client).await {
@@ -900,6 +923,7 @@ mod tests {
     #[test]
     fn scan_outcome_serializes_as_snake_case_matching_the_frontend_contract() {
         assert_eq!(serde_json::to_string(&ScanOutcome::NeverRun).unwrap(), "\"never_run\"");
+        assert_eq!(serde_json::to_string(&ScanOutcome::InProgress).unwrap(), "\"in_progress\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::CaughtUp).unwrap(), "\"caught_up\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::Stalled).unwrap(), "\"stalled\"");
         assert_eq!(serde_json::to_string(&ScanOutcome::Unreachable).unwrap(), "\"unreachable\"");
@@ -924,6 +948,16 @@ mod tests {
         let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
         let next = next_scan_status(previous, 200, ScanOutcome::Unreachable);
         assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::Unreachable });
+    }
+
+    #[test]
+    fn next_scan_status_in_progress_advances_attempt_but_preserves_last_success() {
+        // The write run_scan_cycle makes immediately on starting, before any
+        // network work — must look exactly like Stalled/Unreachable's
+        // preserve-last-success behavior, not like a fresh CaughtUp.
+        let previous = ScanStatus { last_attempt_at: 100, last_success_at: 50, last_outcome: ScanOutcome::CaughtUp };
+        let next = next_scan_status(previous, 200, ScanOutcome::InProgress);
+        assert_eq!(next, ScanStatus { last_attempt_at: 200, last_success_at: 50, last_outcome: ScanOutcome::InProgress });
     }
 
     #[test]
