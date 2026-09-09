@@ -332,6 +332,7 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
   }
 
   let fetch_global_performance_rankings;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.resetModules();
@@ -381,6 +382,10 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    // A direct `global.fetch = jest.fn()` assignment (as opposed to
+    // `jest.spyOn`) is never tracked by jest.restoreAllMocks() — it only
+    // restores spies. Restore the pre-suite reference explicitly so this
+    // describe block's mock can't leak into whatever runs after it.
+    global.fetch = originalFetch;
   });
 });

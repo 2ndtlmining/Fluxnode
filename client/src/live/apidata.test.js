@@ -194,6 +194,10 @@ describe('lookupNodeInfo', () => {
     nodeGeoMap: { '1.2.3.4': { country: 'Germany', countryCode: 'DE' } },
     nodeData: [
       { ip: '1.2.3.4', tier: 'CUMULUS', eps: 900, dws: 210, down_speed: 87.5, up_speed: 41.2, geo: null },
+      // Same ip, different tier — a node's ip is not globally unique across
+      // this array (an ip can theoretically reappear if reused/re-tiered),
+      // so the lookup must match on ip AND tier, not ip alone.
+      { ip: '1.2.3.4', tier: 'STRATUS', eps: 5, dws: 1, down_speed: 1, up_speed: 1, geo: null },
     ],
   };
 
@@ -219,6 +223,14 @@ describe('lookupNodeInfo', () => {
   it('handles a missing ip or tier gracefully', () => {
     expect(lookupNodeInfo(null, 'CUMULUS', globalRankings)).toEqual({ country: null, countryCode: null, benchmark: null });
     expect(lookupNodeInfo('1.2.3.4', null, globalRankings)).toEqual({ country: 'Germany', countryCode: 'DE', benchmark: null });
+  });
+
+  it('matches on ip AND tier, not ip alone, when the same ip appears under a different tier', () => {
+    const stratusInfo = lookupNodeInfo('1.2.3.4', 'STRATUS', globalRankings);
+    expect(stratusInfo.benchmark).toEqual({ eps: 5, dws: 1, down_speed: 1, up_speed: 1 });
+
+    const wrongTierInfo = lookupNodeInfo('1.2.3.4', 'NIMBUS', globalRankings);
+    expect(wrongTierInfo.benchmark).toBeNull();
   });
 });
 
