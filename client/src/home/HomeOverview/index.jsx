@@ -509,9 +509,9 @@ function MetricCard({ metric, winner, nodeGeoMap }) {
   );
 }
 
-function TierRow({ tier, tierRankings, nodeGeoMap }) {
+function TierRow({ tier, tierWinners, nodeGeoMap }) {
   const { label, color } = TIER_CONFIG[tier];
-  const rankings = tierRankings?.[tier];
+  const winners = tierWinners?.[tier];
   return (
     <div className="td-tier-row" style={{ borderLeftColor: color }}>
       <div className="td-tier-label-col">
@@ -520,7 +520,7 @@ function TierRow({ tier, tierRankings, nodeGeoMap }) {
       </div>
       <div className="td-metric-cards">
         {METRIC_CONFIG.map((m) => (
-          <MetricCard key={m.key} metric={m} winner={rankings?.[m.key]?.[0] ?? null} nodeGeoMap={nodeGeoMap} />
+          <MetricCard key={m.key} metric={m} winner={winners?.[m.key] ?? null} nodeGeoMap={nodeGeoMap} />
         ))}
       </div>
     </div>
@@ -533,13 +533,13 @@ function TopDogsPanel({ globalRankings }) {
       <Spinner size={20} />
     </div>
   );
-  const { tierRankings, nodeGeoMap } = globalRankings;
+  const { tierWinners, nodeGeoMap } = globalRankings;
   return (
     <div className="hov-panel hov-panel--top-dogs">
       <PanelHeader title="TOP DOGS" right={<FaTrophy size={14} className="td-header-icon" />} />
       <div className="td-body">
         {TIERS_ORDER.map((tier) => (
-          <TierRow key={tier} tier={tier} tierRankings={tierRankings} nodeGeoMap={nodeGeoMap} />
+          <TierRow key={tier} tier={tier} tierWinners={tierWinners} nodeGeoMap={nodeGeoMap} />
         ))}
       </div>
     </div>
