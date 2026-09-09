@@ -12,6 +12,7 @@ import {
   fetch_node_geolocation,
   buildWorkhorseNodes
 } from 'networkNodes';
+import { topInGroup } from 'main/Gamification/rankInGroup';
 
 import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 
@@ -1078,18 +1079,32 @@ function _flagFromCountryCode(cc) {
   );
 }
 
-const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v3';
+const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v4';
 const GLOBAL_RANKINGS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const GLOBAL_RANKINGS_STALE_KEYS = ['globalPerfRankings_v3'];
+
+function _prune_stale_global_rankings_caches() {
+  for (const key of GLOBAL_RANKINGS_STALE_KEYS) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+  }
+}
 
 /**
  * Fetches and joins node list (tier), benchmark data, and geolocation for all
- * ~8000 Flux nodes. Builds per-tier and per-country performance rankings.
- * Results are cached in sessionStorage for 10 minutes.
+ * ~8000 Flux nodes. Builds a flat nodeData array plus two small precomputed
+ * aggregates (tierWinners, countryTierCounts) — see issue #153: the old
+ * pre-sorted tierRankings/countryRankings shape duplicated every node 12+
+ * times and was the single biggest sessionStorage-quota offender. Results
+ * are cached in sessionStorage for 10 minutes.
  *
- * Returns: { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts,
- * countryDominance, addressGeoMap } or null on failure.
+ * Returns: { nodeData, tierWinners, countryTierCounts, officialNodeCounts,
+ * countryDominance, nodeGeoMap, addressGeoMap } or null on failure.
  */
 export async function fetch_global_performance_rankings() {
+  _prune_stale_global_rankings_caches();
+
   // Return cached data if fresh
   try {
     const raw = sessionStorage.getItem(GLOBAL_RANKINGS_CACHE_KEY);
@@ -1202,57 +1217,36 @@ export async function fetch_global_performance_rankings() {
       });
     }
 
+    // Every consumer of this data (achievements.js's 6 dynamic functions,
+    // HomeOverview's TopDogsPanel, _extract_country_counts below) only
+    // ever needs ONE of: a specific wallet's own node's rank (computed
+    // on demand via rankInGroup, cheap since it's only ever a handful of
+    // nodes — see main/Gamification/rankInGroup.js), the single #1 node
+    // per tier/metric (tierWinners, precomputed here), or a country's
+    // node count (countryTierCounts, precomputed here). Nothing needs a
+    // pre-sorted rank list for the whole network — that used to cost 12+
+    // duplicated copies of every node (issue #153).
     const METRICS = ['eps', 'dws', 'down_speed', 'up_speed'];
     const TIERS = ['CUMULUS', 'NIMBUS', 'STRATUS'];
 
-    // Per-tier rankings
-    const tierRankings = {};
+    const tierWinners = {};
     for (const tier of TIERS) {
-      tierRankings[tier] = {};
+      tierWinners[tier] = {};
       const tierNodes = nodeData.filter((n) => n.tier === tier);
       for (const metric of METRICS) {
-        tierRankings[tier][metric] = [...tierNodes]
-          .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
-          .map((n, i) => ({ ip: n.ip, rank: i + 1, value: n[metric] }));
+        tierWinners[tier][metric] = topInGroup(tierNodes, metric);
       }
     }
 
-    // Per-country, per-tier rankings — nodes compete only within their own tier per country.
-    // Structure: countryRankings[cc].tiers[TIER].metrics[metric] = [{ip, rank, value}]
-    const countryRankings = {};
+    const countryTierCounts = {};
     for (const node of nodeData) {
       if (!node.geo?.countryCode) continue;
       const cc = node.geo.countryCode;
-      if (!countryRankings[cc]) {
-        countryRankings[cc] = {
-          country: node.geo.country,
-          countryCode: cc,
-          flag: node.geo.flag,
-          tiers: {},
-        };
-      }
-      const tier = node.tier;
-      if (!countryRankings[cc].tiers[tier]) {
-        countryRankings[cc].tiers[tier] = {
-          metrics: { eps: [], dws: [], down_speed: [], up_speed: [] },
-        };
-      }
-      for (const metric of METRICS) {
-        countryRankings[cc].tiers[tier].metrics[metric].push({ ip: node.ip, value: node[metric] || 0 });
-      }
-    }
-    // Sort and assign ranks within each country+tier+metric
-    for (const cc of Object.keys(countryRankings)) {
-      for (const tier of Object.keys(countryRankings[cc].tiers)) {
-        for (const metric of METRICS) {
-          countryRankings[cc].tiers[tier].metrics[metric]
-            .sort((a, b) => b.value - a.value)
-            .forEach((entry, i) => { entry.rank = i + 1; });
-        }
-      }
+      if (!countryTierCounts[cc]) countryTierCounts[cc] = { country: node.geo.country, tiers: {} };
+      countryTierCounts[cc].tiers[node.tier] = (countryTierCounts[cc].tiers[node.tier] || 0) + 1;
     }
 
-    const data = { tierRankings, countryRankings, nodeGeoMap, officialNodeCounts, countryDominance, addressGeoMap };
+    const data = { nodeData, tierWinners, countryTierCounts, officialNodeCounts, countryDominance, addressGeoMap, nodeGeoMap };
 
     try {
       sessionStorage.setItem(
@@ -1407,7 +1401,7 @@ export async function fetch_country_node_counts() {
     if (raw) {
       const cached = JSON.parse(raw);
       if (cached && Date.now() - cached.timestamp < GLOBAL_RANKINGS_CACHE_TTL) {
-        return _extract_country_counts(cached.data.countryRankings);
+        return _extract_country_counts(cached.data.countryTierCounts);
       }
     }
   } catch {}
@@ -1444,15 +1438,13 @@ export async function fetch_country_node_counts() {
   }
 }
 
-export function _extract_country_counts(countryRankings) {
-  if (!countryRankings) return [];
-  return Object.values(countryRankings)
-    .map(({ country, countryCode, tiers }) => ({
+export function _extract_country_counts(countryTierCounts) {
+  if (!countryTierCounts) return [];
+  return Object.entries(countryTierCounts)
+    .map(([countryCode, { country, tiers }]) => ({
       country,
       countryCode,
-      nodeCount: Object.values(tiers).reduce(
-        (sum, tier) => sum + (tier.metrics.eps?.length || 0), 0
-      ),
+      nodeCount: Object.values(tiers).reduce((sum, c) => sum + c, 0),
     }))
     .sort((a, b) => b.nodeCount - a.nodeCount);
 }

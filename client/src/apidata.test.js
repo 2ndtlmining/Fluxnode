@@ -273,23 +273,87 @@ describe('fetch_global_app_specs_raw / fetch_global_app_specs', () => {
 });
 
 /*
- * Characterization test for _extract_country_counts (issue #153 prep).
- * Task 3 changes this function's entire input contract (from countryRankings
- * to a much smaller countryTierCounts shape) as part of the globalPerfRankings
- * redesign, and will REPLACE this test in place with an equivalent one against
- * the new shape — this is expected, not a conflict. This test is written
- * against the CURRENT shape regardless, since it proves today's nodeCount
- * arithmetic (sum of each tier's eps array length) before anything changes.
+ * _extract_country_counts (issue #153) — Task 3 changed this function's
+ * entire input contract from the old exploded countryRankings shape to the
+ * much smaller countryTierCounts shape. This test replaces (not adds to)
+ * Task 1's original version, keeping the exact same expected output.
  */
 describe('_extract_country_counts (characterization — current behavior)', () => {
-  it("counts nodes per country by summing each tier's eps array length", () => {
-    const countryRankings = {
-      US: { country: 'United States', countryCode: 'US', tiers: {
-        CUMULUS: { metrics: { eps: [{ ip: 'a' }, { ip: 'b' }] } },
-        STRATUS: { metrics: { eps: [{ ip: 'c' }] } },
-      } },
+  it("counts nodes per country by summing each tier's count", () => {
+    const countryTierCounts = {
+      US: { country: 'United States', tiers: { CUMULUS: 2, STRATUS: 1 } },
     };
-    const result = _extract_country_counts(countryRankings);
+    const result = _extract_country_counts(countryTierCounts);
     expect(result).toEqual([{ country: 'United States', countryCode: 'US', nodeCount: 3 }]);
+  });
+});
+
+/*
+ * fetch_global_performance_rankings (issue #153 redesign) — replaces the
+ * old pre-sorted, massively-duplicated tierRankings/countryRankings cache
+ * with a flat nodeData array plus two small precomputed aggregates
+ * (tierWinners, countryTierCounts). See Task 3 brief.
+ */
+describe('fetch_global_performance_rankings (redesigned shape)', () => {
+  const FLUX_NODES = { fluxNodes: [
+    { ip: '10.0.0.1:16127', tier: 'cumulus', payment_address: 't1a' },
+    { ip: '10.0.0.2:16127', tier: 'stratus', payment_address: 't1b' },
+  ] };
+  const BENCH_DATA = [
+    { benchmark: { bench: { ipaddress: '10.0.0.1:16127', eps: 100, ddwrite: 10, download_speed: 50, upload_speed: 20 } } },
+    { benchmark: { bench: { ipaddress: '10.0.0.2:16127', eps: 200, ddwrite: 20, download_speed: 60, upload_speed: 30 } } },
+  ];
+  const GEO_DATA = [
+    { geolocation: { ip: '10.0.0.1', country: 'United States', countryCode: 'US', continent: 'NA' } },
+    { geolocation: { ip: '10.0.0.2', country: 'Germany', countryCode: 'DE', continent: 'EU' } },
+  ];
+  const NODE_COUNT = { data: { 'cumulus-enabled': 1, 'nimbus-enabled': 0, 'stratus-enabled': 1, total: 2 } };
+
+  function mockFetchByUrl() {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('getFluxNodes')) return Promise.resolve({ json: async () => FLUX_NODES });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ json: async () => ({ status: 'success', data: BENCH_DATA }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ json: async () => ({ status: 'success', data: GEO_DATA }) });
+      if (u.includes('getzelnodecount')) return Promise.resolve({ json: async () => NODE_COUNT });
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+  }
+
+  let fetch_global_performance_rankings;
+
+  beforeEach(() => {
+    jest.resetModules();
+    sessionStorage.clear();
+    mockFetchByUrl();
+    fetch_global_performance_rankings = require('./apidata').fetch_global_performance_rankings;
+  });
+
+  it('resolves nodeData as one entry per benchmarked node, no duplication', async () => {
+    const result = await fetch_global_performance_rankings();
+    expect(result.nodeData).toHaveLength(2);
+    expect(result.nodeData.find((n) => n.ip === '10.0.0.1')).toMatchObject({ tier: 'CUMULUS', eps: 100 });
+    expect(result.tierRankings).toBeUndefined();
+    expect(result.countryRankings).toBeUndefined();
+  });
+
+  it('tierWinners gives the single highest-value node per tier+metric', async () => {
+    const result = await fetch_global_performance_rankings();
+    // Only one node per tier in this fixture, so it trivially wins its own tier.
+    expect(result.tierWinners.CUMULUS.eps).toEqual({ ip: '10.0.0.1', value: 100 });
+    expect(result.tierWinners.STRATUS.eps).toEqual({ ip: '10.0.0.2', value: 200 });
+  });
+
+  it('countryTierCounts matches nodeData grouped by country+tier', async () => {
+    const result = await fetch_global_performance_rankings();
+    expect(result.countryTierCounts.US.tiers.CUMULUS).toBe(1);
+    expect(result.countryTierCounts.DE.tiers.STRATUS).toBe(1);
+  });
+
+  it('bumps the cache key to v4 and prunes the old v3 entry', async () => {
+    sessionStorage.setItem('globalPerfRankings_v3', JSON.stringify({ data: { stale: true }, timestamp: Date.now() }));
+    await fetch_global_performance_rankings();
+    expect(sessionStorage.getItem('globalPerfRankings_v3')).toBeNull();
+    expect(sessionStorage.getItem('globalPerfRankings_v4')).not.toBeNull();
   });
 });
