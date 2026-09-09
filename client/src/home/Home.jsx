@@ -10,6 +10,8 @@ import { Col, Container, Row } from 'react-grid-system';
 import { AppToaster } from 'components/AppToaster';
 import { HomeOverview } from 'home/HomeOverview';
 import { DonorBadge } from 'donor/DonorBadge';
+import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
+import { CHECK_STATUS } from 'donor/donorWalletCheck';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
@@ -308,6 +310,19 @@ class Home extends React.Component {
     blurAllInputs();
     this.setSearch({ wallet: address }, { replace: false });
 
+    // Fire-and-forget donor auto-detection — doesn't block or affect
+    // anything else in this method. Silent unless the wallet qualifies,
+    // in which case a toast confirms it (see below).
+    runDonorAutoDetect(address, { setDonorWallet: this.props.setDonorWallet }).then(({ status }) => {
+      if (status === CHECK_STATUS.SUCCESS) {
+        AppToaster.show({
+          intent: 'success',
+          icon: 'tick-circle',
+          message: 'Your wallet qualifies — premium features unlocked!',
+        });
+      }
+    });
+
     {
       let newSearchHistory = this._createNewHistoryList(this.state.searchHistory, address);
       this.setState({ searchHistory: newSearchHistory });
@@ -337,11 +352,25 @@ class Home extends React.Component {
       activeAddress: address
     });
 
-    walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
-      highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
-      bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
-      mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
-    });
+    // walletView is a ref that has never actually been attached to a
+    // rendered <WalletNodes> on this page (this.walletNodes' ref is
+    // created in the constructor but no JSX anywhere sets ref={this.walletNodes}
+    // — confirmed by searching this file and home/HomeOverview for a
+    // <WalletNodes> tag; there isn't one). Before this fix, calling
+    // .processAddress on that always-null ref threw synchronously,
+    // silently killing everything below in this async method —
+    // wallet_pas_summary, isPALoading clearing, setLastUpdated,
+    // setArcaneHumanVersion never ran. Guarding it restores those without
+    // attempting to also revive the notable-nodes feature itself (payout
+    // timer / best uptime / most hosted), which needs a real render of
+    // WalletNodes to compute — out of scope here, filed separately.
+    if (walletView) {
+      walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode }) => {
+        highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
+        bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
+        mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
+      });
+    }
 
     const summary = await wallet_pas_summary(address);
     this.setState({ isPALoading: false, walletPASummary: summary });
