@@ -56,7 +56,7 @@ wallet-unlock UX for donor-gated content, and Chain Activity's sync-status messa
 
 - [x] **Chain Activity sync-status messaging** — split off as its own bounded fix
   (existing flow, no spec needed) since it was small and independently valuable.
-  **PR #192** (2026-09-09, open). The `/api/v1/chain-activity` endpoint used to
+  **PR #192, merged 2026-09-09.** The `/api/v1/chain-activity` endpoint used to
   hardcode `success: true` regardless of what was on disk, so a scanner that had
   never run, stalled (most likely rate-limited by `explorer.runonflux.io`, a
   documented failure mode of that API), or a frontend that couldn't reach the API
@@ -64,12 +64,37 @@ wallet-unlock UX for donor-gated content, and Chain Activity's sync-status messa
   every time. Backend now tracks and exposes real scan health
   (`last_attempt_at`/`last_success_at`/`last_outcome`); frontend shows an accurate
   banner instead, hidden when healthy.
+  - [ ] **Follow-up found post-merge, PR #193 open (`fix/chain-activity-in-progress-status`), awaiting review/merge.**
+    Actually running the production Docker image (not just `yarn start`) surfaced
+    a real second bug: a scan that's been legitimately running/retrying for
+    minutes (a genuine cold-start backfill takes that long even with zero
+    problems) looked identical to "never started" — the same ambiguity #192 was
+    meant to fix, just relocated to a different time window. Fixed: a new
+    `in_progress` status persisted the instant a cycle starts. Also adds real
+    progress visibility (block X of Y, %, console logging) per direct user
+    request.
+  - [ ] **Still unverified: block 2,934,901 / tx `46ebc1517f0a5bc7e781e46e2c380f98fe6ce210b1699ab433e084d6a1ce2b2c`
+    on `/live` and Chain Activity.** Blocked by `explorer.runonflux.io`'s rate
+    limit — confirmed both currently active AND very easy to re-trip (one clean
+    check is not a green light for more). `/live` also has no historical-block
+    lookup at all (live rolling window only), so this needs either a long
+    genuinely-idle wait, the user checking from a different network, or a
+    different verification approach entirely (e.g. a fixture-based test using
+    this block's real API response) — see the memory file's 2026-09-09d session
+    entry for full detail before picking this back up.
 - [ ] **Visual refresh + home→analytics migration + wallet-unlock UX** — the bigger,
-  still-architectural piece. Genuine aesthetic and IA choices here (palette, whether
-  to add a charting library, exactly what moves from `/home` to `/analytics` and
-  where it lands, how the unlock flow should work) need the same confirm-before-plan
-  treatment every other piece of work in this repo gets — run
-  `superpowers:brainstorming` on this before writing an implementation plan. The
+  still-architectural piece. User confirmed wanting to proceed (2026-09-09) and
+  added concrete requirements: bring `/home` features into `/analytics` where it
+  makes sense, and make the donor-wallet-unlock flow itself easy and beautiful
+  ("make sure we make it easy for a user to enter his address... show him the
+  information in a nice and clean UI way but beautifully" — user's own words).
+  Genuine aesthetic and IA choices here (palette, whether to add a charting
+  library, exactly what moves from `/home` to `/analytics` and where it lands,
+  how the unlock flow should work) need the same confirm-before-plan treatment
+  every other piece of work in this repo gets — the brainstorming/clarifying-
+  questions pass was interrupted by the Chain Activity investigation above and
+  has NOT been completed yet; resume `superpowers:brainstorming` (already
+  classified architectural) before writing an implementation plan. The
   2026-09-06 findings below are background/analysis for that pass, not settled
   decisions.
 
