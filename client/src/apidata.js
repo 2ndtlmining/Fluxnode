@@ -413,37 +413,53 @@ export async function fetch_global_stats(walletAddress = null) {
   const store = create_global_store();
 
   const fetchCurrency = async () => {
-    const res = await fetch('https://explorer.runonflux.io/api/currency');
-    const json = await res.json();
-    store.flux_price_usd = json.data.rate;
+    try {
+      const res = await fetch('https://explorer.runonflux.io/api/currency');
+      const json = await res.json();
+      store.flux_price_usd = json.data.rate;
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchWallet = async () => {
-    if (walletAddress) {
-      const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
-      const json = await res.json();
-      const balance = json['balance'];
-      store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+    try {
+      if (walletAddress) {
+        const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
+        const json = await res.json();
+        const balance = json['balance'];
+        store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+      }
+    } catch (error) {
+      console.log('error', error);
     }
   };
 
   const fetchNode = async () => {
-    const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount');
-    const json = await res.json();
-    const stats = json.data;
+    try {
+      const res = await fetch('https://api.runonflux.io/daemon/getzelnodecount');
+      const json = await res.json();
+      const stats = json.data;
 
-    store.node_count.cumulus = stats['cumulus-enabled'];
-    store.node_count.nimbus = stats['nimbus-enabled'];
-    store.node_count.stratus = stats['stratus-enabled'];
+      store.node_count.cumulus = stats['cumulus-enabled'];
+      store.node_count.nimbus = stats['nimbus-enabled'];
+      store.node_count.stratus = stats['stratus-enabled'];
 
-    store.node_count.total = stats['total'];
+      store.node_count.total = stats['total'];
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   const fetchBenchVer = async () => {
-    const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json');
-    if (res.status === 200) {
-      const json = await res.json();
-      store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json');
+      if (res.status === 200) {
+        const json = await res.json();
+        store.fluxos_latest_version = fluxos_version_desc_parse(json['version']);
+      }
+    } catch (error) {
+      console.log('error', error);
     }
   };
 
@@ -486,9 +502,13 @@ export async function fetch_global_stats(walletAddress = null) {
   };
 
   const fetchRichList = async () => {
-    const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
-    const json = await res.json();
-    store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+    try {
+      const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
+      const json = await res.json();
+      store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+    } catch (error) {
+      console.log('error', error);
+    }
   };
 
   /*

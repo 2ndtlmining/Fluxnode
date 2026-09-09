@@ -8,6 +8,7 @@ import {
   fetch_global_app_specs,
   fetch_global_app_specs_raw,
   _extract_country_counts,
+  fetch_global_stats,
 } from './apidata';
 
 import {
@@ -387,5 +388,39 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
     // restores spies. Restore the pre-suite reference explicitly so this
     // describe block's mock can't leak into whatever runs after it.
     global.fetch = originalFetch;
+  });
+});
+
+describe('fetch_global_stats resilience (#189)', () => {
+  it('a single failing fetch (e.g. rate-limited currency endpoint) does not prevent other fields from populating', async () => {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('/api/currency')) return Promise.reject(new Error('429 rate limited'));
+      if (u.includes('/daemon/getzelnodecount')) return Promise.resolve({ ok: true, json: async () => ({ data: { 'cumulus-enabled': 10, 'nimbus-enabled': 5, 'stratus-enabled': 3, total: 18 } }) });
+      if (u.includes('/daemon/getinfo')) return Promise.resolve({ ok: true, json: async () => ({ data: { blocks: 999, version: 5.1 } }) });
+      if (u.includes('/api/addr/')) return Promise.resolve({ ok: true, json: async () => ({ balance: 1234.56 }) });
+      if (u.includes('/api/statistics/richest-addresses-list')) return Promise.resolve({ ok: true, json: async () => ([]) });
+      if (u.includes('package.json')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ version: '1.2.3' }) });
+      if (u.includes('/apps/globalappsspecifications')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('viewdeterministiczelnodelist')) return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      if (u.includes('benchmarkinfo.json')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ version: '1.0.0' }) });
+      if (u.includes('projection=apps.resources')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=benchmark')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=geolocation')) return Promise.resolve({ ok: true, json: async () => ({ status: 'success', data: [] }) });
+      if (u.includes('projection=flux')) return Promise.resolve({ ok: true, json: async () => ({ status: 'error', data: [] }) });
+      if (u.includes('frontendData')) return Promise.resolve({ ok: true, json: async () => ({ latest_price: 0.25 }) });
+      // Default fallback for any other fetch
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const store = await fetch_global_stats('t1Hs7jYsXmGXg2c3sW9Vk3nQp8pqRs4tU5vW6xYz7aA');
+    // The currency fetch failed, so flux_price_usd should remain at the default (0)
+    expect(store.flux_price_usd).toBe(0);
+    // But other fields should still be populated by successful fetches
+    expect(store.node_count.cumulus).toBe(10);
+    expect(store.node_count.nimbus).toBe(5);
+    expect(store.node_count.stratus).toBe(3);
+    expect(store.node_count.total).toBe(18);
+    expect(store.current_block_height).toBe(999);
+    expect(store.wallet_amount_flux).toBe(1234.56);
   });
 });
