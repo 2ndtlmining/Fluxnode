@@ -1316,13 +1316,13 @@ const COMPOSE_CACHE_FIELDS = ['name', 'repotag', 'cpu', 'ram', 'hdd'];
 function _trimSpecForCache(spec) {
   const trimmed = {};
   for (const f of SPEC_CACHE_FIELDS) {
-    if (spec[f] !== undefined) trimmed[f] = spec[f];
+    if (spec?.[f] !== undefined) trimmed[f] = spec[f];
   }
-  if (Array.isArray(spec.compose)) {
+  if (Array.isArray(spec?.compose)) {
     trimmed.compose = spec.compose.map((c) => {
       const tc = {};
       for (const f of COMPOSE_CACHE_FIELDS) {
-        if (c[f] !== undefined) tc[f] = c[f];
+        if (c?.[f] !== undefined) tc[f] = c[f];
       }
       return tc;
     });
@@ -1376,11 +1376,16 @@ export async function fetch_global_app_specs_raw() {
       // whole Home page load down with it.
       if (json.status === 'error' || !Array.isArray(json.data)) return [];
 
+      const trimmedForCache = json.data.map(_trimSpecForCache);
       try {
-        const trimmedForCache = json.data.map(_trimSpecForCache);
-        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, JSON.stringify({ data: trimmedForCache, timestamp: Date.now() }));
+        const payload = JSON.stringify({ data: trimmedForCache, timestamp: Date.now() });
+        sessionStorage.setItem(RAW_APP_SPECS_CACHE_KEY, payload);
       } catch (e) {
-        console.warn('[AppSpecs] Cache write failed:', e?.message, `(${JSON.stringify(json.data).length} bytes)`);
+        // Log the TRIMMED payload's size, not json.data's — trimmedForCache
+        // is what actually hit the quota, and can be several times smaller
+        // than the untrimmed array; logging the wrong number here would
+        // mislead exactly the debugging this warning exists for.
+        console.warn('[AppSpecs] Cache write failed:', e?.message, `(${JSON.stringify(trimmedForCache).length} bytes)`);
       }
 
       return json.data; // full, untrimmed — every in-memory caller keeps working exactly as before
