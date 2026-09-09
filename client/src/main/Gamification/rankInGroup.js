@@ -19,11 +19,31 @@
  * Returns null if targetIp isn't in groupNodes at all (offline/
  * unbenchmarked node) — every caller already treats "not found" as "skip",
  * matching the old .find()-returns-undefined behavior.
+ *
+ * A bare IP can legitimately appear more than once in groupNodes: a single
+ * host running several Flux nodes on different ports all collapse to one
+ * key here, since nodeData carries no port (confirmed live 2026-09-09 —
+ * one wallet owning 8 CUMULUS nodes on one host, EPS ranging 265-2143
+ * across them). The OLD pre-sorted-array lookup sorted descending by value
+ * BEFORE any .find()-by-ip, so a duplicate ip always incidentally resolved
+ * to its highest-value entry. A naive first-match scan here would instead
+ * land on whatever happens to be first in nodeData's unsorted fetch order
+ * — silently downgrading a wallet's real best node to an arbitrary worse
+ * one. Scanning for the best (not first) matching entry restores the old
+ * behavior exactly, and is a no-op when an ip has only one entry.
  */
 export function rankInGroup(groupNodes, targetIp, metricKey) {
-  const targetIndex = groupNodes.findIndex((n) => n.ip === targetIp);
+  let targetIndex = -1;
+  let targetValue = -Infinity;
+  for (let i = 0; i < groupNodes.length; i++) {
+    if (groupNodes[i].ip !== targetIp) continue;
+    const v = groupNodes[i][metricKey] || 0;
+    if (targetIndex === -1 || v > targetValue || (v === targetValue && i < targetIndex)) {
+      targetIndex = i;
+      targetValue = v;
+    }
+  }
   if (targetIndex === -1) return null;
-  const targetValue = groupNodes[targetIndex][metricKey] || 0;
 
   let rank = 1;
   for (let i = 0; i < groupNodes.length; i++) {
