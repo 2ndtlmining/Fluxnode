@@ -33,12 +33,16 @@
  * behavior exactly, and is a no-op when an ip has only one entry.
  */
 export function rankInGroup(groupNodes, targetIp, metricKey) {
+  // Ascending iteration + strict `>` already gives earliest-index-wins for
+  // ties among the target ip's own duplicates: once targetIndex is set,
+  // only a later i can be examined, so an equal-value duplicate can never
+  // displace it — no separate "earlier index" clause is needed here.
   let targetIndex = -1;
-  let targetValue = -Infinity;
+  let targetValue = 0;
   for (let i = 0; i < groupNodes.length; i++) {
     if (groupNodes[i].ip !== targetIp) continue;
     const v = groupNodes[i][metricKey] || 0;
-    if (targetIndex === -1 || v > targetValue || (v === targetValue && i < targetIndex)) {
+    if (targetIndex === -1 || v > targetValue) {
       targetIndex = i;
       targetValue = v;
     }

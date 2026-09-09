@@ -106,6 +106,17 @@ function _bestRankInTier(walletTierNodes, nodeData, tier, metricKey) {
 }
 
 // Find wallet's WORST global rank for (tier, metric) — inverse of _bestRankInTier
+//
+// Known, pre-existing limitation (not introduced by rankInGroup's
+// duplicate-ip fix, and correctly left as-is by it): when a wallet's
+// genuinely-worst node shares a bare host with a better one of its own
+// nodes, rankInGroup resolves that shared ip to the BEST entry, so the
+// worst one is invisible here too and the wallet may miss a Wooden Spoon
+// it technically deserves. The old pre-sorted-array lookup had the exact
+// same blind spot (sorting descending then finding the first match also
+// always favored the best duplicate), so preserving it is correct for
+// this migration's "no behavior change" mandate — fixing it would BE the
+// regression.
 function _worstRankInTier(walletTierNodes, nodeData, tier, metricKey) {
   const groupNodes = nodeData.filter((n) => n.tier === tier);
   let worst = null;
