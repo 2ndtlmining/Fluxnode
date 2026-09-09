@@ -25,6 +25,13 @@ import { FLUXNODE_INFO_API_URL } from 'app-buildinfo';
  *     one fighting this API's real rate limits, needs this or it looks
  *     identical to 'never_run' for however long that takes. See
  *     ScanOutcome's doc comment in chain_activity.rs.
+ *
+ * `scanStartHeight`/`scanTargetHeight` are only nonzero while syncStatus is
+ * 'in_progress' AND the current attempt has resolved a real tip height yet
+ * (there's a brief window right at cycle start where it's in_progress but
+ * these are still both 0 — see scanProgressPct's 0-fallback). Combined with
+ * `lastScannedHeight`, this is what lets the UI show real "X of Y blocks"
+ * progress instead of just "it's running".
  */
 export async function fetch_chain_activity() {
   const empty = {
@@ -33,6 +40,8 @@ export async function fetch_chain_activity() {
     lastScannedHeight: 0,
     lastAttemptAt: 0,
     lastSuccessAt: 0,
+    scanStartHeight: 0,
+    scanTargetHeight: 0,
     syncStatus: 'api_unreachable',
   };
   try {
@@ -41,7 +50,10 @@ export async function fetch_chain_activity() {
       headers: { Accept: 'application/json' },
     });
     const json = await response.json();
-    if (!json?.success) return empty;
+    if (!json?.success) {
+      console.log('[ChainActivity] backend reported success:false — treating as unavailable');
+      return empty;
+    }
 
     const daily = Array.isArray(json.daily)
       ? json.daily.map((d) => ({ date: d.date, utilityBlocks: d.utility_blocks || 0, emptyBlocks: d.empty_blocks || 0 }))
@@ -50,17 +62,48 @@ export async function fetch_chain_activity() {
       ? json.team_txs.map((t) => ({ txid: t.txid, blockHeight: t.block_height, from: t.from, to: t.to, amount: t.amount }))
       : [];
 
-    return {
+    const result = {
       daily,
       teamTxs,
       lastScannedHeight: json.last_scanned_height || 0,
       lastAttemptAt: json.last_attempt_at || 0,
       lastSuccessAt: json.last_success_at || 0,
+      scanStartHeight: json.scan_start_height || 0,
+      scanTargetHeight: json.scan_target_height || 0,
       syncStatus: json.last_outcome || 'never_run',
     };
-  } catch {
+
+    // Visibility for anyone watching devtools during local testing — the
+    // banner already shows this, but the console line is easy to spot
+    // across repeated polls without opening the Network tab each time.
+    if (result.syncStatus === 'in_progress' && result.scanTargetHeight > result.scanStartHeight) {
+      const progress = scanProgressPct(result);
+      console.log(
+        `[ChainActivity] sync in progress: block ${result.lastScannedHeight} of ${result.scanTargetHeight}` +
+          ` (${progress}%, started at ${result.scanStartHeight})`
+      );
+    } else {
+      console.log(`[ChainActivity] syncStatus=${result.syncStatus}`);
+    }
+
+    return result;
+  } catch (error) {
+    console.log('[ChainActivity] fetch failed:', error?.message || error);
     return empty;
   }
+}
+
+// Percent of the CURRENT in-progress scan's own range that's done — not
+// percent of the full retention window, since a scan only ever needs to
+// cover from the last checkpoint to the tip, which is usually far smaller.
+// Returns 0 rather than NaN/Infinity when there's no real range yet (the
+// InProgress status written before the range is known — see
+// run_scan_cycle's two-step write in chain_activity.rs).
+export function scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight }) {
+  const span = scanTargetHeight - scanStartHeight;
+  if (span <= 0) return 0;
+  const done = Math.max(0, Math.min(span, lastScannedHeight - scanStartHeight));
+  return Math.round((done / span) * 100);
 }
 
 // "Xm ago"/"Xh ago"/"Xd ago" for the sync-status banner. A local helper
