@@ -178,19 +178,15 @@
   }
 }
 
-.ca-utility-bar {
-  height: 10px;
-  border-radius: 5px;
-  background: rgba(239, 68, 68, 0.25); // empty share shows through as the track color
-  overflow: hidden;
-  margin-bottom: 8px;
-}
+.ca-trend-chart {
+  margin-bottom: 10px;
 
-.ca-utility-bar-fill {
-  height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #22c55e, #4ade80); // utility share
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  // Recharts renders an inline SVG that sets its own focus outline on click;
+  // suppress it to match the rest of the panel chrome.
+  .recharts-wrapper:focus,
+  .recharts-surface:focus {
+    outline: none;
+  }
 }
 
 .ca-utility-stats {

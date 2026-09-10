@@ -175,7 +175,7 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <Analytics />
+                        <Analytics theme={darkMode ? 'dark' : 'light'} />
                       </React.Suspense>
                     </ErrorBoundary>
                   }

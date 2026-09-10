@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from 'analytics/chainActivity';
+import { UtilityTrendChart } from './UtilityTrendChart';
 import './index.scss';
 
 /*
@@ -70,7 +71,7 @@ function pct(n, total) {
   return total > 0 ? ((n / total) * 100).toFixed(0) : '0';
 }
 
-function UtilitySummary({ daily, syncStatus }) {
+function UtilitySummary({ daily, syncStatus, theme }) {
   const { utilityBlocks, emptyBlocks } = summarizeDaily(daily);
   const total = utilityBlocks + emptyBlocks;
   const badgeText = daily.length === 1 ? '1 day' : `${daily.length} days`;
@@ -94,9 +95,7 @@ function UtilitySummary({ daily, syncStatus }) {
         </div>
       ) : (
         <>
-          <div className="ca-utility-bar">
-            <div className="ca-utility-bar-fill" style={{ width: `${pct(utilityBlocks, total)}%` }} />
-          </div>
+          <UtilityTrendChart daily={daily} theme={theme} />
           <div className="ca-utility-stats">
             <span className="ca-utility-stat ca-utility-stat--utility">
               {fmtNum(utilityBlocks)} utility ({pct(utilityBlocks, total)}%)
@@ -140,7 +139,7 @@ function TeamTxList({ teamTxs, lastScannedHeight }) {
   );
 }
 
-export function ChainActivityTab() {
+export function ChainActivityTab({ theme = 'dark' }) {
   const [data, setData] = useState({
     daily: [],
     teamTxs: [],
@@ -191,7 +190,7 @@ export function ChainActivityTab() {
         scanStartHeight={data.scanStartHeight}
         scanTargetHeight={data.scanTargetHeight}
       />
-      <UtilitySummary daily={data.daily} syncStatus={data.syncStatus} />
+      <UtilitySummary daily={data.daily} syncStatus={data.syncStatus} theme={theme} />
       <TeamTxList teamTxs={data.teamTxs} lastScannedHeight={data.lastScannedHeight} />
     </div>
   );
