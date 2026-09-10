@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Spinner, Button } from '@blueprintjs/core';
+import { Spinner } from '@blueprintjs/core';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
-import { DonorUnlockDialog } from 'donor/DonorUnlockDialog';
+import { PremiumUnlock } from 'donor/PremiumUnlock';
 import { fetch_global_stats, fetch_total_network_utils, fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
 import { fetch_donor_nodes, sortByRank, mostRecentPayout } from 'analytics/donorNodes';
@@ -152,8 +152,6 @@ function UtilizationPanel({ donorUtil, networkPct }) {
 // ── No-wallet empty state ────────────────────────────────────────────────
 
 function NoWalletState() {
-  const [dialogOpen, setDialogOpen] = useState(false);
-
   return (
     <div className="dt-empty">
       <Lock size={28} className="dt-empty-icon" />
@@ -161,8 +159,7 @@ function NoWalletState() {
       <span className="dt-empty-body">
         Unlock with a real donor wallet to see your own nodes' payout timing, apps, and utilization.
       </span>
-      <Button text="Unlock" intent="primary" onClick={() => setDialogOpen(true)} />
-      <DonorUnlockDialog isOpen={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <PremiumUnlock />
     </div>
   );
 }

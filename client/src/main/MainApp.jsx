@@ -10,6 +10,8 @@ import { Col, Container, Row } from 'react-grid-system';
 import { getEnterpriseNodes } from 'main/apidata';
 
 import { AppToaster } from 'components/AppToaster';
+import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
+import { CHECK_STATUS } from 'donor/donorWalletCheck';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
@@ -353,6 +355,18 @@ class MainApp extends React.Component {
 
     blurAllInputs();
     this.setSearch({ wallet: address }, { replace: false });
+
+    // Fire-and-forget donor auto-detection — see Home.jsx's identical
+    // wiring (Task 6) for the full rationale; this mirrors it exactly.
+    runDonorAutoDetect(address, { setDonorWallet: this.props.setDonorWallet }).then(({ status }) => {
+      if (status === CHECK_STATUS.SUCCESS) {
+        AppToaster.show({
+          intent: 'success',
+          icon: 'tick-circle',
+          message: 'Your wallet qualifies — premium features unlocked!',
+        });
+      }
+    }).catch(() => {});
 
     {
       let newSearchHistory = this._createNewHistoryList(this.state.searchHistory, address);

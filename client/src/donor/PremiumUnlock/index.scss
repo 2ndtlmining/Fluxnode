@@ -1,0 +1,57 @@
+// Same visual language as the old .donor-unlock-* classes it replaces
+// (client/src/donor/DonorUnlockDialog/index.scss) minus the Dialog-portal
+// theming concerns — this renders inline, as a real descendant of .App,
+// so it inherits dark-mode custom properties with no extra plumbing.
+.premium-unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.premium-unlock-intro {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.premium-unlock-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .bp4-input {
+    background: var(--surface-inset);
+    color: var(--text-primary);
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+  }
+
+  .bp4-button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+.premium-unlock-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+
+  &--success {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  &--error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+}

@@ -5,6 +5,7 @@ import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
 import { rankNodeOperators, aggregateOwnerTotals, DEFAULT_TOP_N } from 'analytics/topOwners';
 import { FLUX_TEAM_OWNER_ZELIDS, computeTeamSponsoredShare } from 'analytics/teamSponsored';
+import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
 
 function fmtNum(n) {
@@ -94,25 +95,35 @@ export function AppsTab() {
   return (
     <div className="apps-tab">
       <div className="apps-tab-stat-row">
-        <div className="hov-panel apps-tab-stat-card">
-          <span className="hov-header-title">FLUX-TEAM-SPONSORED</span>
-          <span className="apps-tab-stat-value">{sharePct.toFixed(1)}%</span>
-          <span className="apps-tab-stat-caption">
-            of {fmtNum(networkTotalInstances)} ordered app instances run under the Flux team's own owner ID
-          </span>
-        </div>
+        <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored stat">
+          <div className="hov-panel apps-tab-stat-card">
+            <span className="hov-header-title">FLUX-TEAM-SPONSORED</span>
+            <span className="apps-tab-stat-value">{sharePct.toFixed(1)}%</span>
+            <span className="apps-tab-stat-caption">
+              of {fmtNum(networkTotalInstances)} ordered app instances run under the Flux team's own owner ID
+            </span>
+          </div>
+        </PanelGate>
       </div>
 
       <div className="apps-tab-panel-grid">
-        <AppEcosystemBreakdown gstore={gstore} />
-        <TopHostedApps gstore={gstore} />
-        <RankedAddressList title="TOP NODE OPERATORS" rows={nodeOperatorRows} valueLabel="nodes" />
-        <RankedAddressList
-          title="TOP APP OWNERS"
-          rows={ownerRows}
-          valueLabel="instances"
-          teamZelids={FLUX_TEAM_OWNER_ZELIDS}
-        />
+        <PanelGate panelKey="appEcosystem" feature="App Ecosystem">
+          <AppEcosystemBreakdown gstore={gstore} />
+        </PanelGate>
+        <PanelGate panelKey="topHostedApps" feature="Top Hosted Apps">
+          <TopHostedApps gstore={gstore} />
+        </PanelGate>
+        <PanelGate panelKey="topNodeOperators" feature="Top Node Operators">
+          <RankedAddressList title="TOP NODE OPERATORS" rows={nodeOperatorRows} valueLabel="nodes" />
+        </PanelGate>
+        <PanelGate panelKey="topAppOwners" feature="Top App Owners">
+          <RankedAddressList
+            title="TOP APP OWNERS"
+            rows={ownerRows}
+            valueLabel="instances"
+            teamZelids={FLUX_TEAM_OWNER_ZELIDS}
+          />
+        </PanelGate>
       </div>
     </div>
   );

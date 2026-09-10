@@ -125,7 +125,11 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <Home theme={darkMode ? 'dark' : 'light'} />
+                        <DonorContext.Consumer>
+                          {({ setDonorWallet }) => (
+                            <Home theme={darkMode ? 'dark' : 'light'} setDonorWallet={setDonorWallet} />
+                          )}
+                        </DonorContext.Consumer>
                       </React.Suspense>
                     </ErrorBoundary>
                   }
@@ -136,8 +140,8 @@ class Application extends React.Component {
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
                         <DonorContext.Consumer>
-                          {({ donorWallet }) => (
-                            <MainApp theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} />
+                          {({ donorWallet, setDonorWallet }) => (
+                            <MainApp theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} setDonorWallet={setDonorWallet} />
                           )}
                         </DonorContext.Consumer>
                       </React.Suspense>
@@ -171,9 +175,7 @@ class Application extends React.Component {
                   element={
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
-                        <PremiumGate feature='Analytics'>
-                          <Analytics />
-                        </PremiumGate>
+                        <Analytics />
                       </React.Suspense>
                     </ErrorBoundary>
                   }

@@ -3,6 +3,7 @@ import { Spinner } from '@blueprintjs/core';
 import { fetch_node_geolocation } from 'networkNodes';
 import { rollupByContinent } from 'analytics/continentDistribution';
 import { WorldMap } from 'analytics/WorldMap';
+import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
 
 function fmtNum(n) {
@@ -105,9 +106,13 @@ export function NetworkTab() {
 
   return (
     <div className="network-tab">
-      <WorldMap countryCounts={countryCounts} />
+      <PanelGate panelKey="worldMap" feature="World Map">
+        <WorldMap countryCounts={countryCounts} />
+      </PanelGate>
       <div className="network-tab-continent-row">
-        <ContinentBreakdown continents={continentData.continents} networkTotal={continentData.networkTotal} />
+        <PanelGate panelKey="continentBreakdown" feature="Continent Breakdown">
+          <ContinentBreakdown continents={continentData.continents} networkTotal={continentData.networkTotal} />
+        </PanelGate>
       </div>
     </div>
   );
