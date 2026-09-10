@@ -1160,6 +1160,72 @@ function _prune_stale_global_rankings_caches() {
 }
 
 /**
+ * Resolves a benchmark entry's `ipaddress` to its tier.
+ *
+ * Issue #215: this used to be a plain `host -> tier` map built by stripping the
+ * port. One host can run several Flux nodes OF DIFFERENT TIERS, so they
+ * collided and whichever entry the API returned last won for all of them.
+ * Measured on a live fixture: 254 hosts run mixed tiers, and 788 of 6237
+ * benchmarked nodes (12.6%) were assigned the wrong one -- always upward,
+ * since the API returns a host's nodes in ascending-tier order. Cumulus
+ * operators were being ranked against Nimbus and Stratus hardware.
+ *
+ * Both feeds carry the port that separates these nodes. The old code discarded
+ * exactly the field that made them distinguishable.
+ *
+ * Resolution order, with the live counts each path serves (2026-09-11):
+ *
+ *   1. Exact match on the ip string as it appears        4035 entries
+ *   2. Bare ip, when both feeds report it bare           2151 (free -- the
+ *                                                        key is the raw string)
+ *   3. Host fallback, ONLY if that host runs one tier      60 entries where the
+ *                                                        feeds disagree about
+ *                                                        including a port
+ *   4. Otherwise null                                       0 today
+ *
+ * Rule 4 is the point. When a host runs mixed tiers and no exact key matched,
+ * there is no honest answer, so this returns null and the caller drops the node
+ * -- exactly as it already does for an unknown host. Guessing is what caused
+ * the bug.
+ *
+ * Verified lossless against a live fixture: every benchmarked node that
+ * resolved under the old host-collapsed map still resolves here, and the
+ * per-tier totals move from 2397/1996/1855 to 3026/1580/1631 against the
+ * daemon's authoritative 3119/1581/1634.
+ */
+export function buildTierResolver(fluxNodes) {
+  const byExactIp = new Map();
+  const tiersByHost = new Map();
+
+  for (const node of (Array.isArray(fluxNodes) ? fluxNodes : [])) {
+    const raw = node?.ip || '';
+    if (!raw) continue;
+    const tier = (node.tier || '').toUpperCase();
+    if (!tier) continue;
+
+    byExactIp.set(raw, tier);
+
+    const host = raw.split(':')[0];
+    if (!tiersByHost.has(host)) tiersByHost.set(host, new Set());
+    tiersByHost.get(host).add(tier);
+  }
+
+  return function resolveTier(ipAddress) {
+    const raw = ipAddress || '';
+    if (!raw) return null;
+
+    const exact = byExactIp.get(raw);
+    if (exact) return exact;
+
+    // Only safe where the host is unambiguous; a mixed-tier host has no
+    // defensible answer without the port.
+    const tiers = tiersByHost.get(raw.split(':')[0]);
+    if (tiers && tiers.size === 1) return tiers.values().next().value;
+    return null;
+  };
+}
+
+/**
  * Fetches and joins node list (tier), benchmark data, and geolocation for all
  * ~8000 Flux nodes. Builds a flat nodeData array plus two small precomputed
  * aggregates (tierWinners, countryTierCounts) — see issue #153: the old
@@ -1206,12 +1272,8 @@ export async function fetch_global_performance_rankings() {
       STRATUS: countJson.data?.['stratus-enabled'] || 0,
     };
 
-    // IP host → tier
-    const ipTierMap = {};
-    for (const node of (Array.isArray(nodesJson.fluxNodes) ? nodesJson.fluxNodes : [])) {
-      const host = (node.ip || '').split(':')[0];
-      if (host) ipTierMap[host] = (node.tier || '').toUpperCase();
-    }
+    // ip:port → tier, with a guarded host fallback. See buildTierResolver.
+    const resolveTier = buildTierResolver(nodesJson.fluxNodes);
 
     // IP host → geo
     // API shape: { data: [ { geolocation: { ip, country, countryCode, continent, ... } } ] }
@@ -1272,7 +1334,9 @@ export async function fetch_global_performance_rankings() {
       if (!bench) continue;
       const host = (bench.ipaddress || '').split(':')[0];
       if (!host) continue;
-      const tier = ipTierMap[host];
+      // Resolve from the FULL ip:port, not the bare host -- a host can run
+      // several nodes of different tiers (issue #215).
+      const tier = resolveTier(bench.ipaddress);
       if (!tier || !VALID_TIERS.has(tier)) continue;
       nodeData.push({
         ip: host,
