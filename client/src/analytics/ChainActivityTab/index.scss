@@ -70,6 +70,16 @@
   }
 }
 
+// Per-tab accent, matching Session 3's Apps/Network pattern: a left-edge strip
+// plus a faint gradient wash on the header. Chain Activity -> amber.
+.chain-activity-tab .hov-panel {
+  border-left: 2px solid var(--accent-amber);
+}
+
+.chain-activity-tab .hov-panel .hov-header {
+  background: linear-gradient(90deg, rgba(224, 146, 5, 0.04) 0%, transparent 60%);
+}
+
 .hov-header {
   display: flex;
   align-items: center;
@@ -147,20 +157,24 @@
   gap: 5px;
 }
 
-.hov-badge {
+// Scoped to the tab root, not left as a bare .hov-badge: four other analytics
+// stylesheets define this same class at the same specificity and all land in
+// the same /analytics webpack chunk, so an unscoped rule silently wins or
+// loses on import order alone. (0,2,0) beats those (0,1,0) rules durably,
+// regardless of future import order. See Session 3's final-review finding.
+.chain-activity-tab .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
+  background: rgba(224, 146, 5, 0.12);
+  color: var(--accent-amber);
   white-space: nowrap;
   flex-shrink: 0;
   transition: background var(--transition-fast);
 
   @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
+    background: rgba(224, 146, 5, 0.22);
   }
 }
 
@@ -186,11 +200,11 @@
 }
 
 .ca-utility-stat--utility {
-  color: #22c55e;
+  color: var(--accent-green);
 }
 
 .ca-utility-stat--empty {
-  color: #ef4444;
+  color: var(--accent-red);
 }
 
 .ca-team-tx-row {

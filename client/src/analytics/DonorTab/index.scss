@@ -39,6 +39,15 @@
   }
 }
 
+// Per-tab accent: Donor -> green.
+.donor-tab .hov-panel {
+  border-left: 2px solid var(--accent-green);
+}
+
+.donor-tab .hov-panel .hov-header {
+  background: linear-gradient(90deg, rgba(14, 162, 113, 0.04) 0%, transparent 60%);
+}
+
 .dt-payout-card {
   display: flex;
   align-items: center;
@@ -202,20 +211,20 @@
   min-width: 0;
 }
 
-.hov-badge {
+// Scoped for the same reason as ChainActivityTab's -- see that file's comment.
+.donor-tab .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
+  background: rgba(14, 162, 113, 0.12);
+  color: var(--accent-green);
   white-space: nowrap;
   flex-shrink: 0;
   transition: background var(--transition-fast);
 
   @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
+    background: rgba(14, 162, 113, 0.22);
   }
 }
 
