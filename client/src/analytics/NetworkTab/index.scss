@@ -41,7 +41,7 @@
   flex: 1 1 420px;
   max-width: 480px;
   min-width: 0;
-  border-left: 2px solid #8b5cf6;
+  border-left: 2px solid var(--accent-purple);
 }
 
 .hov-header {
@@ -191,27 +191,27 @@
   overflow: hidden;
 }
 
-.hov-ranked-bar-fill {
+.nt-continent-panel .hov-ranked-bar-fill {
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #8b5cf6, #c4b5fd);
+  background: linear-gradient(90deg, var(--accent-purple), #c4b5fd);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.hov-badge {
+.nt-continent-panel .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent-purple);
   white-space: nowrap;
   flex-shrink: 0;
   transition: background var(--transition-fast);
 
   @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
+    background: rgba(139, 92, 246, 0.22);
+    color: #c4b5fd;
   }
 }
 
@@ -340,4 +340,39 @@
   @include rule-mode-dark() {
     color: #fbbf24;
   }
+}
+
+// ── Headline stat (hero number) ──────────────────────────────────────────
+// Same pattern as AppsTab's hero (see that file's index.scss for the full
+// rationale) — Network's own domain accent (--accent-purple) instead.
+
+.network-tab-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.network-tab-hero-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.1;
+
+  @include rule-mode-dark() {
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-indigo));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.network-tab-hero-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }

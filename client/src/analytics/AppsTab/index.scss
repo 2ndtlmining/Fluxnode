@@ -233,3 +233,40 @@
     max-height: none;
   }
 }
+
+// ── Headline stat (hero number) ──────────────────────────────────────────
+// Scales up the existing hero-number pattern from home/HomeOverview's
+// .hov-header-badge--hero (same gradient-clip-in-dark-mode idea, same
+// plain-color-in-light-mode fallback) to a real page-level headline
+// instead of an in-panel accent.
+
+.apps-tab-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.apps-tab-hero-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.1;
+
+  @include rule-mode-dark() {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.apps-tab-hero-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}

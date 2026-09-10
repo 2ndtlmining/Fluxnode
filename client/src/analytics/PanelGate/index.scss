@@ -1,3 +1,5 @@
+@import 'styles/functional';
+
 // Smaller-footprint sibling of donor/PremiumGate's .premium-gate-locked —
 // this sits inside a tab's panel grid, not centered on a whole page.
 .panel-gate-locked {
@@ -20,4 +22,53 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+// ── Blurred-preview locked state (preview="blur") ────────────────────────
+// Real content renders underneath, blurred and non-interactive; the lock
+// card overlays it on its own semi-opaque scrim (a separate layer, so the
+// scrim's opacity doesn't also fade the card's own text/icon/form).
+
+.panel-gate-blurred {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  min-height: 160px;
+}
+
+.panel-gate-blurred-content {
+  filter: blur(6px);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+
+.panel-gate-blurred-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.panel-gate-blurred-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-primary);
+  opacity: 0.72;
+
+  @include rule-mode-dark() {
+    opacity: 0.78;
+  }
+}
+
+.panel-gate-blurred-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  max-width: 320px;
 }

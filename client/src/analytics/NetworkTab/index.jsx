@@ -208,13 +208,24 @@ export function NetworkTab() {
     );
   }
 
+  const totalNodes = globalRankings
+    ? (globalRankings.officialNodeCounts?.CUMULUS || 0)
+      + (globalRankings.officialNodeCounts?.NIMBUS || 0)
+      + (globalRankings.officialNodeCounts?.STRATUS || 0)
+    : null;
+
   return (
     <div className="network-tab">
-      <PanelGate panelKey="worldMap" feature="World Map">
+      <div className="network-tab-hero">
+        <span className="network-tab-hero-value">{totalNodes != null ? fmtNum(totalNodes) : '—'}</span>
+        <span className="network-tab-hero-label">Total nodes</span>
+      </div>
+
+      <PanelGate panelKey="worldMap" feature="World Map" preview="blur">
         <WorldMap countryCounts={countryCounts} />
       </PanelGate>
       <div className="network-tab-continent-row">
-        <PanelGate panelKey="continentBreakdown" feature="Continent Breakdown">
+        <PanelGate panelKey="continentBreakdown" feature="Continent Breakdown" preview="blur">
           <ContinentBreakdown continents={continentData.continents} networkTotal={continentData.networkTotal} />
         </PanelGate>
       </div>

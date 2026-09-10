@@ -228,8 +228,13 @@ export function AppsTab() {
 
   return (
     <div className="apps-tab">
+      <div className="apps-tab-hero">
+        <span className="apps-tab-hero-value">{fmtNum(networkTotalInstances)}</span>
+        <span className="apps-tab-hero-label">Ordered app instances</span>
+      </div>
+
       <div className="apps-tab-stat-row">
-        <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored stat">
+        <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored stat" preview="blur">
           <div className="hov-panel apps-tab-stat-card">
             <span className="hov-header-title">FLUX-TEAM-SPONSORED</span>
             <span className="apps-tab-stat-value">{sharePct.toFixed(1)}%</span>
@@ -241,16 +246,16 @@ export function AppsTab() {
       </div>
 
       <div className="apps-tab-panel-grid">
-        <PanelGate panelKey="appEcosystem" feature="App Ecosystem">
+        <PanelGate panelKey="appEcosystem" feature="App Ecosystem" preview="blur">
           <AppEcosystemBreakdown gstore={gstore} />
         </PanelGate>
-        <PanelGate panelKey="topHostedApps" feature="Top Hosted Apps">
+        <PanelGate panelKey="topHostedApps" feature="Top Hosted Apps" preview="blur">
           <TopHostedApps gstore={gstore} />
         </PanelGate>
-        <PanelGate panelKey="topNodeOperators" feature="Top Node Operators">
+        <PanelGate panelKey="topNodeOperators" feature="Top Node Operators" preview="blur">
           <RankedAddressList title="TOP NODE OPERATORS" rows={nodeOperatorRows} valueLabel="nodes" />
         </PanelGate>
-        <PanelGate panelKey="topAppOwners" feature="Top App Owners">
+        <PanelGate panelKey="topAppOwners" feature="Top App Owners" preview="blur">
           <RankedAddressList
             title="TOP APP OWNERS"
             rows={ownerRows}
