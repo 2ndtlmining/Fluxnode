@@ -321,7 +321,7 @@ class Home extends React.Component {
           message: 'Your wallet qualifies — premium features unlocked!',
         });
       }
-    });
+    }).catch(() => {});
 
     {
       let newSearchHistory = this._createNewHistoryList(this.state.searchHistory, address);

@@ -11,6 +11,7 @@ import { checkDonorWallet, CHECK_STATUS } from './donorWalletCheck';
  * that simply isn't a donor shouldn't produce any visible error.
  */
 export async function runDonorAutoDetect(address, { setDonorWallet }) {
+  if (typeof setDonorWallet !== 'function') return { status: CHECK_STATUS.IDLE, result: null };
   const { status, result } = await checkDonorWallet(address);
   if (status === CHECK_STATUS.SUCCESS) setDonorWallet(address.trim(), result);
   return { status, result };

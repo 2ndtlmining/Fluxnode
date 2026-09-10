@@ -24,6 +24,9 @@ describe('getPanelAccess', () => {
       'topNodeOperators', 'topAppOwners', 'worldMap', 'continentBreakdown',
       'donorTab', 'chainActivity',
     ];
-    for (const key of required) expect(PANEL_ACCESS).toHaveProperty(key);
+    for (const key of required) {
+      expect(PANEL_ACCESS).toHaveProperty(key);
+      expect(PANEL_ACCESS[key]).toBe('donor');
+    }
   });
 });
