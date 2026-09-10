@@ -209,9 +209,9 @@ export function NetworkTab() {
   }
 
   const totalNodes = globalRankings
-    ? (globalRankings.officialNodeCounts.CUMULUS || 0)
-      + (globalRankings.officialNodeCounts.NIMBUS || 0)
-      + (globalRankings.officialNodeCounts.STRATUS || 0)
+    ? (globalRankings.officialNodeCounts?.CUMULUS || 0)
+      + (globalRankings.officialNodeCounts?.NIMBUS || 0)
+      + (globalRankings.officialNodeCounts?.STRATUS || 0)
     : null;
 
   return (

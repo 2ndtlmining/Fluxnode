@@ -24,6 +24,15 @@ export function PanelGate({ panelKey, feature, children, preview = 'plain' }) {
   if (getPanelAccess(panelKey, isUnlocked)) return children;
 
   if (preview === 'blur') {
+    // preview="blur" intentionally mounts the real `children` into the DOM,
+    // then obscures them with a CSS blur/opacity/scrim overlay -- it does
+    // NOT omit the gated data from the page the way preview="plain" (the
+    // default) does. This matches Session 1's "data fetches and mounts
+    // regardless of lock state" design: the underlying values here are
+    // already aggregated from unauthenticated public Flux APIs, so this is
+    // a paywall/UX choice (tease the real shape of the data), not a
+    // data-exposure change. If a future panel needs to gate genuinely
+    // private data, use preview="plain" instead.
     return (
       <div className="panel-gate-blurred">
         <div className="panel-gate-blurred-content" aria-hidden="true">

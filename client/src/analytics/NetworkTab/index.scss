@@ -191,14 +191,14 @@
   overflow: hidden;
 }
 
-.hov-ranked-bar-fill {
+.nt-continent-panel .hov-ranked-bar-fill {
   height: 100%;
   border-radius: 2px;
   background: linear-gradient(90deg, var(--accent-purple), #c4b5fd);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.hov-badge {
+.nt-continent-panel .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
