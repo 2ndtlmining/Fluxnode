@@ -1242,7 +1242,7 @@ export async function fetch_global_performance_rankings() {
     }
 
     // Every consumer of this data (achievements.js's 6 dynamic functions,
-    // HomeOverview's TopDogsPanel, _extract_country_counts below) only
+    // NetworkTab's TopDogsPanel, _extract_country_counts below) only
     // ever needs ONE of: a specific wallet's own node's rank (computed
     // on demand via rankInGroup, cheap since it's only ever a handful of
     // nodes — see main/Gamification/rankInGroup.js), the single #1 node

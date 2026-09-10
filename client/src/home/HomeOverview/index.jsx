@@ -3,8 +3,6 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
-import { FiCpu, FiDatabase, FiLink, FiBox, FiZap, FiShield, FiActivity, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
-import { FaGamepad, FaTrophy } from 'react-icons/fa';
 import { LuBrainCircuit } from 'react-icons/lu';
 import { Gpu } from 'lucide-react';
 import ReactCountryFlag from 'react-country-flag';
@@ -14,9 +12,6 @@ import ReactCountryFlag from 'react-country-flag';
 import CountUp from 'components/CountUp';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
-import { APP_CATEGORY_META } from 'content/appCategoryMeta';
-import { CategoryTooltip } from 'components/CategoryTooltip';
-import { WorkhorsePanel } from 'home/WorkhorsePanel';
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
 import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
@@ -33,14 +28,6 @@ function fmtCompact(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
   return n.toFixed(0);
-}
-
-function blocksToHuman(blocks) {
-  const totalMinutes = Math.round(blocks * 0.5);
-  if (totalMinutes < 60) return `${totalMinutes}m`;
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 // ── Shared sub-components ──────────────────────────────────────────────────────
@@ -301,122 +288,6 @@ function NetworkResourcesPanel({ gstore }) {
   );
 }
 
-// ── Spec Header (shared by Expiring / Deployed panels) ──────────────────────
-
-/*
- * Enterprise apps ship an encrypted compose, so their CPU / RAM / SSD are
- * genuinely unknown — not zero. Render an em dash rather than a confident 0.00.
- */
-function fmtSpecVal(value, suffix) {
-  if (value == null) return '—';
-  return `${value.toFixed(2)}${suffix}`;
-}
-
-
-function SpecHeader() {
-  return (
-    <div className="hov-spec-header">
-      <span className="hov-spec-header__name">Name</span>
-      <span className="hov-spec-header__cat">Cat</span>
-      <span className="hov-spec-header__inst">Inst</span>
-      <span className="hov-spec-header__val">CPU</span>
-      <span className="hov-spec-header__val">RAM</span>
-      <span className="hov-spec-header__val">SSD</span>
-      <span className="hov-spec-header__time">Time</span>
-    </div>
-  );
-}
-
-function SpecCategoryIcon({ category }) {
-  const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
-  const { Icon, color } = meta;
-  // Per-app row: the network-wide breakdown would be misleading here.
-  const tooltip = <CategoryTooltip category={category} />;
-  return (
-    <Tooltip2 content={tooltip} placement="top" hoverOpenDelay={200} popoverClassName="hov-cat-tooltip">
-      <span className="hov-spec-cat" style={{ color }}>
-        <Icon size={11} />
-      </span>
-    </Tooltip2>
-  );
-}
-
-// ── Panel 5: Apps Expiring Today ──────────────────────────────────────────────
-
-function ExpiringTodayPanel({ appSpecs }) {
-  if (!appSpecs) {
-    return (
-      <div className="hov-panel hov-panel-center">
-        <Spinner size={24} />
-      </div>
-    );
-  }
-
-  const items = appSpecs.expiringToday || [];
-
-  return (
-    <div className="hov-panel hov-panel--expiring">
-      <PanelHeader title="EXPIRING TODAY" badge={items.length || null} />
-      {items.length > 0 && <SpecHeader />}
-      <div className="hov-list">
-        {items.length === 0 ? (
-          <div className="hov-empty">None expiring today</div>
-        ) : (
-          items.map((spec, i) => (
-            <div key={spec.name + i} className="hov-spec-row">
-              <span className="hov-list-name">{spec.name}</span>
-              <SpecCategoryIcon category={spec.category} />
-              <span className="hov-badge hov-badge--warn">{spec.instances}×</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
-              <span className="hov-time hov-time--warn">in {blocksToHuman(spec.expiresInBlocks)}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Panel 6: Deployed Today ───────────────────────────────────────────────────
-
-function DeployedTodayPanel({ appSpecs }) {
-  if (!appSpecs) {
-    return (
-      <div className="hov-panel hov-panel-center">
-        <Spinner size={24} />
-      </div>
-    );
-  }
-
-  const items = appSpecs.deployedToday || [];
-
-  return (
-    <div className="hov-panel hov-panel--deployed">
-      <PanelHeader title="DEPLOYED TODAY" badge={items.length || null} />
-      {items.length > 0 && <SpecHeader />}
-      <div className="hov-list">
-        {items.length === 0 ? (
-          <div className="hov-empty">None deployed today</div>
-        ) : (
-          items.map((spec, i) => (
-            <div key={spec.name + i} className="hov-spec-row">
-              <span className="hov-list-name">{spec.name}</span>
-              <SpecCategoryIcon category={spec.category} />
-              <span className="hov-badge hov-badge--green">{spec.instances}×</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
-              <span className="hov-time hov-time--green">{blocksToHuman(spec.deployedAgeBlocks)} ago</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Panel 7: Node Geolocation ─────────────────────────────────────────────────
 
 function GeoDistributionPanel({ gstore, countryCounts }) {
@@ -457,90 +328,6 @@ function GeoDistributionPanel({ gstore, countryCounts }) {
             <span className="hov-geo-count">{fmtCompact(unknownCount)}</span>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Top Dogs Panel ─────────────────────────────────────────────────────────────
-
-const TIER_CONFIG = {
-  CUMULUS: { label: 'Cumulus', color: '#2686d0' },
-  NIMBUS:  { label: 'Nimbus',  color: '#d07e26' },
-  STRATUS: { label: 'Stratus', color: '#c92641' },
-};
-
-const METRIC_CONFIG = [
-  { key: 'eps',        label: 'EPS',  Icon: FiCpu,       format: (v) => fmtNum(v, 0) },
-  { key: 'dws',        label: 'DWS',  Icon: FiHardDrive, format: (v) => fmtNum(v, 0) },
-  { key: 'down_speed', label: 'Down', Icon: FiDownload,  format: (v) => v != null ? v.toFixed(1) + ' Mb/s' : '—' },
-  { key: 'up_speed',   label: 'Up',   Icon: FiUpload,    format: (v) => v != null ? v.toFixed(1) + ' Mb/s' : '—' },
-];
-
-const TIERS_ORDER = ['CUMULUS', 'NIMBUS', 'STRATUS'];
-
-function MetricCard({ metric, winner, nodeGeoMap }) {
-  const { label, Icon, format } = metric;
-  if (!winner) return (
-    <div className="td-metric-card td-metric-card--empty">
-      <div className="td-metric-header"><Icon size={11} /><span className="td-metric-label">{label}</span></div>
-      <span className="td-metric-ip">—</span>
-      <div className="td-metric-footer"><span className="td-metric-score">—</span></div>
-    </div>
-  );
-  const { ip, value } = winner;
-  const geo = nodeGeoMap?.[ip];
-  return (
-    <div className="td-metric-card">
-      <div className="td-metric-header"><Icon size={11} className="td-metric-icon" /><span className="td-metric-label">{label}</span></div>
-      <span className="td-metric-ip" title={ip}>{ip}</span>
-      <div className="td-metric-footer">
-        <span className="td-metric-score">{format(value)}</span>
-        {geo?.countryCode && (
-          <ReactCountryFlag
-            countryCode={geo.countryCode}
-            svg
-            title={geo.country}
-            style={{ width: '1.1em', height: '1.1em', borderRadius: '2px', flexShrink: 0 }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TierRow({ tier, tierWinners, nodeGeoMap }) {
-  const { label, color } = TIER_CONFIG[tier];
-  const winners = tierWinners?.[tier];
-  return (
-    <div className="td-tier-row" style={{ borderLeftColor: color }}>
-      <div className="td-tier-label-col">
-        <span className="td-tier-dot" style={{ background: color }} />
-        <span className="td-tier-name" style={{ color }}>{label}</span>
-      </div>
-      <div className="td-metric-cards">
-        {METRIC_CONFIG.map((m) => (
-          <MetricCard key={m.key} metric={m} winner={winners?.[m.key] ?? null} nodeGeoMap={nodeGeoMap} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TopDogsPanel({ globalRankings }) {
-  if (!globalRankings) return (
-    <div className="hov-panel hov-panel-center hov-panel--top-dogs">
-      <Spinner size={20} />
-    </div>
-  );
-  const { tierWinners, nodeGeoMap } = globalRankings;
-  return (
-    <div className="hov-panel hov-panel--top-dogs">
-      <PanelHeader title="TOP DOGS" right={<FaTrophy size={14} className="td-header-icon" />} />
-      <div className="td-body">
-        {TIERS_ORDER.map((tier) => (
-          <TierRow key={tier} tier={tier} tierWinners={tierWinners} nodeGeoMap={nodeGeoMap} />
-        ))}
       </div>
     </div>
   );
@@ -651,7 +438,7 @@ function FluxAIPanel({ gpuPrices }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, gpuPrices }) {
+export function HomeOverview({ gstore, countryCounts, gpuPrices }) {
   return (
     <div className="home-overview">
       <div className="home-overview-row">
@@ -659,13 +446,7 @@ export function HomeOverview({ gstore, appSpecs, countryCounts, globalRankings, 
         <NetworkResourcesPanel gstore={gstore} />
         <AppEcosystemBreakdown gstore={gstore} />
       </div>
-      <div className="home-overview-row home-overview-row--bottom">
-        <TopHostedApps gstore={gstore} />
-        <ExpiringTodayPanel appSpecs={appSpecs} />
-        <DeployedTodayPanel appSpecs={appSpecs} />
-      </div>
-      <WorkhorsePanel gstore={gstore} appSpecs={appSpecs} />
-      <TopDogsPanel globalRankings={globalRankings} />
+      <TopHostedApps gstore={gstore} />
       {SHOW_FLUX_AI_PANEL && <FluxAIPanel gpuPrices={gpuPrices} />}
       <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />
     </div>

@@ -60,7 +60,7 @@ export function rankInGroup(groupNodes, targetIp, metricKey) {
 
 /**
  * The single highest-value node in a group for one metric — replaces
- * indexing [0] on a pre-sorted array (HomeOverview's "Top Dogs" panel).
+ * indexing [0] on a pre-sorted array (NetworkTab's "Top Dogs" panel).
  * Tie-break: whichever node appears earlier in groupNodes wins, matching
  * the old rank-1 assignment under a stable sort.
  */

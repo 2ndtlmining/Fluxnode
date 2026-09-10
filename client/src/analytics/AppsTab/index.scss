@@ -53,3 +53,183 @@
     color: #5b9bf5;
   }
 }
+
+// ── Expiring / Deployed Today (moved from home/HomeOverview/index.scss,
+// Session 2 IA migration — this tab already carries the shared .hov-panel/
+// .hov-header/.hov-badge/.hov-empty chrome via TopHostedApps/index.scss,
+// loaded in the same analytics chunk, so only the pieces specific to these
+// two panels are duplicated here, matching this file's existing reliance
+// on that same shared chrome for RankedAddressList above.) ─────────────────
+
+// Per-panel accent strip + header tint
+.hov-panel--expiring { border-left: 2px solid #ef4444; }
+.hov-panel--deployed { border-left: 2px solid #22c55e; }
+.hov-panel--expiring .hov-header { background: linear-gradient(90deg, rgba(239, 68, 68, 0.04) 0%, transparent 60%); }
+.hov-panel--deployed .hov-header { background: linear-gradient(90deg, rgba(34, 197, 94, 0.04) 0%, transparent 60%); }
+
+// Badge color modifiers (base .hov-badge rule comes from TopHostedApps/index.scss,
+// already loaded in this chunk)
+.hov-badge {
+  &--warn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+
+    @include rule-mode-dark() {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+  }
+
+  &--green {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+
+    @include rule-mode-dark() {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+  }
+}
+
+// Scrollable list
+.hov-list {
+  max-height: 200px;
+  overflow-y: auto;
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.22) transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.22);
+    border-radius: 2px;
+
+    &:hover {
+      background: rgba(128, 128, 128, 0.45);
+    }
+  }
+}
+
+.hov-list-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+// Spec header (column labels)
+.hov-spec-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 0 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  user-select: none;
+
+  &__name { flex: 1; min-width: 0; }
+  &__cat  { width: 20px; text-align: center; flex-shrink: 0; }
+  &__inst { width: 30px; text-align: center; flex-shrink: 0; }
+  &__val  { min-width: 44px; text-align: right; flex-shrink: 0; }
+  &__time { min-width: 48px; text-align: right; flex-shrink: 0; }
+}
+
+// Spec row
+.hov-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+  font-size: 0.79rem;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--surface-inset);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.hov-spec-cat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.hov-spec-val {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+}
+
+.hov-cat-tooltip {
+  .bp4-tooltip2 {
+    max-width: 220px;
+    font-size: 0.75rem;
+  }
+}
+
+.hov-time {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &--warn {
+    color: #ef4444;
+
+    @include rule-mode-dark() {
+      color: #f87171;
+    }
+  }
+
+  &--green {
+    color: #16a34a;
+
+    @include rule-mode-dark() {
+      color: #4ade80;
+    }
+  }
+}
+
+// Bottom row: fixed height, matching TopHostedApps/index.scss's own
+// .hov-panel--top-apps slice of this same shared rule (inlined scrollbar,
+// not @extend — Sass placeholders don't resolve across independently
+// compiled component stylesheets).
+.hov-panel--expiring,
+.hov-panel--deployed {
+  display: flex;
+  flex-direction: column;
+
+  .hov-list {
+    height: 380px;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+  }
+}

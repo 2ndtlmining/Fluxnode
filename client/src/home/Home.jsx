@@ -22,9 +22,7 @@ import { Observable }  from 'rxjs';
 import {
   create_global_store,
   fetch_global_stats,
-  fetch_global_app_specs,
   fetch_country_node_counts,
-  fetch_global_performance_rankings,
   isWalletDOSState,
   pa_summary_full,
   validateAddress,
@@ -71,10 +69,7 @@ class Home extends React.Component {
 
       totalDonations: 0,
 
-      appSpecs: null,
-      appSpecsError: false,
       countryCounts: [],
-      globalRankings: null,
       gpuPrices: null
     };
 
@@ -237,14 +232,8 @@ class Home extends React.Component {
       fetch_global_stats(null)
         .then((gstore) => {
           this.setState({ gstore });
-          fetch_global_app_specs(gstore)
-            .then((specs) => this.setState({ appSpecs: specs }))
-            .catch(() => this.setState({ appSpecs: {}, appSpecsError: true }));
           fetch_country_node_counts()
             .then((counts) => this.setState({ countryCounts: counts }))
-            .catch(() => {});
-          fetch_global_performance_rankings()
-            .then((rankings) => this.setState({ globalRankings: rankings }))
             .catch(() => {});
           fetch_gpu_prices()
             .then((data) => this.setState({ gpuPrices: data }))
@@ -616,9 +605,7 @@ class Home extends React.Component {
 
               <HomeOverview
                 gstore={this.state.gstore}
-                appSpecs={this.state.appSpecs}
                 countryCounts={this.state.countryCounts}
-                globalRankings={this.state.globalRankings}
                 gpuPrices={this.state.gpuPrices}
               />
             </>
