@@ -16,3 +16,6 @@ CLAUDE.md
 .worktrees/
 worktrees/
 .superpowers/
+
+# Calculation-audit fixtures: evidence for one run, not source.
+tools/audit/fixtures/
