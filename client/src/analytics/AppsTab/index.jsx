@@ -205,7 +205,9 @@ export function AppsTab() {
       setNodeOperators(rankNodeOperators(builtGstore.nodePaymentAddresses));
       setOwnerTotals(aggregateOwnerTotals(specsResult.rawSpecs));
       setLoading(false);
-    })();
+    })().catch(() => {
+      if (!cancelled) setLoading(false);
+    });
 
     return () => { cancelled = true; };
   }, []);

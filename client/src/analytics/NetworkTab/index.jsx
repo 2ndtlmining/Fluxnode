@@ -10,9 +10,9 @@ import { WorldMap } from 'analytics/WorldMap';
 import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
 
-function fmtNum(n) {
+function fmtNum(n, decimals = 0) {
   if (!n && n !== 0) return '—';
-  return n.toLocaleString();
+  return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
 function pct(n, total) {
@@ -173,16 +173,15 @@ export function NetworkTab() {
   useEffect(() => {
     let cancelled = false;
 
+    // World Map / Continent Breakdown only ever needed geolocation data, so
+    // this fetch controls `loading` on its own rather than waiting on the
+    // much larger performance-rankings payload below (~3.45MB) via
+    // Promise.all — TopDogsPanel already has its own null-check spinner.
     (async () => {
-      const [geoEntries, rankings] = await Promise.all([
-        fetch_node_geolocation(),
-        fetch_global_performance_rankings(),
-      ]);
+      const geoEntries = await fetch_node_geolocation();
       if (cancelled) return;
-
       setCountryCounts(countByCountry(geoEntries));
       setContinentData(rollupByContinent(geoEntries));
-      setGlobalRankings(rankings);
       setLoading(false);
     })().catch(() => {
       // fetch_node_geolocation() already swallows its own errors and
@@ -191,6 +190,12 @@ export function NetworkTab() {
       // "renders the empty state" if that contract ever changes.
       if (!cancelled) setLoading(false);
     });
+
+    (async () => {
+      const rankings = await fetch_global_performance_rankings();
+      if (cancelled) return;
+      setGlobalRankings(rankings);
+    })().catch(() => {});
 
     return () => { cancelled = true; };
   }, []);

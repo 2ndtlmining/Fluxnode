@@ -81,8 +81,6 @@
   // Per-panel accent strip on left edge
   &--stats      { border-left: 2px solid #2686d0; }
   &--resources  { border-left: 2px solid #6366f1; }
-  &--expiring   { border-left: 2px solid #ef4444; }
-  &--deployed   { border-left: 2px solid #22c55e; }
   &--geo        { border-left: 2px solid #8b5cf6; }
   &--fluxai     { border-left: 2px solid #10b981; }
 }
@@ -134,10 +132,7 @@
 // Per-panel accent gradient tint behind header (reduced opacity for subtlety)
 .hov-panel--stats     .hov-header { background: linear-gradient(90deg, rgba(38, 134, 208, 0.04) 0%, transparent 60%); }
 .hov-panel--resources .hov-header { background: linear-gradient(90deg, rgba(99, 102, 241, 0.04) 0%, transparent 60%); }
-.hov-panel--expiring  .hov-header { background: linear-gradient(90deg, rgba(239, 68, 68, 0.04) 0%, transparent 60%); }
-.hov-panel--deployed  .hov-header { background: linear-gradient(90deg, rgba(34, 197, 94, 0.04) 0%, transparent 60%); }
 .hov-panel--geo       .hov-header { background: linear-gradient(90deg, rgba(139, 92, 246, 0.04) 0%, transparent 60%); }
-.hov-panel--top-dogs  .hov-header { background: linear-gradient(90deg, rgba(217, 119, 6, 0.04) 0%, transparent 60%); }
 .hov-panel--fluxai    .hov-header { background: linear-gradient(90deg, rgba(16, 185, 129, 0.04) 0%, transparent 60%); }
 
 .hov-header-title {
@@ -306,24 +301,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-// ── Bottom row: fixed 10-row height panels ────────────────────────────────────
-// (.hov-panel--top-apps's slice of this rule now lives in
-// components/TopHostedApps/index.scss, alongside its own .hov-ranked-list.)
-
-.hov-panel--expiring,
-.hov-panel--deployed {
-  display: flex;
-  flex-direction: column;
-
-  .hov-list {
-    height: 380px;
-    overflow-y: auto;
-    min-height: 0;
-    max-height: none;
-    @extend %slim-scrollbar;
-  }
-}
-
 // ── Thin custom scrollbar mixin ────────────────────────────────────────────────
 
 %slim-scrollbar {
@@ -348,175 +325,12 @@
   }
 }
 
-// ── Scrollable list ────────────────────────────────────────────────────────────
-
-.hov-list {
-  max-height: 200px;
-  overflow-y: auto;
-  @extend %slim-scrollbar;
-}
-
-.hov-list-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 6px;
-  border-radius: var(--radius-sm);
-  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
-  font-size: 0.79rem;
-  transition: background var(--transition-fast);
-
-  &:hover {
-    background: var(--surface-inset);
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.hov-list-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-// ── Badges ─────────────────────────────────────────────────────────────────────
-
-.hov-badge {
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background var(--transition-fast);
-
-  @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
-  }
-
-  &--warn {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-
-    @include rule-mode-dark() {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-    }
-  }
-
-  &--green {
-    background: rgba(34, 197, 94, 0.1);
-    color: #16a34a;
-
-    @include rule-mode-dark() {
-      background: rgba(34, 197, 94, 0.2);
-      color: #4ade80;
-    }
-  }
-}
-
-// ── Spec header (Expiring / Deployed Today column labels) ────────────────────
-
-.hov-spec-header {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 0 4px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--border-primary);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  user-select: none;
-
-  &__name { flex: 1; min-width: 0; }
-  &__cat  { width: 20px; text-align: center; flex-shrink: 0; }
-  &__inst { width: 30px; text-align: center; flex-shrink: 0; }
-  &__val  { min-width: 44px; text-align: right; flex-shrink: 0; }
-  &__time { min-width: 48px; text-align: right; flex-shrink: 0; }
-}
-
-// ── Spec row (Expiring / Deployed Today) ─────────────────────────────────────
-
-.hov-spec-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 6px;
-  border-radius: var(--radius-sm);
-  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
-  font-size: 0.79rem;
-  transition: background var(--transition-fast);
-
-  &:hover {
-    background: var(--surface-inset);
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.hov-spec-cat {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  flex-shrink: 0;
-  cursor: help;
-}
-
-.hov-spec-val {
-  font-size: 0.68rem;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  min-width: 44px;
-  text-align: right;
-}
-
 // ── Category tooltip ──────────────────────────────────────────────────────────
 
 .hov-cat-tooltip {
   .bp4-tooltip2 {
     max-width: 220px;
     font-size: 0.75rem;
-  }
-}
-
-// ── Time text ─────────────────────────────────────────────────────────────────
-
-.hov-time {
-  font-size: 0.68rem;
-  color: var(--text-tertiary);
-  margin-left: auto;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &--warn {
-    color: #ef4444;
-
-    @include rule-mode-dark() {
-      color: #f87171;
-    }
-  }
-
-  &--green {
-    color: #16a34a;
-
-    @include rule-mode-dark() {
-      color: #4ade80;
-    }
   }
 }
 
@@ -619,130 +433,6 @@
 
   @include rule-mode-dark() {
     color: #a78bfa;
-  }
-}
-
-// ── Top Dogs Panel ─────────────────────────────────────────────────────────────
-
-.hov-panel--top-dogs { border-left: 2px solid #d97706; }
-
-.td-body { display: flex; flex-direction: column; gap: 10px; }
-
-.td-tier-row {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 7px;
-  border-left: 3px solid transparent;
-  background: var(--surface-inset);
-}
-
-.td-tier-label-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 52px;
-  flex-shrink: 0;
-}
-
-.td-tier-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.td-tier-name {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.td-metric-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-
-  @media (max-width: 700px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.td-metric-card {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-primary);
-  border: 1px solid var(--border-secondary);
-  min-width: 0;
-  overflow: hidden;
-  transition: border-color var(--transition-fast);
-
-  &:hover {
-    border-color: var(--border-hover);
-  }
-
-  &--empty {
-    opacity: 0.4;
-  }
-}
-
-.td-metric-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-tertiary);
-}
-
-.td-metric-icon { flex-shrink: 0; }
-
-.td-metric-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.td-metric-ip {
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
-  font-family: 'SFMono-Regular', 'Consolas', monospace;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.td-metric-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.td-metric-score {
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #d97706;
-
-  @include rule-mode-dark() {
-    color: #fbbf24;
-  }
-}
-
-.td-header-icon {
-  color: #d97706;
-
-  @include rule-mode-dark() {
-    color: #fbbf24;
   }
 }
 

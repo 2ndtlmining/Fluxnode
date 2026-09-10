@@ -210,7 +210,7 @@
 
 // ── Badge ──────────────────────────────────────────────────────────────────────
 // (base rule only — this component never renders the --warn/--green
-// modifiers; those stay defined in home/HomeOverview/index.scss where
+// modifiers; those are now defined in analytics/AppsTab/index.scss, where
 // ExpiringTodayPanel/DeployedTodayPanel use them.)
 
 .hov-badge {
@@ -246,13 +246,13 @@
 }
 
 // ── Bottom row: fixed 10-row height panel ─────────────────────────────────────
-// (duplicated from home/HomeOverview/index.scss's shared bottom-row rule,
-// which also covers ExpiringTodayPanel/DeployedTodayPanel via .hov-list —
-// this is the .hov-panel--top-apps / .hov-ranked-list slice of that rule.
-// The scrollbar rules are inlined rather than @extend-ing the %slim-scrollbar
-// placeholder defined in Home's stylesheet, since Sass placeholders don't
-// resolve across independently-compiled component stylesheets — same pattern
-// already used in home/WorkhorsePanel/index.scss's .whp-apps.)
+// (duplicated from what is now analytics/AppsTab/index.scss's shared
+// bottom-row rule, which also covers ExpiringTodayPanel/DeployedTodayPanel
+// via .hov-list — this is the .hov-panel--top-apps / .hov-ranked-list slice
+// of that rule. The scrollbar rules are inlined rather than @extend-ing a
+// %slim-scrollbar placeholder, since Sass placeholders don't resolve across
+// independently-compiled component stylesheets — same pattern already used
+// in home/WorkhorsePanel/index.scss's .whp-apps.)
 
 .hov-panel--top-apps {
   display: flex;

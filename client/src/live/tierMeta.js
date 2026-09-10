@@ -1,4 +1,4 @@
-// Same tier colors used elsewhere on the site (see home/HomeOverview's
+// Same tier colors used elsewhere on the site (see analytics/NetworkTab's
 // TopDogsPanel), duplicated here rather than imported since that constant
 // isn't exported and the two pages are otherwise independent. DEVFUND is
 // live/-only — the network's Dev Fund treasury output, not a node tier —
