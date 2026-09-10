@@ -40,6 +40,21 @@ SOURCES = {
         "domains": ["D2"],
         "why": "canonical running-apps source (never api.runonflux.io -- that counts ORDERED, not running)",
     },
+    "fluxnodes.json": {
+        "url": "https://explorer.runonflux.io/api/status?q=getFluxNodes",
+        "domains": ["D4"],
+        "why": "ip -> tier and payment_address; the tier grouping every rank is computed within",
+    },
+    "benchmarks.json": {
+        "url": "https://stats.runonflux.io/fluxinfo?projection=benchmark",
+        "domains": ["D4"],
+        "why": "eps/ddwrite/download_speed/upload_speed -- the metrics nodes are ranked by",
+    },
+    "geolocation.json": {
+        "url": "https://stats.runonflux.io/fluxinfo?projection=geolocation",
+        "domains": ["D4"],
+        "why": "country grouping for country-relative ranks and countryTierCounts",
+    },
 }
 
 # The explorer rejects the default Python-urllib User-Agent outright. Cost a
