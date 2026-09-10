@@ -303,9 +303,12 @@ In `client/src/home/HomeOverview/index.jsx`:
   (`fetch_global_performance_rankings()` inside `hydrateApp`) or its
   `<HomeOverview .../>` call site yet; leave `Home.jsx` passing
   `globalRankings={this.state.globalRankings}` even though `HomeOverview`
-  no longer reads it — Task 5 handles cleaning up `Home.jsx`'s own
-  now-unnecessary state/fetch, once ALL four panels are moved and it's
-  clear nothing on `/home` needs `globalRankings` anymore.
+  no longer reads it — **Task 2's Step 4 below removes this dead
+  fetch/state once all four panels are moved and it's confirmed nothing on
+  `/home` needs it anymore** (confirmed by reading the whole file: `Home.jsx`
+  itself never reads `globalRankings`/`appSpecs` for anything besides
+  passing them to `HomeOverview` — no other render path or method uses
+  either).
 
 - [ ] **Step 5: Run the full test suite**
 
@@ -645,6 +648,52 @@ In `client/src/home/HomeOverview/index.jsx`:
   already renders correctly at full width inside `AppsTab`'s grid cell
   today, so it likely needs no CSS change at all — confirm rather than
   assume).
+
+- [ ] **Step 4b: Remove `appSpecs` and `globalRankings` from `HomeOverview`'s
+  signature, and their now-dead fetch/state from `Home.jsx`**
+
+**Confirmed by reading the whole of both files first** (do this
+confirmation yourself too, don't just trust this plan — file contents may
+have shifted slightly since this plan was written): after Task 1 (removed
+`TopDogsPanel`, the only `globalRankings` consumer) and this task's Step 4
+(removed `ExpiringTodayPanel`/`DeployedTodayPanel`/`WorkhorsePanel`, the
+only `appSpecs` consumers), NOTHING remaining in `HomeOverview`
+(`NetworkStatsPanel`, `NetworkResourcesPanel`, `AppEcosystemBreakdown`,
+`TopHostedApps`, `GeoDistributionPanel`) reads either prop. And in
+`Home.jsx` itself, `globalRankings`/`appSpecs`/`appSpecsError` are used
+NOWHERE except being fetched, stored in state, and passed to
+`<HomeOverview .../>` — no other method or render path touches them. Once
+both are true, this is genuinely dead work (two real network fetches, one
+of them — `fetch_global_app_specs` — a meaningfully large payload per this
+repo's own sessionStorage-quota history) running on every `/home` load for
+props nothing renders. Remove it:
+
+In `client/src/home/HomeOverview/index.jsx`:
+- Drop `appSpecs` and `globalRankings` from the exported `HomeOverview`
+  function's destructured parameters (`export function HomeOverview({
+  gstore, countryCounts, gpuPrices })`).
+
+In `client/src/home/Home.jsx`:
+- Remove `appSpecs: null,`, `appSpecsError: false,`, and
+  `globalRankings: null,` from the constructor's initial state
+  (`appSpecsError` is never read anywhere in this file even today — it's
+  pre-existing dead state, safe to remove alongside `appSpecs`).
+- In `hydrateApp()`'s no-wallet branch, remove the
+  `fetch_global_app_specs(gstore).then(...).catch(...)` and
+  `fetch_global_performance_rankings().then(...).catch(...)` calls
+  entirely (both currently sit between `this.setState({ gstore })` and
+  `fetch_country_node_counts()` — remove just those two `.then/.catch`
+  blocks, leave `fetch_country_node_counts()` and `fetch_gpu_prices()`
+  untouched).
+- Remove the now-unused `fetch_global_app_specs`/
+  `fetch_global_performance_rankings` imports from this file's import
+  block, IF this file imports them directly (check the top-of-file
+  imports — they may come from `apidata`/`main/apidata` or similar;
+  remove only if nothing else in `Home.jsx` still calls them).
+- In the `<HomeOverview .../>` call site (inside `render()`), remove the
+  `appSpecs={this.state.appSpecs}` and
+  `globalRankings={this.state.globalRankings}` props being passed —
+  `HomeOverview` no longer accepts either.
 
 - [ ] **Step 5: Run the full test suite**
 
