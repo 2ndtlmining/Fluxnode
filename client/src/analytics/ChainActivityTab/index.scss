@@ -178,6 +178,27 @@
   }
 }
 
+// Suspense fallback for the lazily-loaded chart. Height matches
+// UtilityTrendChart's ResponsiveContainer exactly (200px) so swapping the real
+// chart in causes no layout shift, and it reuses the ca-shimmer keyframes
+// already defined above rather than introducing a second loading idiom.
+.ca-trend-chart-loading {
+  height: 200px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--surface-inset) 40%,
+    var(--surface-secondary) 50%,
+    var(--surface-inset) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: ca-shimmer 1.8s ease-in-out infinite;
+  opacity: 0.6;
+}
+
 .ca-trend-chart {
   margin-bottom: 10px;
 
