@@ -9,15 +9,15 @@
 > lives. Update this file's status lines as work lands; don't let a second copy of the
 > plan drift in a session's memory file instead.
 
-**Last updated:** 2026-09-09.
+**Last updated:** 2026-09-11.
 
 ---
 
 ## What's next, in order
 
-### Track 1 — Live Page Redesign (ready to start, do this first)
+### Track 1 — Live Page Redesign (DONE — all four sessions shipped)
 
-**Status: fully spec'd, zero open design questions, start straight at Session A.**
+**Status: complete.** Sessions A-D shipped as PRs #184, #185, #186 and #190.
 
 Full detail lives in `LIVE_REDESIGN_PLAN.md` (session breakdown) and
 `FLUX_LIVE_VIEW_REDESIGN_SPEC_V2.md` (the 80-section source-of-truth spec) — this
@@ -46,7 +46,7 @@ Process: same as every prior session in this repo — `superpowers:writing-plans
 `superpowers:subagent-driven-development` (fresh implementer per task, task review,
 final whole-branch review) → PR.
 
-### Track 2 — Analytics rework (in progress, scope expanded 2026-09-09)
+### Track 2 — Analytics rework (IN PROGRESS — Sessions 1-3 shipped, Session 4 spec'd and next)
 
 **Status: brainstorming underway, one sub-piece already shipped.** Track 1 (Live
 Redesign) is fully done — see above. Track 2 started as a proposed "premium feel"
@@ -82,21 +82,25 @@ wallet-unlock UX for donor-gated content, and Chain Activity's sync-status messa
     different verification approach entirely (e.g. a fixture-based test using
     this block's real API response) — see the memory file's 2026-09-09d session
     entry for full detail before picking this back up.
-- [ ] **Visual refresh + home→analytics migration + wallet-unlock UX** — the bigger,
-  still-architectural piece. User confirmed wanting to proceed (2026-09-09) and
-  added concrete requirements: bring `/home` features into `/analytics` where it
-  makes sense, and make the donor-wallet-unlock flow itself easy and beautiful
-  ("make sure we make it easy for a user to enter his address... show him the
-  information in a nice and clean UI way but beautifully" — user's own words).
-  Genuine aesthetic and IA choices here (palette, whether to add a charting
-  library, exactly what moves from `/home` to `/analytics` and where it lands,
-  how the unlock flow should work) need the same confirm-before-plan treatment
-  every other piece of work in this repo gets — the brainstorming/clarifying-
-  questions pass was interrupted by the Chain Activity investigation above and
-  has NOT been completed yet; resume `superpowers:brainstorming` (already
-  classified architectural) before writing an implementation plan. The
-  2026-09-06 findings below are background/analysis for that pass, not settled
-  decisions.
+- [x] **Visual refresh + home→analytics migration + wallet-unlock UX** — the
+  bigger, architectural piece. Brainstormed and spec'd as the **Analytics Rework
+  (Track 2)**, `docs/superpowers/specs/2026-09-10-analytics-rework-design.md`,
+  five sessions. The 2026-09-06 findings below are the background analysis that
+  fed it, kept for reference.
+  - [x] **Session 1 — Foundation.** `useDonorWalletCheck`, `PremiumUnlock`,
+    `panelAccess.js` + `PanelGate`, route-level gate removed. PR #197.
+  - [x] **Session 2 — IA migration.** The four panel moves off `/home`. PR #200.
+  - [x] **Session 3 — Visual refresh, Apps + Network.** Per-tab accents, headline
+    heroes, `PanelGate`'s `preview="blur"`. PR #201. Its final review caught a
+    Critical unscoped-`hov-*`-selector collision — see the Changelog.
+  - [ ] **Session 4 — Visual refresh, Donor + Chain Activity + Recharts.**
+    **Spec written and committed:**
+    `docs/superpowers/specs/2026-09-11-analytics-session4-design.md`
+    (branch `docs/analytics-session4-design`). Issue #199's drill-down was
+    bundled in, then unbundled 2026-09-11 — its full design lives on the issue.
+    **This is next.** Worktree must be `analytics-session4-donor-chain`;
+    `worktrees/analytics-session4` is a stale dir from the older numbering.
+  - [ ] **Session 5 — Cross-tab QA + dark-mode fix + final whole-branch review.**
 
 #### Why: what's actually wrong, specifically
 
@@ -196,6 +200,85 @@ foundation first, then apply it, then polish):
   (both are "premium" surfaces) vs. stay Analytics-specific?
 
 ---
+
+### Track 3 — Calculation correctness audit (next after Track 2)
+
+**Status: approach agreed 2026-09-11, not yet spec'd.** Ordered deliberately
+after Track 2's remaining visual sessions, and before production is brought
+back up.
+
+The ask: verify every displayed figure across `/analytics`, `/home` and `/live`,
+plus the premium-donor gating, against real data. **80 formatted-value sites**
+(32 home / 37 analytics / 11 live) over ~1,979 lines of shared calculation
+modules.
+
+**Method — independent recomputation, not more unit tests.** The app side runs
+the app's own functions; the reference side is independently reimplemented; both
+are fed the same captured upstream bytes, so there is no timing skew and the run
+is reproducible. Adding unit tests cannot find this bug class: `donorStatus.test.js`
+passes, `apidata.test.js` passes, and `fetch_total_donations` still carries the
+exact bug PR #196 fixed in the file next door. Tests written from the same
+understanding as the code inherit the code's assumptions. They earn their keep
+*after* the harness finds a bug, as the regression guard on its fix.
+
+**Five domains, following the real dependency graph** (not page-by-page —
+`apidata.js` alone feeds Home, Nodes and Analytics):
+
+1. **D1 Earnings & rewards** — `apidata.js` tier projections, APY, payout timing.
+2. **D2 Node & app counts** — `fluxinfo.js`, `appSpecs.js`,
+   `runningAppsCategorized.js`. Must assert the "never silently fall back to
+   `globalappsspecifications` for running apps" rule.
+3. **D3 Donations & donor status** — `fetch_total_donations`, `donorStatus.js`.
+4. **D4 Rankings & achievements** — `rankInGroup.js`, `globalRankings`,
+   `achievements.js`, `donorNodes.js`.
+5. **D5 Live & chain** — `blockFlowSummary.js`, `live/apidata.js`,
+   `chainActivity.js`.
+
+**Five risk classes**, since the class determines the check: *sourcing* (right
+math, wrong input), *arithmetic* (formula/units/rounding), *aggregation*
+(grouping, double-count, off-by-one), *staleness* (cache outlives validity),
+*presentation* (correct value, misleading label).
+
+**Order: D3 → D4 → D1 → D2 → D5, then the donor-gating matrix.** D3 first
+because it is small and already has a confirmed bug in it, which makes it the
+honest end-to-end proof the harness catches real things rather than just running
+green. D4 next because it has broken twice. D1 third because it is money.
+
+**Already-confirmed bug, found 2026-09-11 while sizing this:**
+`apidata.js:197`'s `fetch_total_donations` scans only
+`window.gContent.ADDRESS_FLUX`, while `donorStatus.js:166` correctly iterates
+`[ADDRESS_FLUX, OLD_ADDRESS_FLUX]`. The donation address changed 2026-09-03, so
+the "total donations" figure on Home/MainApp silently under-reports everything
+donated to the old address. This is the second copy of the bug PR #196 fixed.
+
+**Deliverables:** a `docs/superpowers/audits/` inventory (one row per figure:
+page · component · `file:line` · formula · upstream · domain · risk class ·
+verification · status · finding), one runnable script per domain under
+`tools/audit/`, and findings filed then fixed in severity order with a
+regression test each.
+
+**Sizing, stated plainly:** this is several sessions — more work than Track 2's
+remaining visual sessions combined.
+
+### Track 4 — Bring production back up (last)
+
+`fluxnode.app.runonflux.io` currently returns HTTP 200 serving
+`<title>FluxNode Dashboard - Temporarily Unavailable</title>` rather than the
+app (confirmed 2026-09-11). Deliberate hold: production goes back up **once
+Track 2 and Track 3 are done and the site's numbers are accurate**, per the
+user's explicit direction 2026-09-11.
+
+### Not being worked on now — whitepaper v9 reward-schedule changes
+
+Filed 2026-09-11 as #202-#207 from the updated Flux whitepaper
+(<https://whitepaper.app.runonflux.io/>), and **deliberately not scheduled** —
+the user's direction is site polish and correctness first.
+
+One of them is time-boxed and should not be forgotten: **#202** —
+`CC_BLOCK_REWARD = 14` is a bare scalar, and the first PoN subsidy reduction
+lands at **block 3,071,200 (~2026-10-25)**, taking it to 12.6 FLUX. After that
+height every earnings and APY figure on the site reads ~11% high, silently. At
+filing the tip was ~2,939,041, roughly 46 days out.
 
 ## Changelog (what's already shipped)
 

@@ -9,7 +9,7 @@ import './Analytics.scss';
 
 // Four tabs now (Apps, Network, Donor, Chain Activity) — Session 5 lands the
 // last one planned in PREMIUM_FEATURES_PLAN.md Part D.
-export default function Analytics() {
+export default function Analytics({ theme = 'dark' }) {
   return (
     <div className="analytics-page">
       <Helmet>
@@ -33,7 +33,7 @@ export default function Analytics() {
         } />
         <Tab id="chain-activity" title="Chain Activity" panel={
           <PanelGate panelKey="chainActivity" feature="Chain Activity">
-            <ChainActivityTab />
+            <ChainActivityTab theme={theme} />
           </PanelGate>
         } />
       </Tabs>

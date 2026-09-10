@@ -39,10 +39,22 @@
   }
 }
 
+// Tab-wide accent. Deliberately scoped to the tab root rather than left as a
+// bare .hov-panel: four other analytics stylesheets define .hov-panel in the
+// same /analytics webpack chunk. This replaces the per-panel multicolour
+// strips this tab used to carry -- those declarations were removed rather
+// than left to lose silently on specificity.
+.donor-tab .hov-panel {
+  border-left: 2px solid var(--accent-green);
+}
+
+.donor-tab .hov-panel .hov-header {
+  background: linear-gradient(90deg, rgba(14, 162, 113, 0.04) 0%, transparent 60%);
+}
+
 .dt-payout-card {
   display: flex;
   align-items: center;
-  border-left: 2px solid #f59e0b;
 }
 
 .dt-payout-stat {
@@ -69,18 +81,6 @@
   align-self: stretch;
   background: var(--border-secondary);
   margin: 0 20px;
-}
-
-.dt-nodes-panel {
-  border-left: 2px solid #10b981;
-}
-
-.dt-apps-panel {
-  border-left: 2px solid #6366f1;
-}
-
-.dt-util-panel {
-  border-left: 2px solid #ec4899;
 }
 
 .hov-header {
@@ -202,20 +202,20 @@
   min-width: 0;
 }
 
-.hov-badge {
+// Scoped for the same reason as ChainActivityTab's -- see that file's comment.
+.donor-tab .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
+  background: rgba(14, 162, 113, 0.12);
+  color: var(--accent-green);
   white-space: nowrap;
   flex-shrink: 0;
   transition: background var(--transition-fast);
 
   @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
+    background: rgba(14, 162, 113, 0.22);
   }
 }
 
@@ -341,4 +341,38 @@
   font-size: 0.85rem;
   color: var(--text-tertiary);
   max-width: 360px;
+}
+
+// -- Headline stat (hero number) ------------------------------------------
+// Mirrors AppsTab/index.scss's .apps-tab-hero, with this tab's accent.
+
+.dt-tab-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.dt-tab-hero-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.1;
+
+  @include rule-mode-dark() {
+    background: linear-gradient(135deg, var(--accent-green), #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.dt-tab-hero-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }

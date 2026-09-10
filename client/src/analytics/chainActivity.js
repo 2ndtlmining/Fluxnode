@@ -123,13 +123,15 @@ export function relativeTimeAgo(unixSeconds) {
   return `${days}d ago`;
 }
 
-// Client-side range filter — the backend always returns the full retained
-// window in one payload, so toggling 24h/7d never needs a second network call.
-export function filterDailyRange(daily, days) {
-  return (daily || []).slice(-days);
-}
+// Kept in sync with the backend constants of the same name in
+// api/src/services/chain_activity.rs. The backend always returns the full
+// retained window in one payload, so the UI never needs a second network call
+// to change what it shows -- which is why the old 24H/7D toggle was removed:
+// a 1-day chart is a single bar, not a trend.
+export const BLOCKS_PER_DAY = 2880; // 30 sec/block
+export const RETENTION_DAYS = 8;
 
-// Rolls a set of daily counts up into a single summary for the range currently shown.
+// Rolls the retained daily counts up into a single summary across the whole window.
 export function summarizeDaily(daily) {
   return (daily || []).reduce(
     (acc, d) => ({
@@ -138,4 +140,16 @@ export function summarizeDaily(daily) {
     }),
     { utilityBlocks: 0, emptyBlocks: 0 }
   );
+}
+
+// The headline stat for the Chain Activity tab. Deliberately the LAST entry
+// rather than a max or an average: the backend appends days in date order and
+// trims from the front (trim_daily_retention sorts by date before draining),
+// so the last entry is always the most recent day. Part D's spec originally
+// proposed "today's tx count" for this hero, but no transaction count exists
+// anywhere in the data model -- daily entries carry only utility/empty block
+// counts -- so this is the real number closest to that intent.
+export function todaysUtilityBlocks(daily) {
+  if (!daily || daily.length === 0) return 0;
+  return daily[daily.length - 1].utilityBlocks || 0;
 }

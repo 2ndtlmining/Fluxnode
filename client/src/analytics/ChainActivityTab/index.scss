@@ -43,33 +43,6 @@
   background: var(--accent-red);
 }
 
-.ca-range-toggle {
-  display: flex;
-  gap: 6px;
-}
-
-.ca-range-btn {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-primary);
-  background: var(--surface-primary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-
-  &:hover {
-    background: var(--surface-inset);
-  }
-
-  &--active {
-    background: #2686d0;
-    border-color: #2686d0;
-    color: #fff;
-  }
-}
-
 .hov-panel {
   border-radius: var(--radius-md);
   padding: 14px 16px 16px;
@@ -95,6 +68,16 @@
       box-shadow: var(--shadow-hover);
     }
   }
+}
+
+// Per-tab accent, matching Session 3's Apps/Network pattern: a left-edge strip
+// plus a faint gradient wash on the header. Chain Activity -> amber.
+.chain-activity-tab .hov-panel {
+  border-left: 2px solid var(--accent-amber);
+}
+
+.chain-activity-tab .hov-panel .hov-header {
+  background: linear-gradient(90deg, rgba(224, 146, 5, 0.04) 0%, transparent 60%);
 }
 
 .hov-header {
@@ -174,36 +157,36 @@
   gap: 5px;
 }
 
-.hov-badge {
+// Scoped to the tab root, not left as a bare .hov-badge: four other analytics
+// stylesheets define this same class at the same specificity and all land in
+// the same /analytics webpack chunk, so an unscoped rule silently wins or
+// loses on import order alone. (0,2,0) beats those (0,1,0) rules durably,
+// regardless of future import order. See Session 3's final-review finding.
+.chain-activity-tab .hov-badge {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 10px;
-  background: rgba(38, 134, 208, 0.12);
-  color: #2686d0;
+  background: rgba(224, 146, 5, 0.12);
+  color: var(--accent-amber);
   white-space: nowrap;
   flex-shrink: 0;
   transition: background var(--transition-fast);
 
   @include rule-mode-dark() {
-    background: rgba(38, 134, 208, 0.22);
-    color: #5eb8ff;
+    background: rgba(224, 146, 5, 0.22);
   }
 }
 
-.ca-utility-bar {
-  height: 10px;
-  border-radius: 5px;
-  background: rgba(239, 68, 68, 0.25); // empty share shows through as the track color
-  overflow: hidden;
-  margin-bottom: 8px;
-}
+.ca-trend-chart {
+  margin-bottom: 10px;
 
-.ca-utility-bar-fill {
-  height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #22c55e, #4ade80); // utility share
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  // Recharts renders an inline SVG that sets its own focus outline on click;
+  // suppress it to match the rest of the panel chrome.
+  .recharts-wrapper:focus,
+  .recharts-surface:focus {
+    outline: none;
+  }
 }
 
 .ca-utility-stats {
@@ -213,11 +196,11 @@
 }
 
 .ca-utility-stat--utility {
-  color: #22c55e;
+  color: var(--accent-green);
 }
 
 .ca-utility-stat--empty {
-  color: #ef4444;
+  color: var(--accent-red);
 }
 
 .ca-team-tx-row {
@@ -251,4 +234,40 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+// -- Headline stat (hero number) ------------------------------------------
+// Mirrors AppsTab/index.scss's .apps-tab-hero, with this tab's accent. The
+// gradient-clip treatment is dark-mode only; light mode uses a plain
+// --text-primary, same as Session 3's version.
+
+.ca-tab-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.ca-tab-hero-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.1;
+
+  @include rule-mode-dark() {
+    background: linear-gradient(135deg, var(--accent-amber), #f5c451);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.ca-tab-hero-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
