@@ -141,3 +141,15 @@ export function summarizeDaily(daily) {
     { utilityBlocks: 0, emptyBlocks: 0 }
   );
 }
+
+// The headline stat for the Chain Activity tab. Deliberately the LAST entry
+// rather than a max or an average: the backend appends days in date order and
+// trims from the front (trim_daily_retention sorts by date before draining),
+// so the last entry is always the most recent day. Part D's spec originally
+// proposed "today's tx count" for this hero, but no transaction count exists
+// anywhere in the data model -- daily entries carry only utility/empty block
+// counts -- so this is the real number closest to that intent.
+export function todaysUtilityBlocks(daily) {
+  if (!daily || daily.length === 0) return 0;
+  return daily[daily.length - 1].utilityBlocks || 0;
+}

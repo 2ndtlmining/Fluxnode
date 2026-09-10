@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from 'analytics/chainActivity';
 import './index.scss';
 
 /*
@@ -180,6 +180,10 @@ export function ChainActivityTab() {
 
   return (
     <div className="chain-activity-tab">
+      <div className="ca-tab-hero">
+        <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
+        <span className="ca-tab-hero-label">Utility blocks today</span>
+      </div>
       <SyncStatusBanner
         syncStatus={data.syncStatus}
         lastSuccessAt={data.lastSuccessAt}

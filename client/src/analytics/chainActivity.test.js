@@ -1,4 +1,4 @@
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS } from './chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -211,5 +211,33 @@ describe('summarizeDaily', () => {
 
   it('handles an empty/missing array', () => {
     expect(summarizeDaily(null)).toEqual({ utilityBlocks: 0, emptyBlocks: 0 });
+  });
+});
+
+describe('todaysUtilityBlocks', () => {
+  it('returns the most recent day\'s utility count', () => {
+    const daily = [
+      { date: '2026-09-09', utilityBlocks: 100, emptyBlocks: 200 },
+      { date: '2026-09-10', utilityBlocks: 490, emptyBlocks: 2390 },
+    ];
+    expect(todaysUtilityBlocks(daily)).toBe(490);
+  });
+
+  it('reads the LAST entry, not the largest', () => {
+    const daily = [
+      { date: '2026-09-09', utilityBlocks: 999, emptyBlocks: 0 },
+      { date: '2026-09-10', utilityBlocks: 12, emptyBlocks: 0 },
+    ];
+    expect(todaysUtilityBlocks(daily)).toBe(12);
+  });
+
+  it('returns 0 for an empty or missing array', () => {
+    expect(todaysUtilityBlocks([])).toBe(0);
+    expect(todaysUtilityBlocks(null)).toBe(0);
+    expect(todaysUtilityBlocks(undefined)).toBe(0);
+  });
+
+  it('returns 0 when the last entry has no utility count', () => {
+    expect(todaysUtilityBlocks([{ date: '2026-09-10', emptyBlocks: 5 }])).toBe(0);
   });
 });

@@ -253,6 +253,10 @@ export function DonorTab() {
 
   return (
     <div className="donor-tab">
+      <div className="dt-tab-hero">
+        <span className="dt-tab-hero-value">{nextNode ? nextNode.next_reward : '—'}</span>
+        <span className="dt-tab-hero-label">Next payout</span>
+      </div>
       <PayoutCard nextNode={nextNode} lastPaidNode={lastPaidNode} />
       <div className="donor-tab-panel-grid">
         <DonorNodesList nodes={nodes} />
