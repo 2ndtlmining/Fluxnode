@@ -118,11 +118,11 @@ function TeamTxList({ teamTxs, lastScannedHeight }) {
     <div className="hov-panel ca-team-tx-panel">
       <div className="hov-header">
         <span className="hov-header-title">FLUX TEAM TRANSACTIONS</span>
-        <span className="hov-header-badge">{ranged.length}</span>
+        <span className="hov-header-badge">{ranged.length} in {RETENTION_DAYS}d</span>
       </div>
       <div className="hov-ranked-list">
         {ranged.length === 0 ? (
-          <div className="hov-empty">No team transactions in this range</div>
+          <div className="hov-empty">No team transactions in the retained window</div>
         ) : (
           ranged.map((tx) => (
             <div key={tx.txid} className="ca-team-tx-row">

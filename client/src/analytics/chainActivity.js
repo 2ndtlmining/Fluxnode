@@ -131,7 +131,7 @@ export function relativeTimeAgo(unixSeconds) {
 export const BLOCKS_PER_DAY = 2880; // 30 sec/block
 export const RETENTION_DAYS = 8;
 
-// Rolls a set of daily counts up into a single summary for the range currently shown.
+// Rolls the retained daily counts up into a single summary across the whole window.
 export function summarizeDaily(daily) {
   return (daily || []).reduce(
     (acc, d) => ({

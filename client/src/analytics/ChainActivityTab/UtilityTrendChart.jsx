@@ -38,9 +38,9 @@ export function UtilityTrendChart({ daily, theme }) {
   const chrome = CHROME[theme] || CHROME.dark;
 
   return (
-    <div className="ca-trend-chart">
+    <div className="ca-trend-chart" role="img" aria-label="Daily utility and empty block counts across the retained window">
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+        <BarChart accessibilityLayer data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
           <CartesianGrid stroke={chrome.grid} vertical={false} />
           <XAxis
             dataKey="label"
@@ -52,6 +52,7 @@ export function UtilityTrendChart({ daily, theme }) {
             tick={{ fill: chrome.axis, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
+            allowDecimals={false}
           />
           <Tooltip
             cursor={{ fill: chrome.grid }}
