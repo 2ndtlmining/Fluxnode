@@ -40,8 +40,13 @@ function SyncStatusBanner({ syncStatus, lastSuccessAt, lastScannedHeight, scanSt
 
   const agoText = relativeTimeAgo(lastSuccessAt);
   const hasRange = syncStatus === 'in_progress' && scanTargetHeight > scanStartHeight;
+  // Two absolute chain heights this close together (e.g. "2,914,359 of
+  // 2,937,099") read as "syncing millions of blocks" at a glance, even
+  // though the actual gap being scanned is small (bounded by
+  // RETENTION_BLOCKS) — show the real remaining count instead.
+  const blocksRemaining = hasRange ? Math.max(0, scanTargetHeight - lastScannedHeight) : 0;
   const progressText = hasRange
-    ? ` Block ${fmtNum(lastScannedHeight)} of ${fmtNum(scanTargetHeight)} (${scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight })}%).`
+    ? ` ${fmtNum(blocksRemaining)} blocks remaining in this scan (${scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight })}%).`
     : '';
 
   return (
