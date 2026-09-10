@@ -6,6 +6,7 @@ import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { fetch_fluxinfo_aggregate } from 'fluxinfo';
 import { specResources, buildSpecIndex } from 'appSpecs';
 import { categorizeRunningApps } from 'runningAppsCategorized';
+import { OLD_ADDRESS_FLUX } from 'donor/config';
 import {
   fetch_node_benchmarks,
   fetch_node_resources,
@@ -192,10 +193,30 @@ export function fill_rewards(gstore) {
   */
 }
 
+/*
+ * Counts how many donation TRANSACTIONS a wallet has sent -- not a FLUX sum.
+ * main/Gamification/achievements.js gates `donor` (>= 1), `super_donor` (>= 5)
+ * and `sugar_daddy` (>= 50) on this count, and its labels read "N / 5
+ * donations", so the unit is transactions.
+ *
+ * Scans BOTH donation addresses. The project's address changed 2026-09-03, and
+ * this function used to scan only the current one -- so every donation made
+ * before that date was invisible, costing early supporters achievements they
+ * had already earned. donor/donorStatus.js:166 was fixed for the same reason in
+ * PR #196; this was the second, unfixed copy of that bug. The asymmetry made it
+ * easy to miss: donorStatus.js still granted those wallets premium access, so
+ * only the achievements silently disappeared.
+ *
+ * Each address is scanned independently and a failure of one does not erase the
+ * other: an unreachable explorer for one address must not zero out donations
+ * already proven against the other. Only when BOTH scans fail outright does
+ * this resolve 0.
+ *
+ * Results are de-duplicated by txid, because a single transaction paying both
+ * addresses would otherwise be counted twice.
+ */
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + window.gContent.ADDRESS_FLUX;
-
     const safeFetchJson = async (url) => {
       try {
         const res = await fetch(url);
@@ -208,12 +229,13 @@ export function fetch_total_donations(walletAddress) {
       }
     };
 
-    (async () => {
+    // Every page for one address. Returns null (not []) when the address could
+    // not be read at all, so "explorer unreachable" stays distinguishable from
+    // "this address has no donations".
+    const scanAddress = async (address) => {
+      const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + address;
       const firstPage = await safeFetchJson(baseUrl);
-      if (!firstPage) {
-        resolve(0); // explorer unavailable - fail gracefully instead of crashing
-        return;
-      }
+      if (!firstPage) return null;
 
       const { pagesTotal } = firstPage;
       const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
@@ -225,8 +247,30 @@ export function fetch_total_donations(walletAddress) {
         if (json) pages.push(json);
       }
 
-      const txs = pages.reduce((prev, current) => prev.concat(current.txs || []), []);
-      resolve(txs.filter((tx) => tx.vin.some((v) => v.addr === walletAddress)).length);
+      return pages.reduce((prev, current) => prev.concat(current.txs || []), []);
+    };
+
+    (async () => {
+      const scans = [];
+      for (const address of [window.gContent.ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
+        scans.push(await scanAddress(address));
+      }
+
+      if (scans.every((txs) => txs === null)) {
+        resolve(0); // explorer unavailable - fail gracefully instead of crashing
+        return;
+      }
+
+      const countedTxids = new Set();
+      for (const txs of scans) {
+        if (!txs) continue;
+        for (const tx of txs) {
+          if (!tx.vin?.some((v) => v.addr === walletAddress)) continue;
+          countedTxids.add(tx.txid);
+        }
+      }
+
+      resolve(countedTxids.size);
     })();
   });
 }
