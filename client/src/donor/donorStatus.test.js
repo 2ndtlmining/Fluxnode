@@ -1,4 +1,5 @@
 import { computeDonorStatus, fetch_donor_status } from './donorStatus';
+import { OLD_ADDRESS_FLUX } from './config';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-09-05T00:00:00Z').getTime();
@@ -71,7 +72,9 @@ describe('fetch_donor_status', () => {
   // Full Insight-API tx shape, same convention as live/apidata.test.js's
   // realTransparentTx() — the extra fields (n, scriptSig, confirmations, fees)
   // real /api/txs responses carry, not a hand-trimmed minimal fixture.
-  function realDonationTx({ blockheight, time, amount, fromWallet = WALLET }) {
+  // `toAddress` defaults to the current donation address but can be pointed
+  // at OLD_ADDRESS_FLUX to build a fixture for the old-address scan.
+  function realDonationTx({ blockheight, time, amount, fromWallet = WALLET, toAddress = DONATION_ADDR }) {
     return {
       txid: `tx-${blockheight}`,
       version: 4,
@@ -88,7 +91,7 @@ describe('fetch_donor_status', () => {
       vout: [
         {
           value: amount.toFixed(8), n: 0,
-          scriptPubKey: { hex: '...', asm: '...', addresses: [DONATION_ADDR], type: 'pubkeyhash' },
+          scriptPubKey: { hex: '...', asm: '...', addresses: [toAddress], type: 'pubkeyhash' },
           spentTxId: null,
         },
         {
@@ -118,6 +121,16 @@ describe('fetch_donor_status', () => {
     };
   }
 
+  // Every fetch_donor_status call now scans TWO addresses (current +
+  // OLD_ADDRESS_FLUX — see donor/config.js), current address first. Most
+  // tests below only care about the current-address scan, so this queues
+  // an empty, complete old-address page right after whatever mocks the
+  // test itself set up for the current address — same "no donations
+  // found, scan complete" shape a real empty history would produce.
+  function mockEmptyOldAddressScan() {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({ pagesTotal: 1, txs: [] }));
+  }
+
   it('sums donations from the wallet across a single page', async () => {
     const nowSec = Math.floor(Date.now() / 1000);
     global.fetch.mockResolvedValueOnce(mockJsonResponse({
@@ -127,6 +140,7 @@ describe('fetch_donor_status', () => {
         realDonationTx({ blockheight: 99, time: nowSec - 20 * 86400, amount: 6 }),
       ],
     }));
+    mockEmptyOldAddressScan();
 
     const result = await fetch_donor_status(WALLET);
 
@@ -141,6 +155,7 @@ describe('fetch_donor_status', () => {
       pagesTotal: 1,
       txs: [realDonationTx({ blockheight: 100, time: nowSec - 10 * 86400, amount: 50, fromWallet: 'someone-else' })],
     }));
+    mockEmptyOldAddressScan();
 
     const result = await fetch_donor_status(WALLET);
 
@@ -160,10 +175,11 @@ describe('fetch_donor_status', () => {
         pagesTotal: 2,
         txs: [realDonationTx({ blockheight: 199, time: nowSec - 6 * 86400, amount: 6 })],
       }));
+    mockEmptyOldAddressScan();
 
     const result = await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(3); // 2 pages for the current address + 1 for the old address
     expect(global.fetch.mock.calls[1][0]).toContain('&pageNum=1');
     expect(result.totalInWindow).toBeCloseTo(12);
     expect(result.isDonor).toBe(true);
@@ -179,10 +195,11 @@ describe('fetch_donor_status', () => {
         realDonationTx({ blockheight: 50, time: nowSec - 400 * 86400, amount: 999 }), // past the window — stop here
       ],
     }));
+    mockEmptyOldAddressScan();
 
     const result = await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(1); // never fetched page 2 or 3
+    expect(global.fetch).toHaveBeenCalledTimes(2); // 1 for the current address (never fetched page 2/3) + 1 for the old address
     expect(result.totalInWindow).toBeCloseTo(20); // the 999 past the window never counted
     expect(result.verified).toBe(true); // hit the window edge — a complete, trustworthy scan
   });
@@ -193,17 +210,20 @@ describe('fetch_donor_status', () => {
       pagesTotal: 1,
       txs: [realDonationTx({ blockheight: 100, time: nowSec - 10 * 86400, amount: 15 })],
     }));
+    mockEmptyOldAddressScan();
 
     const first = await fetch_donor_status(WALLET);
     const second = await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(2); // both scans, once — the second fetch_donor_status call hit the cache
     expect(second).toEqual(first);
     expect(first.verified).toBe(true);
   });
 
   it('fails soft — not a donor, not a throw — when the explorer is unreachable', async () => {
-    global.fetch.mockRejectedValueOnce(new Error('network down'));
+    global.fetch
+      .mockRejectedValueOnce(new Error('network down')) // current address
+      .mockRejectedValueOnce(new Error('network down')); // old address
 
     await expect(fetch_donor_status(WALLET)).resolves.toEqual(
       expect.objectContaining({ isDonor: false })
@@ -211,29 +231,36 @@ describe('fetch_donor_status', () => {
   });
 
   it('does not cache a result from a failed fetch — retry will re-attempt the network call', async () => {
-    global.fetch.mockRejectedValueOnce(new Error('network down'));
-    global.fetch.mockRejectedValueOnce(new Error('network down'));
+    global.fetch
+      .mockRejectedValueOnce(new Error('network down')) // 1st call, current address
+      .mockRejectedValueOnce(new Error('network down')) // 1st call, old address
+      .mockRejectedValueOnce(new Error('network down')) // 2nd call, current address
+      .mockRejectedValueOnce(new Error('network down')); // 2nd call, old address
 
     const first = await fetch_donor_status(WALLET);
     const second = await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(2); // both calls fetch, no cache from failure
+    expect(global.fetch).toHaveBeenCalledTimes(4); // both scans, both calls — no cache from failure
     expect(first).toEqual(expect.objectContaining({ isDonor: false }));
     expect(second).toEqual(expect.objectContaining({ isDonor: false }));
   });
 
   it('a scan that fails partway through a multi-page fetch is not verified and not cached', async () => {
     const nowSec = Math.floor(Date.now() / 1000);
-    // Page 1 succeeds but the donation total stays below threshold, so
-    // computeDonorStatus alone would say isDonor: false — the only thing
-    // that should keep this from being reported/cached as a confident
-    // "not a donor" is the page-2 failure below.
+    // Page 1 (current address) succeeds but the donation total stays below
+    // threshold, so computeDonorStatus alone would say isDonor: false — the
+    // only thing that should keep this from being reported/cached as a
+    // confident "not a donor" is the page-2 failure below. The old-address
+    // scan succeeds cleanly (empty) each attempt, so it's the current-
+    // address failure alone driving the unverified result, matching this
+    // test's original intent.
     global.fetch
       .mockResolvedValueOnce(mockJsonResponse({
         pagesTotal: 3,
         txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
       }))
       .mockRejectedValueOnce(new Error('network down'));
+    mockEmptyOldAddressScan();
 
     const first = await fetch_donor_status(WALLET);
 
@@ -248,10 +275,86 @@ describe('fetch_donor_status', () => {
         txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
       }))
       .mockRejectedValueOnce(new Error('network down'));
+    mockEmptyOldAddressScan();
 
     await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(4); // 2 calls per attempt, both attempts hit the network
+    expect(global.fetch).toHaveBeenCalledTimes(6); // 3 calls per attempt (2 current-address pages + 1 old-address) x 2 attempts
+  });
+
+  it('counts a donation sent to the OLD donation address toward the threshold', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({ pagesTotal: 1, txs: [] })); // current address: nothing
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 300, time: nowSec - 30 * 86400, amount: 15, toAddress: OLD_ADDRESS_FLUX })],
+    }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    // Not just "some second fetch happened to return this fixture" — the
+    // second scan must have actually requested the old address specifically.
+    // Without this, a bug that built the URL from ADDRESS_FLUX while summing
+    // against `donationAddress` would still pass every other assertion here.
+    expect(global.fetch.mock.calls[1][0]).toContain(OLD_ADDRESS_FLUX);
+    expect(result.isDonor).toBe(true);
+    expect(result.totalInWindow).toBeCloseTo(15);
+    expect(result.verified).toBe(true);
+  });
+
+  it('a legitimate current-address donor still qualifies and gets cached even if the old address is unreachable', async () => {
+    // The records are a union but completeness is an AND — the only thing
+    // keeping an unreachable old-address scan from wiping out a real,
+    // already-qualifying donor is the `|| computed.isDonor` short-circuit.
+    // This pins that specific direction of the asymmetry.
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 500, time: nowSec - 10 * 86400, amount: 15 })],
+    }));
+    global.fetch.mockRejectedValueOnce(new Error('network down')); // old address unreachable
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(result.isDonor).toBe(true);
+    expect(result.verified).toBe(true);
+
+    // And it's cached — a legitimate donor isn't forced to re-scan (and
+    // re-hit the unreachable old address) on every subsequent check.
+    const second = await fetch_donor_status(WALLET);
+    expect(second).toEqual(result);
+    expect(global.fetch).toHaveBeenCalledTimes(2); // only from the first call
+  });
+
+  it('sums donations split across both the old and new donation address', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 400, time: nowSec - 15 * 86400, amount: 6 })], // current address
+    }));
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      pagesTotal: 1,
+      txs: [realDonationTx({ blockheight: 300, time: nowSec - 30 * 86400, amount: 6, toAddress: OLD_ADDRESS_FLUX })],
+    }));
+
+    const result = await fetch_donor_status(WALLET);
+
+    // Neither address alone reaches the 10 FLUX threshold, but summed
+    // together (6 + 6 = 12) the wallet qualifies — this is the whole point
+    // of checking both addresses instead of just the current one.
+    expect(result.isDonor).toBe(true);
+    expect(result.totalInWindow).toBeCloseTo(12);
+    expect(result.verified).toBe(true);
+  });
+
+  it('an unreachable old address alone is enough to make an otherwise-empty result unverified', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({ pagesTotal: 1, txs: [] })); // current address: clean, empty scan
+    global.fetch.mockRejectedValueOnce(new Error('network down')); // old address: unreachable
+
+    const result = await fetch_donor_status(WALLET);
+
+    expect(result.isDonor).toBe(false);
+    expect(result.verified).toBe(false); // can't confidently say "not a donor" — the old address was never actually checked
   });
 
   // Page-cap truncation (pageNum reaches DONOR_MAX_PAGES_FETCHED without
@@ -259,9 +362,10 @@ describe('fetch_donor_status', () => {
   // a dedicated test here — mocking DONOR_MAX_PAGES_FETCHED (20) sequential
   // page responses to exercise it end-to-end would be a large, low-signal
   // fixture. The same `scanComplete = hitWindowEdge || pageNum >= pagesTotal`
-  // boundary is already exercised from both sides by the tests above (hit via
-  // hitWindowEdge in "stops paginating...", hit via pageNum >= pagesTotal in
-  // "sums donations...single page" and "ignores a transaction..."), and the
-  // cap only changes which of those two conditions is reached, not the logic
+  // boundary (now evaluated once per address, independently) is already
+  // exercised from both sides by the tests above (hit via hitWindowEdge in
+  // "stops paginating...", hit via pageNum >= pagesTotal in "sums
+  // donations...single page" and "ignores a transaction..."), and the cap
+  // only changes which of those two conditions is reached, not the logic
   // that decides verified from them.
 });
