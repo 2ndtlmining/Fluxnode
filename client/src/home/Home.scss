@@ -11,8 +11,11 @@
     color: var(--text-secondary);
 }
 
+// Home layers its dot pattern over the global .App background (styles/_global.scss).
+// The background-COLOUR that used to live here moved there: a page stylesheet
+// painting a shared global ancestor is what made /analytics theme-dependent on
+// navigation history.
 .App {
-    background-color: var(--surface-secondary);
     background-image: radial-gradient(var(--border-secondary) 1px, transparent 1px);
     background-size: 24px 24px;
 }
