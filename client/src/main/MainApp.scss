@@ -14,12 +14,10 @@
     }
 }
 
-.App {
-    background-color: #f8f9fa;
-    @include qualify('.app-mode-dark') {
-        background-color: #1b1e1f;
-    }
-}
+// The .App background that used to live here moved to styles/_global.scss so
+// every route is painted, not just this one. Its hardcoded #f8f9fa/#1b1e1f are
+// now --surface-secondary (#f5f6f8/#111113) -- a deliberate, slight shift onto
+// the design tokens rather than two more literals.
 
 .pa-heading {
     @include rule-mode-dark() {
