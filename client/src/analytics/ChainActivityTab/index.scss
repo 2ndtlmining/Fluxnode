@@ -43,33 +43,6 @@
   background: var(--accent-red);
 }
 
-.ca-range-toggle {
-  display: flex;
-  gap: 6px;
-}
-
-.ca-range-btn {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-primary);
-  background: var(--surface-primary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-
-  &:hover {
-    background: var(--surface-inset);
-  }
-
-  &--active {
-    background: #2686d0;
-    border-color: #2686d0;
-    color: #fff;
-  }
-}
-
 .hov-panel {
   border-radius: var(--radius-md);
   padding: 14px 16px 16px;

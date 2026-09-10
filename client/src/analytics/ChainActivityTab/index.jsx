@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo, scanProgressPct } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS } from 'analytics/chainActivity';
 import './index.scss';
 
 /*
@@ -61,11 +61,6 @@ function SyncStatusBanner({ syncStatus, lastSuccessAt, lastScannedHeight, scanSt
   );
 }
 
-const RANGE_OPTIONS = [
-  { label: '24H', days: 1 },
-  { label: '7D', days: 7 },
-];
-
 function fmtNum(n) {
   if (!n && n !== 0) return '—';
   return n.toLocaleString();
@@ -75,12 +70,10 @@ function pct(n, total) {
   return total > 0 ? ((n / total) * 100).toFixed(0) : '0';
 }
 
-function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
-  const ranged = filterDailyRange(daily, rangeDays);
-  const { utilityBlocks, emptyBlocks } = summarizeDaily(ranged);
+function UtilitySummary({ daily, syncStatus }) {
+  const { utilityBlocks, emptyBlocks } = summarizeDaily(daily);
   const total = utilityBlocks + emptyBlocks;
-  const isPartial = daily.length > 0 && ranged.length < rangeDays;
-  const badgeText = isPartial ? `${rangeLabel} (${ranged.length}d available)` : rangeLabel;
+  const badgeText = daily.length === 1 ? '1 day' : `${daily.length} days`;
   // "Still building history" is only accurate for a genuinely healthy,
   // still-backfilling scanner — once the banner above is already showing a
   // real problem, repeating a falsely-reassuring message here would
@@ -97,7 +90,7 @@ function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
         <div className="hov-empty">
           {daily.length === 0
             ? (stillBuilding ? 'Still building history — check back shortly' : 'No data available')
-            : 'No blocks in this range yet'}
+            : 'No blocks recorded yet'}
         </div>
       ) : (
         <>
@@ -118,8 +111,8 @@ function UtilitySummary({ daily, rangeDays, rangeLabel, syncStatus }) {
   );
 }
 
-function TeamTxList({ teamTxs, rangeDays, lastScannedHeight }) {
-  const cutoffHeight = lastScannedHeight - rangeDays * 2880; // BLOCKS_PER_DAY, kept in sync with the backend constant
+function TeamTxList({ teamTxs, lastScannedHeight }) {
+  const cutoffHeight = lastScannedHeight - RETENTION_DAYS * BLOCKS_PER_DAY;
   const ranged = (teamTxs || []).filter((t) => t.blockHeight >= cutoffHeight);
 
   return (
@@ -159,7 +152,6 @@ export function ChainActivityTab() {
     syncStatus: 'never_run',
   });
   const [loading, setLoading] = useState(true);
-  const [rangeDays, setRangeDays] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,8 +178,6 @@ export function ChainActivityTab() {
     );
   }
 
-  const activeRange = RANGE_OPTIONS.find((r) => r.days === rangeDays) || RANGE_OPTIONS[0];
-
   return (
     <div className="chain-activity-tab">
       <SyncStatusBanner
@@ -197,20 +187,8 @@ export function ChainActivityTab() {
         scanStartHeight={data.scanStartHeight}
         scanTargetHeight={data.scanTargetHeight}
       />
-      <div className="ca-range-toggle">
-        {RANGE_OPTIONS.map((r) => (
-          <button
-            key={r.label}
-            type="button"
-            className={`ca-range-btn${r.days === rangeDays ? ' ca-range-btn--active' : ''}`}
-            onClick={() => setRangeDays(r.days)}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-      <UtilitySummary daily={data.daily} rangeDays={rangeDays} rangeLabel={activeRange.label} syncStatus={data.syncStatus} />
-      <TeamTxList teamTxs={data.teamTxs} rangeDays={rangeDays} lastScannedHeight={data.lastScannedHeight} />
+      <UtilitySummary daily={data.daily} syncStatus={data.syncStatus} />
+      <TeamTxList teamTxs={data.teamTxs} lastScannedHeight={data.lastScannedHeight} />
     </div>
   );
 }

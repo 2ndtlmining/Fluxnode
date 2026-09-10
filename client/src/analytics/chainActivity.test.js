@@ -1,4 +1,4 @@
-import { fetch_chain_activity, filterDailyRange, summarizeDaily, relativeTimeAgo, scanProgressPct } from './chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -186,23 +186,17 @@ describe('scanProgressPct', () => {
   });
 });
 
-describe('filterDailyRange', () => {
-  const daily = [
-    { date: '2026-08-30', utilityBlocks: 1, emptyBlocks: 1 },
-    { date: '2026-08-31', utilityBlocks: 2, emptyBlocks: 2 },
-    { date: '2026-09-01', utilityBlocks: 3, emptyBlocks: 3 },
-  ];
-
-  it('returns the trailing N entries', () => {
-    expect(filterDailyRange(daily, 2)).toEqual(daily.slice(1));
+describe('retention constants', () => {
+  it('BLOCKS_PER_DAY matches the backend 30s block target', () => {
+    // chain_activity.rs: BLOCKS_PER_DAY = 2880. 86400 / 2880 == 30s.
+    expect(BLOCKS_PER_DAY).toBe(2880);
+    expect(86400 / BLOCKS_PER_DAY).toBe(30);
   });
 
-  it('returns everything available when the range exceeds what exists', () => {
-    expect(filterDailyRange(daily, 100)).toEqual(daily);
-  });
-
-  it('handles an empty/missing array', () => {
-    expect(filterDailyRange(null, 7)).toEqual([]);
+  it('RETENTION_DAYS matches the backend retention window', () => {
+    // chain_activity.rs: RETENTION_DAYS = 8, RETENTION_BLOCKS = 23040.
+    expect(RETENTION_DAYS).toBe(8);
+    expect(BLOCKS_PER_DAY * RETENTION_DAYS).toBe(23040);
   });
 });
 

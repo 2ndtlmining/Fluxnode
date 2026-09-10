@@ -123,11 +123,13 @@ export function relativeTimeAgo(unixSeconds) {
   return `${days}d ago`;
 }
 
-// Client-side range filter — the backend always returns the full retained
-// window in one payload, so toggling 24h/7d never needs a second network call.
-export function filterDailyRange(daily, days) {
-  return (daily || []).slice(-days);
-}
+// Kept in sync with the backend constants of the same name in
+// api/src/services/chain_activity.rs. The backend always returns the full
+// retained window in one payload, so the UI never needs a second network call
+// to change what it shows -- which is why the old 24H/7D toggle was removed:
+// a 1-day chart is a single bar, not a trend.
+export const BLOCKS_PER_DAY = 2880; // 30 sec/block
+export const RETENTION_DAYS = 8;
 
 // Rolls a set of daily counts up into a single summary for the range currently shown.
 export function summarizeDaily(daily) {
