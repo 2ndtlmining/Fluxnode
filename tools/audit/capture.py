@@ -40,6 +40,11 @@ SOURCES = {
         "domains": ["D2"],
         "why": "canonical running-apps source (never api.runonflux.io -- that counts ORDERED, not running)",
     },
+    "globalappsspecifications.json": {
+        "url": "https://api.runonflux.io/apps/globalappsspecifications",
+        "domains": ["D2"],
+        "why": "ORDERED app specs -- captured specifically to verify it always exceeds the RUNNING count and is never silently substituted for it",
+    },
     "fluxnodes.json": {
         "url": "https://explorer.runonflux.io/api/status?q=getFluxNodes",
         "domains": ["D4"],

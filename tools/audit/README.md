@@ -102,11 +102,36 @@ shared code three times.
 
 | Domain | Covers | Status |
 |---|---|---|
-| **D1** earnings & rewards | tier projections, per-node payment, PA amount, APY, pay frequency | **built** — agrees |
-| **D2** node & app counts | `fluxinfo`, `appSpecs`, running-app categorisation | fixture captured, reference not written |
-| **D3** donations & donor status | `fetch_total_donations`, `donorStatus` | audited by hand; found and fixed the bug above |
-| **D4** rankings & achievements | `rankInGroup`, `globalRankings`, `achievements` | not started — has broken twice before |
-| **D5** live & chain | `blockFlowSummary`, reward extraction, `chainActivity` | not started |
+| **D1** earnings & rewards | tier projections, per-node payment, PA amount, APY, pay frequency | **agrees** — app matches the independent reference on all 12 figures |
+| **D2** node & app counts | running-app counting, the canonical-source invariant | **holds** — 0 unparseable container names; ordered exceeds running, but only by 1.02x |
+| **D3** donations & donor status | `fetch_total_donations`, `donorStatus` | **bug found and fixed** — #213 |
+| **D4** rankings & achievements | `rankInGroup`, `topInGroup`, tier assignment | **bug found** — #215, 788 nodes (12.6%) given the wrong tier |
+| **D5** live & chain | coinbase reward extraction | **clean** — 48/48 outputs classified across 12 blocks, 0 silently dropped |
+
+### Findings, and what each cost
+
+- **#213 (D3, fixed)** — `fetch_total_donations` scanned only the current
+  donation address, so pre-2026-09-03 donations were invisible. It feeds the
+  `donor`/`super_donor`/`sugar_daddy` achievement gates, so early supporters
+  were being denied achievements they had earned. The function had zero test
+  coverage; `donorStatus.js` had the same bug fixed in PR #196, so donors kept
+  premium ACCESS and only the achievements vanished — which is why nobody
+  noticed.
+- **#215 (D4, open)** — `ipTierMap` strips the port, so hosts running several
+  tiers collide and the API's last entry wins for all of them. 788 of 6237
+  benchmarked nodes get the wrong tier, always upward. Needs a design pass:
+  `nodeData[].ip` is the join key for ranks, achievements and the node grid.
+
+### Two observations that are not bugs but are worth knowing
+
+- **D2's safety margin is thin.** Ordered exceeds running by only 1.02x. The
+  canonical-source rule exists because those two must never be swapped — but at
+  a 2% gap, a swap would produce numbers that look entirely plausible. The rule
+  cannot be enforced by eyeballing the result; it has to be enforced in code.
+- **D5 drops silently by design.** `extractRewardsFromCoinbase` has no `else`:
+  an output matching no tier window simply never appears. Zero drops in this
+  sample, but the failure mode is invisible rather than loud, so it is worth
+  re-running after any change to the reward split.
 
 ## Adding a domain
 
