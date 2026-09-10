@@ -1,8 +1,29 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from 'analytics/chainActivity';
-import { UtilityTrendChart } from './UtilityTrendChart';
 import './index.scss';
+
+/*
+ * Recharts is ~82 kB gzipped -- by far the largest thing this tab pulls in --
+ * and it was a static import, so it landed in the shared /analytics chunk and
+ * downloaded for EVERY analytics visitor. Locked visitors can never see the
+ * chart at all: Analytics.jsx wraps this tab in <PanelGate panelKey=
+ * "chainActivity">, which defaults to preview='plain' and does not render its
+ * children when locked. They were paying 82 kB for a component that never
+ * mounts.
+ *
+ * Splitting here rather than at the tab boundary keeps the sync banner, hero
+ * stat and team-transaction list rendering immediately -- they are cheap, and
+ * deferring them behind the same fetch would trade real perceived speed for a
+ * tidier split.
+ *
+ * The .then() unwrap is because React.lazy requires a default export and this
+ * file uses named exports throughout, as does the rest of the repo. Adding a
+ * default export purely to satisfy lazy() would be the tail wagging the dog.
+ */
+const UtilityTrendChart = lazy(() =>
+  import('./UtilityTrendChart').then((m) => ({ default: m.UtilityTrendChart }))
+);
 
 /*
  * The one thing this whole tab used to be silent about: whether "no data"
@@ -95,7 +116,9 @@ function UtilitySummary({ daily, syncStatus, theme }) {
         </div>
       ) : (
         <>
-          <UtilityTrendChart daily={daily} theme={theme} />
+          <Suspense fallback={<div className="ca-trend-chart-loading" aria-label="Loading chart" />}>
+            <UtilityTrendChart daily={daily} theme={theme} />
+          </Suspense>
           <div className="ca-utility-stats">
             <span className="ca-utility-stat ca-utility-stat--utility">
               {fmtNum(utilityBlocks)} utility ({pct(utilityBlocks, total)}%)
