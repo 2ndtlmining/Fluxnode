@@ -31,16 +31,24 @@ const whenArmed = armed ? describe : describe.skip;
 // misassignment": the old code overshot Nimbus by 415 and Stratus by 222.
 const MAX_SHORTFALL = 150;
 
-whenArmed('#215 -- tier resolution against the live fixture', () => {
+const VALID = ['CUMULUS', 'NIMBUS', 'STRATUS'];
+
+/*
+ * Loaded lazily inside the tests, NOT in the describe body.
+ *
+ * `describe.skip` still EXECUTES its callback -- Jest evaluates it to build the
+ * test tree and only then marks the tests skipped. Reading fixtures at that
+ * level therefore throws on a fresh clone or in CI, where they do not exist,
+ * which is exactly the opposite of the "inert without fixtures" property this
+ * file is supposed to have. (It shipped that way in PR #217 and was caught the
+ * first time the suite ran in a worktree without fixtures.)
+ */
+function loadFixtures() {
   const nodes = JSON.parse(fs.readFileSync(NODES, 'utf8')).fluxNodes || [];
   const bench = JSON.parse(fs.readFileSync(BENCH, 'utf8')).data || [];
-  const official = (() => {
-    const raw = JSON.parse(fs.readFileSync(COUNTS, 'utf8'));
-    return raw.data || raw;
-  })();
-
+  const rawCounts = JSON.parse(fs.readFileSync(COUNTS, 'utf8'));
+  const official = rawCounts.data || rawCounts;
   const resolve = buildTierResolver(nodes);
-  const VALID = ['CUMULUS', 'NIMBUS', 'STRATUS'];
 
   const tally = { CUMULUS: 0, NIMBUS: 0, STRATUS: 0 };
   let unresolved = 0;
@@ -51,8 +59,13 @@ whenArmed('#215 -- tier resolution against the live fixture', () => {
     if (tier && VALID.includes(tier)) tally[tier] += 1;
     else unresolved += 1;
   }
+  return { nodes, official, resolve, tally, unresolved };
+}
+
+whenArmed('#215 -- tier resolution against the live fixture', () => {
 
   it.each(VALID)('%s total is at or below the daemon count, and close to it', (tier) => {
+    const { official, tally } = loadFixtures();
     const officialCount = official[`${tier.toLowerCase()}-enabled`] || 0;
     expect(officialCount).toBeGreaterThan(0);
 
@@ -64,6 +77,7 @@ whenArmed('#215 -- tier resolution against the live fixture', () => {
   });
 
   it('resolves nearly every benchmarked node', () => {
+    const { tally, unresolved } = loadFixtures();
     const total = Object.values(tally).reduce((a, b) => a + b, 0);
     expect(total).toBeGreaterThan(0);
     // A handful of benchmarked nodes have no matching fluxNodes entry at all;
@@ -72,6 +86,7 @@ whenArmed('#215 -- tier resolution against the live fixture', () => {
   });
 
   it('gives distinct tiers to nodes sharing a host, where the ports say so', () => {
+    const { nodes, resolve } = loadFixtures();
     // The bug in one assertion. Find a host whose entries span >1 tier and
     // confirm the resolver no longer flattens them.
     const byHost = new Map();

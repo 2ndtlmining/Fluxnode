@@ -17,6 +17,12 @@
  * silently.
  */
 
+// The explorer pool (explorer.js) benches unhealthy hosts in module-level
+// state. Reset it between tests so one test's simulated outage cannot
+// change which host the next test talks to.
+const { __resetExplorerHealth } = require('explorer');
+beforeEach(() => __resetExplorerHealth());
+
 window.gContent = {
   URL_YOUTUBE: 'https://www.youtube.com/channel/UCO-gfYYQL22oibzOjr1SnHA',
   URL_TWITTER: 'https://twitter.com/2ndTLMining',

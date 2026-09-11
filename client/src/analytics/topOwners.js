@@ -1,4 +1,5 @@
-const NODE_LIST_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
+import { explorerFetchJson } from 'explorer';
+const NODE_LIST_PATH = '/status?q=getFluxNodes';
 export const DEFAULT_TOP_N = 20;
 
 /*
@@ -24,9 +25,8 @@ export function rankNodeOperators(nodes, topN = DEFAULT_TOP_N) {
 
 export async function fetch_top_node_operators(topN = DEFAULT_TOP_N) {
   try {
-    const res = await fetch(NODE_LIST_URL);
-    const data = await res.json();
-    const nodes = Array.isArray(data?.fluxNodes) ? data.fluxNodes : [];
+    const json = await explorerFetchJson(NODE_LIST_PATH);
+    const nodes = Array.isArray(json?.fluxNodes) ? json.fluxNodes : [];
     return rankNodeOperators(nodes, topN);
   } catch {
     return [];

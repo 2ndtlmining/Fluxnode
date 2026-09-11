@@ -1,3 +1,4 @@
+import { explorerFetchJson } from 'explorer';
 import { ADDRESS_FLUX } from 'content/index';
 import {
   DONOR_THRESHOLD_FLUX,
@@ -46,23 +47,23 @@ export function computeDonorStatus(records, nowMs = Date.now()) {
   return { isDonor: true, totalInWindow, expiresAt, daysLeft };
 }
 
-const TXS_BY_ADDRESS_ENDPOINT = 'https://explorer.runonflux.io/api/txs';
+const TXS_BY_ADDRESS_PATH = '/txs';
 // v2: fetch_donor_status now sums donations to BOTH the current and old
 // donation address (see donor/config.js's OLD_ADDRESS_FLUX) — bumped so a
 // wallet's pre-fix single-address cache entry can't silently under-count
 // for up to DONOR_STATUS_CACHE_TTL_MS after this ships.
 const DONOR_STATUS_CACHE_KEY = 'donorStatus_v2';
 
-async function safeFetchJson(url) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+/*
+ * Routed through the explorer pool rather than a single host. The
+ * null-on-failure contract is unchanged, so the caller's incomplete-scan
+ * handling (scanComplete) still behaves exactly as before -- but a rate
+ * limit on one host no longer ends the scan, since the other host is tried
+ * first. explorerFetchJson already rejects non-JSON bodies and non-2xx
+ * responses, which is what this wrapper used to do by hand.
+ */
+async function safeFetchJson(path) {
+  return explorerFetchJson(path);
 }
 
 // Sums every vout in `tx` paid to `address` — a tx can pay the same address
@@ -109,7 +110,7 @@ function writeDonorStatusCache(address, data) {
  * it.
  */
 async function scanDonationsTo(walletAddress, donationAddress, windowStartSec) {
-  const baseUrl = `${TXS_BY_ADDRESS_ENDPOINT}?address=${donationAddress}`;
+  const basePath = `${TXS_BY_ADDRESS_PATH}?address=${donationAddress}`;
 
   const records = [];
   let pageNum = 0;
@@ -117,8 +118,8 @@ async function scanDonationsTo(walletAddress, donationAddress, windowStartSec) {
   let hitWindowEdge = false;
 
   while (!hitWindowEdge && pageNum < pagesTotal && pageNum < DONOR_MAX_PAGES_FETCHED) {
-    const url = pageNum === 0 ? baseUrl : `${baseUrl}&pageNum=${pageNum}`;
-    const json = await safeFetchJson(url);
+    const path = pageNum === 0 ? basePath : `${basePath}&pageNum=${pageNum}`;
+    const json = await safeFetchJson(path);
     if (!json) break; // explorer unreachable partway through — incomplete scan, see scanComplete below
 
     pagesTotal = json.pagesTotal || 1;
