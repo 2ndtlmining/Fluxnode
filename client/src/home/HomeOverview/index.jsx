@@ -10,6 +10,7 @@ import ReactCountryFlag from 'react-country-flag';
 // HomeOverview was the only file importing react-countup directly, so the home
 // page animated while the rest of the app did not.
 import CountUp from 'components/CountUp';
+import { geoPanelState } from 'home/networkPanels';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
@@ -290,11 +291,31 @@ function NetworkResourcesPanel({ gstore }) {
 
 // ── Panel 7: Node Geolocation ─────────────────────────────────────────────────
 
-function GeoDistributionPanel({ gstore, countryCounts }) {
-  if (!countryCounts || countryCounts.length === 0) {
+function GeoDistributionPanel({ gstore, countryCounts, countryCountsSettled, countryCountsFailed }) {
+  /*
+   * Three states, not two (#250). This panel used to render a spinner for any
+   * empty countryCounts, so a failed fetch was indistinguishable from a slow
+   * one and spun forever -- which is exactly what happened whenever a wallet
+   * was present at load and the fetch was never made at all.
+   */
+  const panelState = geoPanelState({
+    countryCounts,
+    settled: countryCountsSettled,
+    failed: countryCountsFailed
+  });
+
+  if (panelState !== 'ready') {
     return (
       <div className="hov-panel hov-panel-center hov-panel--geo">
-        <Spinner size={20} />
+        {panelState === 'loading' ? (
+          <Spinner size={20} />
+        ) : (
+          <div className="hov-empty">
+            {panelState === 'failed'
+              ? "Couldn't load node distribution — this may be temporary."
+              : 'No node distribution data available'}
+          </div>
+        )}
       </div>
     );
   }
@@ -438,7 +459,7 @@ function FluxAIPanel({ gpuPrices }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function HomeOverview({ gstore, countryCounts, gpuPrices }) {
+export function HomeOverview({ gstore, countryCounts, countryCountsSettled, countryCountsFailed, gpuPrices }) {
   return (
     <div className="home-overview">
       <div className="home-overview-row">
@@ -448,7 +469,12 @@ export function HomeOverview({ gstore, countryCounts, gpuPrices }) {
       </div>
       <TopHostedApps gstore={gstore} />
       {SHOW_FLUX_AI_PANEL && <FluxAIPanel gpuPrices={gpuPrices} />}
-      <GeoDistributionPanel gstore={gstore} countryCounts={countryCounts} />
+      <GeoDistributionPanel
+        gstore={gstore}
+        countryCounts={countryCounts}
+        countryCountsSettled={countryCountsSettled}
+        countryCountsFailed={countryCountsFailed}
+      />
     </div>
   );
 }
