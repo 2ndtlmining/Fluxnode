@@ -39,7 +39,7 @@ import {
   pa_summary_full,
   validateAddress,
   wallet_pas_summary,
-  fetch_total_donations,
+  fetch_wallet_donation_summary,
   fetch_total_network_utils,
   fetch_global_performance_rankings,
 } from 'apidata';
@@ -48,8 +48,8 @@ import { appStore, StoreKeys } from 'persistance/store';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs } from 'utils';
-import { FaMedal } from 'react-icons/fa';
 import { DonorBadge } from 'donor/DonorBadge';
+import { WalletDonationChip } from 'donor/WalletDonationChip';
 //import { setGAEvent } from 'g-analytic';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
@@ -82,6 +82,8 @@ class MainApp extends React.Component {
       isZelId: false,
 
       totalDonations: 0,
+      donationsChecked: false,
+      donationsCheckFailed: false,
       globalRankings: null,
       walletHealth: null,
     };
@@ -394,8 +396,14 @@ class MainApp extends React.Component {
 
     const gstore = await fetch_global_stats(address);
 
-    fetch_total_donations(address).then((res) => {
-      this.setState({ totalDonations: res });
+    // #258: the chip has to tell "never donated" from "could not check",
+    // which fetch_total_donations cannot express -- it resolves 0 for both.
+    fetch_wallet_donation_summary(address).then(({ ok, donationCount }) => {
+      this.setState({
+        totalDonations: donationCount,
+        donationsChecked: true,
+        donationsCheckFailed: !ok
+      });
     });
 
     rankingsPromise.then((rankings) => {
@@ -475,25 +483,20 @@ class MainApp extends React.Component {
         <div className='d-flex gap-2'>
           <span>Current Wallet Address</span>
           <DonorBadge />
-          {this.state.totalDonations > 0 ? (
-            <Tooltip2
-              usePortal={true}
-              intent='danger'
-              placement='bottom'
-              transitionDuration={100}
-              content={
-                <div>
-                  Total donations: <strong>{this.state.totalDonations}</strong>
-                </div>
-              }
-              hoverOpenDelay={60}
-            >
-              <span className='d-inline-flex align-items-center gap-1'>
-                <FaMedal color='gold' size={16} />
-                {this.state.totalDonations}
-              </span>
-            </Tooltip2>
-          ) : null}
+          {/*
+            #258: replaces a second gold medal that sat here showing a raw
+            donation count. Two identical medals meaning different things
+            (premium unlocked vs. this wallet has donated) was confusing, and
+            a wallet that had never donated got nothing at all -- which is the
+            state most visitors are in.
+          */}
+          <WalletDonationChip
+            address={this.state.activeAddress}
+            donationCount={this.state.totalDonations}
+            settled={this.state.donationsChecked}
+            failed={this.state.donationsCheckFailed}
+            donationAddress={window.gContent?.ADDRESS_FLUX}
+          />
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>

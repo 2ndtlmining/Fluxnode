@@ -30,6 +30,7 @@ import { fetch_global_app_specs_raw } from 'api/specs';
 import { categorizeRunningApps } from 'runningAppsCategorized';
 import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
+import { aggregateDonations } from 'donor/donationTotals';
 import {
   fetch_node_benchmarks,
   fetch_node_resources,
@@ -226,40 +227,96 @@ export function fill_rewards(gstore) {
  * Results are de-duplicated by txid, because a single transaction paying both
  * addresses would otherwise be counted twice.
  */
+/*
+ * Every transaction touching one donation address, across all its pages.
+ *
+ * Returns null (not []) when the address could not be read at all, so
+ * "explorer unreachable" stays distinguishable from "this address has no
+ * donations" -- a distinction both callers below depend on.
+ *
+ * Routed through the explorer pool (explorer.js) rather than one hardcoded
+ * host: a 429 on the primary fails over instead of ending the scan.
+ * explorerFetchJson already rejects non-2xx and non-JSON bodies -- the
+ * "Loading block index..." text/plain case this used to handle by hand.
+ */
+async function scanDonationAddress(address) {
+  const basePath = '/txs?address=' + address;
+  const firstPage = await explorerFetchJson(basePath);
+  if (!firstPage) return null;
+
+  const { pagesTotal } = firstPage;
+  const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
+
+  // Sequentially rather than all at once, to stay under the explorer's limits.
+  const pages = [firstPage];
+  for (const page of pageNums) {
+    const json = await explorerFetchJson(`${basePath}&pageNum=${page}`);
+    if (json) pages.push(json);
+  }
+
+  return pages.reduce((prev, current) => prev.concat(current.txs || []), []);
+}
+
+/** Both donation addresses, scanned independently. One failing does not erase the other. */
+async function scanBothDonationAddresses() {
+  const scans = [];
+  for (const address of [window.gContent.ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
+    scans.push(await scanDonationAddress(address));
+  }
+  return scans;
+}
+
+/*
+ * Network-wide donation totals for Home's transparency panel (issue #258).
+ *
+ * Shares scanBothDonationAddresses with fetch_total_donations below rather than
+ * repeating the pagination, failover and null-vs-empty handling -- the two ask
+ * different questions of the same bytes.
+ *
+ * Resolves { ok: false } when BOTH addresses were unreadable, so the panel can
+ * say "could not load" instead of rendering a confident and wrong zero.
+ */
+export async function fetch_donation_totals() {
+  const scans = await scanBothDonationAddresses();
+  if (scans.every((txs) => txs === null)) return { ok: false, totals: null };
+
+  const txs = scans.filter(Boolean).flat();
+  return { ok: true, totals: aggregateDonations(txs) };
+}
+
+/*
+ * The same per-wallet donation count as fetch_total_donations, but able to say
+ * whether the chain could actually be READ (issue #258).
+ *
+ * fetch_total_donations resolves 0 when both addresses are unreachable, which
+ * is correct for the achievement gates it feeds -- an unverifiable donation
+ * should not unlock anything. It is wrong for the donation chip, where 0 and
+ * "could not check" must render differently: asking a real supporter to donate
+ * because the explorer returned 429 is the one outcome worth engineering
+ * against.
+ *
+ * Shares one scan, so the pages calling this instead of fetch_total_donations
+ * pay no extra requests.
+ */
+export async function fetch_wallet_donation_summary(walletAddress) {
+  const scans = await scanBothDonationAddresses();
+  if (scans.every((txs) => txs === null)) return { ok: false, donationCount: 0 };
+
+  const countedTxids = new Set();
+  for (const txs of scans) {
+    if (!txs) continue;
+    for (const tx of txs) {
+      if (!tx.vin?.some((v) => v.addr === walletAddress)) continue;
+      countedTxids.add(tx.txid);
+    }
+  }
+  return { ok: true, donationCount: countedTxids.size };
+}
+
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    // Routed through the explorer pool (explorer.js) rather than one hardcoded
-    // host: a 429 on the primary now fails over instead of ending the scan.
-    // explorerFetchJson already rejects non-2xx and non-JSON bodies -- the
-    // "Loading block index..." text/plain case this used to handle by hand.
-    const safeFetchJson = (path) => explorerFetchJson(path);
-
-    // Every page for one address. Returns null (not []) when the address could
-    // not be read at all, so "explorer unreachable" stays distinguishable from
-    // "this address has no donations".
-    const scanAddress = async (address) => {
-      const basePath = '/txs?address=' + address;
-      const firstPage = await safeFetchJson(basePath);
-      if (!firstPage) return null;
-
-      const { pagesTotal } = firstPage;
-      const pageNums = pagesTotal <= 1 ? [] : new Array(pagesTotal - 1).fill(0).map((_v, i) => i + 1);
-
-      // fetch pages sequentially (or in small batches) instead of all at once
-      const pages = [firstPage];
-      for (const page of pageNums) {
-        const json = await safeFetchJson(`${basePath}&pageNum=${page}`);
-        if (json) pages.push(json);
-      }
-
-      return pages.reduce((prev, current) => prev.concat(current.txs || []), []);
-    };
-
     (async () => {
-      const scans = [];
-      for (const address of [window.gContent.ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
-        scans.push(await scanAddress(address));
-      }
+      const scans = await scanBothDonationAddresses();
 
       if (scans.every((txs) => txs === null)) {
         resolve(0); // explorer unavailable - fail gracefully instead of crashing

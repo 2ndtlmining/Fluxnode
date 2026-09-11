@@ -1,0 +1,50 @@
+/*
+ * Two states, deliberately unequal in weight. The supporter chip is an
+ * acknowledgement and can carry colour; the ask is shown to almost every
+ * visitor on almost every visit, so it stays quiet enough to live beside the
+ * wallet address indefinitely without becoming something people resent.
+ */
+.wdc {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wdc--supporter {
+  color: #b4315f;
+  background: rgba(214, 51, 108, 0.12);
+
+  :global(.app-mode-dark) &,
+  .app-mode-dark & {
+    color: #ff8fb1;
+    background: rgba(255, 143, 177, 0.16);
+  }
+}
+
+.wdc--ask {
+  color: rgba(90, 96, 106, 0.95);
+  background: rgba(128, 128, 128, 0.1);
+  font-weight: 500;
+  transition: background 120ms ease, color 120ms ease;
+
+  &:hover {
+    color: #b4315f;
+    background: rgba(214, 51, 108, 0.1);
+  }
+
+  .app-mode-dark & {
+    color: rgba(168, 176, 190, 0.95);
+    background: rgba(255, 255, 255, 0.06);
+
+    &:hover {
+      color: #ff8fb1;
+      background: rgba(255, 143, 177, 0.12);
+    }
+  }
+}

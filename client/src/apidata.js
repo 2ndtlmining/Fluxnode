@@ -31,6 +31,8 @@ export {
   create_global_store,
   fill_rewards,
   fetch_total_donations,
+  fetch_donation_totals,
+  fetch_wallet_donation_summary,
   fetch_arcane_os_stats,
   fetch_total_network_utils,
   fetch_global_stats
