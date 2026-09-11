@@ -488,3 +488,95 @@
   color: var(--text-tertiary);
   padding-top: 8px;
 }
+
+// ── Reward reduction impact (issue #240) ─────────────────────────────────────
+
+.dt-impact-panel {
+  grid-column: 1 / -1;
+}
+
+.dt-impact-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+// The percentage is the number an operator reacts to, so it carries the weight.
+.dt-impact-pct {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-red);
+}
+
+.dt-impact-sub {
+  font-size: 0.76rem;
+  color: var(--text-tertiary);
+}
+
+.dt-impact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+
+  th {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding-bottom: 4px;
+  }
+
+  td {
+    padding: 3px 0;
+    color: var(--text-secondary);
+  }
+}
+
+.dt-impact-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dt-impact-down {
+  color: var(--accent-red);
+  font-weight: 600;
+}
+
+.dt-impact-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+}
+
+.dt-impact-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-red);
+  }
+
+  small {
+    font-size: 0.62rem;
+    color: var(--text-tertiary);
+  }
+}
+
+.dt-impact-caption {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding-top: 8px;
+}

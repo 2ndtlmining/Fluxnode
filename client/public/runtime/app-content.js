@@ -57,6 +57,26 @@ window.gContent.CC_BLOCK_REWARD = 14;
 
 /* ========================================== */
 /**
+ * Next block-reward reduction (issue #240).
+ *
+ * CC_BLOCK_REWARD above is what the chain pays TODAY. At the block height
+ * below it drops to CC_NEXT_BLOCK_REWARD, and every earnings figure derived
+ * from the current value becomes wrong on that block -- silently, because
+ * nothing in the app watches for it.
+ *
+ * Keeping both here means the countdown, the impact figures and the reward
+ * maths all read the same numbers, and the switchover is a one-line edit to
+ * this file with no rebuild: on the day, move CC_NEXT_* into CC_BLOCK_REWARD
+ * and set the following reduction.
+ *
+ * Set CC_NEXT_REWARD_REDUCTION_BLOCK to 0 to hide the countdown entirely when
+ * no reduction is scheduled.
+ **/
+window.gContent.CC_NEXT_REWARD_REDUCTION_BLOCK = 3071200;
+window.gContent.CC_NEXT_BLOCK_REWARD = 12.6;
+
+/* ========================================== */
+/**
  * Flux Reward Percentages
  *
  * All the values below are in percentages. For example, 7.5 means 7.5 %

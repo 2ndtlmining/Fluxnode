@@ -11,6 +11,8 @@ import { aggregateDonorAppsByCategory } from 'analytics/donorApps';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { fetch_wallet_tx_history } from 'analytics/walletTxFetch';
 import { counterpartyDisplay, WINDOW_DAYS } from 'analytics/walletTxHistory';
+import { RewardCountdown } from 'rewards/RewardCountdown';
+import { rewardImpact, tallyWalletTiers } from 'rewards/rewardReduction';
 import './index.scss';
 
 function fmtNum(n) {
@@ -141,6 +143,110 @@ function WalletActivityPanel({ walletAddress }) {
 }
 
 // ── Payout card ──────────────────────────────────────────────────────────
+
+
+function fmtSigned(n, digits = 2) {
+  if (n == null || !Number.isFinite(n)) return '—';
+  const sign = n > 0 ? '+' : n < 0 ? '−' : '';
+  return `${sign}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+}
+
+/*
+ * What the next block-reward reduction costs THIS wallet (issue #240).
+ *
+ * The countdown alone says when; this says how much. Figures are modelled with
+ * network node counts held constant -- they will change by October, but
+ * projecting network growth would mean presenting a guess as a number. The
+ * honest question this answers is "what does the reduction itself do".
+ *
+ * USD is shown only when a price is actually available: flux_price_usd falls
+ * back to 0 when the currency fetch is rate-limited (#189), and a column of
+ * $0.00 reads as "worthless" rather than "unknown".
+ */
+function RewardImpactPanel({ nodes, gstore }) {
+  const tiers = tallyWalletTiers(nodes);
+  const nodeTotal = tiers.CUMULUS + tiers.NIMBUS + tiers.STRATUS;
+  const price = gstore?.flux_price_usd || 0;
+  const impact = rewardImpact(tiers, gstore?.node_count, price);
+
+  if (!impact) return null;
+
+  if (nodeTotal === 0) {
+    return (
+      <div className="hov-panel dt-impact-panel">
+        <div className="hov-header"><span className="hov-header-title">REWARD REDUCTION IMPACT</span></div>
+        <div className="hov-empty">No nodes found for this wallet, so there is nothing to project.</div>
+      </div>
+    );
+  }
+
+  const rows = [
+    ['Daily', impact.daily],
+    ['Weekly', impact.weekly],
+    ['Monthly', impact.monthly]
+  ];
+
+  return (
+    <div className="hov-panel dt-impact-panel">
+      <div className="hov-header">
+        <span className="hov-header-title">REWARD REDUCTION IMPACT</span>
+        <span className="hov-header-badge">
+          {impact.currentBlockReward} &rarr; {impact.reducedBlockReward} FLUX / block
+        </span>
+      </div>
+
+      <div className="dt-impact-headline">
+        <span className="dt-impact-pct">{fmtSigned(impact.pctChange, 1)}%</span>
+        <span className="dt-impact-sub">
+          on {nodeTotal} node{nodeTotal === 1 ? '' : 's'} at block{' '}
+          {impact.reductionBlock.toLocaleString()}
+        </span>
+      </div>
+
+      <table className="dt-impact-table">
+        <thead>
+          <tr>
+            <th />
+            <th className="dt-impact-num">Now</th>
+            <th className="dt-impact-num">After</th>
+            <th className="dt-impact-num">Change</th>
+            {price > 0 && <th className="dt-impact-num">Change ($)</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, p]) => (
+            <tr key={label}>
+              <td>{label}</td>
+              <td className="dt-impact-num">{p.current.toFixed(2)}</td>
+              <td className="dt-impact-num">{p.reduced.toFixed(2)}</td>
+              <td className="dt-impact-num dt-impact-down">{fmtSigned(p.delta)}</td>
+              {price > 0 && (
+                <td className="dt-impact-num dt-impact-down">${fmtSigned(p.deltaUsd)}</td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="dt-impact-tiers">
+        {Object.entries(impact.perTier).map(([tier, t]) => (
+          <span key={tier} className="dt-impact-chip">
+            {tier.charAt(0) + tier.slice(1).toLowerCase()} &times;{t.nodes}
+            <strong>{fmtSigned(t.deltaDaily)}</strong>
+            <small>FLUX/day</small>
+          </span>
+        ))}
+      </div>
+
+      <div className="dt-impact-caption">
+        FLUX amounts, with network node counts held at today&apos;s levels.
+        {price > 0
+          ? ` Dollar values at the current ${price.toFixed(4)} USD price.`
+          : ' Dollar values hidden while the price feed is unavailable.'}
+      </div>
+    </div>
+  );
+}
 
 function PayoutCard({ nextNode, lastPaidNode }) {
   return (
@@ -299,6 +405,13 @@ export function DonorTab() {
   });
   const [appCategories, setAppCategories] = useState({ categories: [], totalApps: 0 });
   const [networkPct, setNetworkPct] = useState({ cores: 0, ram: 0, ssd: 0 });
+  /*
+   * The loader already fetches the global store for utilisation and app
+   * categories, but only kept derived slices of it. The reward-reduction
+   * panels (issue #240) need current_block_height, node_count and
+   * flux_price_usd, so it is held rather than discarded -- no extra fetch.
+   */
+  const [gstore, setGstore] = useState(null);
 
   useEffect(() => {
     if (!donorWallet) {
@@ -329,18 +442,22 @@ export function DonorTab() {
 
       setUtilization(util);
 
-      const [gstore, rawSpecs] = await Promise.all([
+      // Named distinctly from the `gstore` state above: shadowing it here
+      // compiles and behaves correctly, but reads as though setGstore were
+      // being handed the state variable rather than the fetched one.
+      const [fetchedStore, rawSpecs] = await Promise.all([
         fetch_total_network_utils(stage1),
         fetch_global_app_specs_raw(),
       ]);
       if (cancelled) return;
 
       const specIndex = buildSpecIndex(rawSpecs);
-      setAppCategories(aggregateDonorAppsByCategory(gstore.nodesByIp || {}, addresses, specIndex));
+      setAppCategories(aggregateDonorAppsByCategory(fetchedStore.nodesByIp || {}, addresses, specIndex));
+      setGstore(fetchedStore);
       setNetworkPct({
-        cores: gstore.utilized.cores_percentage,
-        ram: gstore.utilized.ram_percentage,
-        ssd: gstore.utilized.ssd_percentage,
+        cores: fetchedStore.utilized.cores_percentage,
+        ram: fetchedStore.utilized.ram_percentage,
+        ssd: fetchedStore.utilized.ssd_percentage,
       });
 
       setLoading(false);
@@ -378,10 +495,12 @@ export function DonorTab() {
         <span className="dt-tab-hero-label">Next payout</span>
       </div>
       <PayoutCard nextNode={nextNode} lastPaidNode={lastPaidNode} />
+      <RewardCountdown currentBlock={gstore?.current_block_height} />
       <div className="donor-tab-panel-grid">
         <DonorNodesList nodes={nodes} />
         <AppsByCategoryPanel categories={appCategories.categories} totalApps={appCategories.totalApps} />
         <UtilizationPanel donorUtil={utilization} networkPct={networkPct} />
+        <RewardImpactPanel nodes={nodes} gstore={gstore} />
         <WalletActivityPanel walletAddress={donorWallet} />
       </div>
     </div>

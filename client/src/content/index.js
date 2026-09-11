@@ -28,6 +28,11 @@ export const CC_COLLATERAL_STRATUS = window.gContent.CC_COLLATERAL_STRATUS;
 //export const CC_COLLATERAL_FRACTUS = window.gContent.CC_COLLATERAL_FRACTUS;
 
 export const CC_BLOCK_REWARD = window.gContent.CC_BLOCK_REWARD;
+
+// Next scheduled block-reward reduction (issue #240). The block is 0 when none
+// is scheduled, which is how the countdown knows to hide itself.
+export const CC_NEXT_REWARD_REDUCTION_BLOCK = window.gContent.CC_NEXT_REWARD_REDUCTION_BLOCK ?? 0;
+export const CC_NEXT_BLOCK_REWARD = window.gContent.CC_NEXT_BLOCK_REWARD ?? 0;
 export const CC_FLUX_REWARD_CUMULUS = window.gContent.CC_FLUX_REWARD_CUMULUS;
 export const CC_FLUX_REWARD_NIMBUS = window.gContent.CC_FLUX_REWARD_NIMBUS;
 export const CC_FLUX_REWARD_STRATUS = window.gContent.CC_FLUX_REWARD_STRATUS;
