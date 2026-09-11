@@ -8,7 +8,7 @@ import { Container, Row, Col } from 'react-grid-system';
 import { InfoCell } from 'components/InfoCell';
 import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
 
-import { pa_summary_full } from 'main/apidata';
+import { pa_summary_full } from 'apidata';
 import { hide_sensitive_number } from 'utils';
 import ErgoLogo from 'assets/Ergo_Orange.png'
 import KDALogo from 'assets/kadena-kda-logo.png'

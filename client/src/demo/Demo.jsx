@@ -2,7 +2,7 @@ import MainApp from 'main/MainApp';
 import React from 'react';
 import { AppToaster } from 'components/AppToaster';
 import { Intent, Spinner } from '@blueprintjs/core';
-import { getDemoWallet } from '../main/apidata';
+import { getDemoWallet } from 'apidata';
 import FailedToLoadDemo from './FailedToLoadDemo';
 //import { setGAEvent, setGAPageView } from 'g-analytic';
 
