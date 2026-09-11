@@ -134,7 +134,8 @@ function _worstRankInTier(walletTierNodes, nodeData, tier, metricKey) {
 
 // Find wallet's best rank in a country for a metric
 function _bestRankInCountry(walletCountryNodes, nodeData, tier, countryCode, metricKey) {
-  const groupNodes = nodeData.filter((n) => n.tier === tier && n.geo?.countryCode === countryCode);
+  // `cc` replaced the inlined geo object in v5 of the rankings cache (#153).
+  const groupNodes = nodeData.filter((n) => n.tier === tier && n.cc === countryCode);
   let best = null;
   for (const node of walletCountryNodes) {
     const ip = node.ip_full?.host;
@@ -241,7 +242,7 @@ export function computeCountryPerformanceAchievements(walletNodes, nodeData, nod
     const country = Object.values(nodeGeoMap).find((g) => g.countryCode === cc)?.country;
 
     for (const metric of PERF_METRICS) {
-      const groupNodes = nodeData.filter((n) => n.tier === tier && n.geo?.countryCode === cc);
+      const groupNodes = nodeData.filter((n) => n.tier === tier && n.cc === cc);
       const totalInGroup = groupNodes.length;
       if (totalInGroup === 0) continue;
 
