@@ -739,9 +739,12 @@ export async function getWalletNodes(walletAddress) {
       wNodes = (await res.json())?.data;
     } catch {}
   } else {
-    const listResponse = await fetch(API_FLUX_NODES_ALL_URL);
-    const data = await listResponse.json();
-    wNodes = data.fluxNodes.filter((n) => n.payment_address == walletAddress);
+    // Through the explorer pool: this is the wallet-search path, so a rate
+    // limit here means a user sees no nodes at all.
+    const data = await explorerFetchJson(API_FLUX_NODES_ALL_PATH);
+    wNodes = Array.isArray(data?.fluxNodes)
+      ? data.fluxNodes.filter((n) => n.payment_address == walletAddress)
+      : [];
   }
   return wNodes;
 }
