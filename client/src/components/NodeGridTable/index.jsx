@@ -132,7 +132,32 @@ export const NodeGridTable = ({
   };
 
   const columnDefs = [
-    { field: 'ip_display', headerName: 'IP', cellRenderer: 'ipCell', filter: 'agTextColumnFilter', minWidth: 100 },
+    /*
+     * minWidth 190, NOT the 100 this used to carry (issue #141: on a narrow
+     * viewport the IP column truncated the address and port).
+     *
+     * The mechanism: sizeColumnsToFit() distributes available width across
+     * columns and falls back to each column's minWidth when there is not
+     * enough to go round. On mobile there never is, so this column collapsed
+     * to exactly 100px -- narrower than defaultColDef's own 150px default,
+     * which it was overriding DOWNWARD. The column holding the longest value
+     * had the smallest floor of any column in the grid.
+     *
+     * 190 is the worst realistic case, not a guess: ip_display is the raw
+     * ip:port string, so '255.255.255.255:16127' is 21 characters. At the
+     * alpine theme's ~14px font that is ~165px of glyphs plus ~34px of cell
+     * padding. Most nodes are far shorter and will never reach this floor.
+     *
+     * Raising a minWidth only changes the cramped case -- where space is
+     * available, sizeColumnsToFit already grants more than the minimum -- so
+     * this does not widen the column on desktop. On a genuinely narrow screen
+     * the grid now scrolls horizontally instead of truncating, which is the
+     * intended trade.
+     *
+     * Tier and Rank below keep minWidth 100 deliberately: 'CUMULUS' and a
+     * rank number both fit comfortably.
+     */
+    { field: 'ip_display', headerName: 'IP', cellRenderer: 'ipCell', filter: 'agTextColumnFilter', minWidth: 190 },
     { field: 'tier', headerName: 'Tier', cellRenderer: 'tierCell', filter: 'agTextColumnFilter', minWidth: 100 },
     { field: 'rank', headerName: 'Rank', filter: 'agTextColumnFilter', minWidth: 100 },
     { field: 'last_reward', headerName: 'Last Reward', comparator: dateComparator, filter: 'agTextColumnFilter' },
