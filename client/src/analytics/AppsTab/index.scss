@@ -312,91 +312,151 @@
 
 // Tables are the one thing allowed to scroll horizontally rather than wrap --
 // narrow viewports get a scrollbar instead of an unreadable squeeze.
-.apps-team-scroll {
-  overflow-x: auto;
-  max-height: 340px;
-  overflow-y: auto;
-}
-
-.apps-team-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.78rem;
-
-  th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--surface-primary);
-    text-align: left;
-    font-size: 0.64rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--border-secondary);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 5px 10px;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.07);
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-
-  tbody tr:hover td { background: var(--surface-inset); }
-
-  tfoot td {
-    position: sticky;
-    bottom: 0;
-    background: var(--surface-primary);
-    border-top: 1px solid var(--border-secondary);
-    border-bottom: none;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-}
-
-.apps-team-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.apps-team-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.apps-team-repo {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-tertiary);
-}
-
 // De-emphasised so the per-instance figure stays the one you read first.
-.apps-team-total {
-  color: var(--text-tertiary);
-  font-weight: 400;
-}
-
-.apps-team-muted {
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.apps-team-expired {
-  color: var(--accent-red);
-  font-weight: 600;
-}
-
 .apps-team-caption {
   font-size: 0.7rem;
   color: var(--text-tertiary);
   padding-top: 8px;
+}
+
+// ── Flux-team-sponsored app cards (issue #229) ───────────────────────────────
+//
+// Replaces a seven-column table that stretched the full panel width for four
+// short values per row. Chip and stat treatments deliberately mirror
+// home/WorkhorsePanel so an app reads the same wherever it appears.
+
+// Fleet totals, once, where the table footer used to repeat them per column.
+.atc-fleet {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: var(--text-tertiary);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-secondary);
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  i { font-style: normal; opacity: 0.4; }
+}
+
+// auto-fill, not auto-fit: with a handful of apps, auto-fit stretches each card
+// to half the panel and the text floats in whitespace -- the "uses a lot of
+// space" complaint. auto-fill keeps the column width honest.
+.atc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 8px;
+}
+
+.atc-card {
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface-inset);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0; // lets the ellipsis on .atc-name actually engage
+
+  &:hover { border-color: var(--border-primary); }
+}
+
+.atc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.atc-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+// Mirrors .whp-cat in home/WorkhorsePanel.
+.atc-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  padding: 1px 6px;
+  border: 1px solid;
+  border-radius: 20px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.atc-repo {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atc-muted {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.atc-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+// The instance count is the sort key and what the sponsored percentage is
+// actually made of, so it carries the most weight on the card.
+.atc-instances {
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+
+  small {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+  }
+}
+
+.atc-res {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+
+  i { font-style: normal; opacity: 0.4; margin: 0 1px; }
+  svg { opacity: 0.7; }
+}
+
+.atc-expiry {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+
+  &--expired {
+    color: var(--accent-red);
+    font-weight: 600;
+  }
 }
