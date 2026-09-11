@@ -376,3 +376,167 @@
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
+
+/*
+ * Region explorer layout (issue #254).
+ *
+ * The map was full-width and very tall, which left no room for the figures it
+ * is now a control for. Two-thirds map, one-third cards at desktop; stacked
+ * below 1100px where side-by-side would squeeze both.
+ */
+.network-tab-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  }
+}
+
+.network-tab-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-content: start;
+}
+
+.nt-card {
+  display: flex;
+  flex-direction: column;
+
+  /*
+   * The kv row styling these cards use lives in home/HomeOverview's stylesheet,
+   * which is only in the bundle when that page's chunk is loaded -- so on a
+   * direct load of /analytics the labels and values ran together. Scoped here
+   * instead, so the cards do not depend on another route having been visited.
+   */
+  .hov-kv-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 2px 0;
+  }
+
+  .hov-kv-label {
+    font-size: 0.76rem;
+    color: var(--text-secondary, rgba(128, 128, 128, 0.95));
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .hov-kv-value {
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.nt-card-scope {
+  font-size: 0.7rem;
+  color: var(--text-tertiary, rgba(128, 128, 128, 0.85));
+  padding-bottom: 6px;
+}
+
+.nt-card-foot {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 0.67rem;
+  color: var(--text-tertiary, rgba(128, 128, 128, 0.8));
+}
+
+.nt-tier-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.nt-app-icon {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.nt-kv-row--total {
+  border-top: 1px solid rgba(128, 128, 128, 0.14);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.nt-apps-list {
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+/* ── Scope selector ──────────────────────────────────────────────────────── */
+
+.nt-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.nt-scope-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nt-scope-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, rgba(128, 128, 128, 0.85));
+  flex: 0 0 62px;
+}
+
+.nt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(128, 128, 128, 0.22);
+  background: var(--surface-inset);
+  color: inherit;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.73rem;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+
+  &:hover {
+    border-color: rgba(43, 97, 209, 0.55);
+  }
+
+  &:focus-visible {
+    outline: 1px solid rgba(43, 97, 209, 0.7);
+    outline-offset: 2px;
+  }
+}
+
+.nt-chip--active {
+  border-color: #2b61d1;
+  background: rgba(43, 97, 209, 0.14);
+  font-weight: 600;
+}
+
+.nt-chip-count {
+  font-size: 0.66rem;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}

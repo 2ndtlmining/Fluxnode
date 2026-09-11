@@ -168,3 +168,14 @@
   color: var(--text-tertiary);
   text-align: right;
 }
+
+/* Selectable bubbles (issue #254) */
+.wm-bubble--clickable {
+  cursor: pointer;
+}
+
+.wm-bubble--selected {
+  outline: 2px solid #2b61d1;
+  outline-offset: 2px;
+  z-index: 2;
+}

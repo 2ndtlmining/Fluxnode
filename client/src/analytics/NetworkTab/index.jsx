@@ -3,7 +3,18 @@ import { Spinner } from '@blueprintjs/core';
 import { FiCpu, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaTrophy } from 'react-icons/fa';
 import ReactCountryFlag from 'react-country-flag';
-import { fetch_node_geolocation } from 'networkNodes';
+import {
+  fetch_node_geolocation,
+  fetch_node_benchmarks,
+  fetch_node_running_apps,
+  fetch_flux_nodes
+} from 'networkNodes';
+import { aggregateRegions, selectRegionStats, countriesIn } from 'analytics/regionStats';
+import { appNameFromContainer } from 'fluxinfo';
+import { fetch_global_app_specs_raw } from 'apidata';
+import { buildSpecIndex } from 'appSpecs';
+import { isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
+import { TotalNetworkCard, NetworkResourcesCard, HostedApplicationsCard } from './regionCards';
 import { fetch_global_performance_rankings } from 'apidata';
 import { rollupByContinent } from 'analytics/continentDistribution';
 import { WorldMap } from 'analytics/WorldMap';
@@ -164,11 +175,84 @@ function ContinentBreakdown({ continents, networkTotal }) {
   );
 }
 
+/*
+ * Region selector. Continent first, then the countries within it (issue #254).
+ *
+ * Sits ABOVE the map because it drives the map -- the continent list used to be
+ * a read-only panel underneath, which read as a summary rather than a control.
+ */
+function ScopeSelector({ agg, scope, onChange }) {
+  const continents = Object.entries(agg?.continents || {})
+    .filter(([name]) => name !== 'Unlocated')
+    .sort((a, b) => b[1].nodes - a[1].nodes)
+    .map(([name, b]) => ({ name, nodes: b.nodes }));
+
+  const countries = scope.continent ? countriesIn(agg, scope.continent) : [];
+
+  return (
+    <div className="nt-scope">
+      <div className="nt-scope-group">
+        <span className="nt-scope-label">Continent</span>
+        <div className="nt-chips">
+          <button
+            type="button"
+            className={`nt-chip${scope.level === 'network' ? ' nt-chip--active' : ''}`}
+            onClick={() => onChange({ level: 'network' })}
+          >
+            Whole network
+          </button>
+          {continents.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              className={`nt-chip${scope.continent === c.name ? ' nt-chip--active' : ''}`}
+              onClick={() => onChange({ level: 'continent', continent: c.name })}
+            >
+              {c.name}
+              <span className="nt-chip-count">{c.nodes.toLocaleString()}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Only once a continent narrows it to a usable list -- 57 countries at
+          once is a wall, not a control. */}
+      {scope.continent && countries.length > 0 && (
+        <div className="nt-scope-group">
+          <span className="nt-scope-label">Country</span>
+          <div className="nt-chips">
+            <button
+              type="button"
+              className={`nt-chip${scope.level === 'continent' ? ' nt-chip--active' : ''}`}
+              onClick={() => onChange({ level: 'continent', continent: scope.continent })}
+            >
+              All of {scope.continent}
+            </button>
+            {countries.map((c) => (
+              <button
+                key={c.countryCode}
+                type="button"
+                className={`nt-chip${scope.country === c.countryCode ? ' nt-chip--active' : ''}`}
+                onClick={() => onChange({ level: 'country', continent: scope.continent, country: c.countryCode })}
+              >
+                {c.country}
+                <span className="nt-chip-count">{c.nodes.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NetworkTab() {
   const [countryCounts, setCountryCounts] = useState([]);
   const [continentData, setContinentData] = useState({ continents: [], networkTotal: 0 });
   const [globalRankings, setGlobalRankings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [agg, setAgg] = useState(null);
+  const [scope, setScope] = useState({ level: 'network' });
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +281,68 @@ export function NetworkTab() {
       setGlobalRankings(rankings);
     })().catch(() => {});
 
+    /*
+     * Region aggregation (#254). Every feed here is shared via networkNodes.js,
+     * so the 4 MB node list and the 3.45 MB benchmark projection are each
+     * fetched once for this page even though rankings above wants them too.
+     */
+    (async () => {
+      const [nodes, geoEntries, benchmarks, runningApps, rawSpecs] = await Promise.all([
+        fetch_flux_nodes(),
+        fetch_node_geolocation(),
+        fetch_node_benchmarks(),
+        fetch_node_running_apps(),
+        // Cached for 5 minutes in sessionStorage and already warm from the Apps
+        // tab; needed so these categories match the ones shown there.
+        fetch_global_app_specs_raw()
+      ]);
+      if (cancelled) return;
+
+      const geoByHost = {};
+      for (const entry of geoEntries || []) {
+        const geo = entry?.geolocation;
+        if (geo?.ip) geoByHost[(geo.ip || '').split(':')[0]] = geo;
+      }
+
+      // Keyed on the exact ip:port: capacity is per NODE, and one machine can
+      // run several nodes with very different hardware allocations.
+      const capByNode = {};
+      for (const entry of benchmarks || []) {
+        const bench = entry?.benchmark?.bench;
+        if (bench?.ipaddress) {
+          capByNode[bench.ipaddress] = { cores: bench.cores, ram: bench.ram, ssd: bench.ssd };
+        }
+      }
+
+      const appsByNode = {};
+      for (const entry of runningApps || []) {
+        const running = entry?.apps?.runningapps;
+        if (!entry?.ip || !Array.isArray(running)) continue;
+        appsByNode[entry.ip] = running
+          .map((a) => appNameFromContainer((a?.Names || [])[0]))
+          .filter(Boolean);
+      }
+
+      /*
+       * The SAME categorisation the Apps tab uses: join the running app's name
+       * to its globalappsspecifications entry and read spec.category. A keyword
+       * match on the name instead puts ~61% of instances in "other", and two
+       * different breakdowns of the same apps on one page is worse than none.
+       *
+       * The isOpaqueRuntimeImage guard mirrors runningAppsCategorized.js:
+       * runonflux/orbit is a git-deployment wrapper, so its real workload is
+       * unknowable and categorising it by the operator's deployment name would
+       * be misleading.
+       */
+      const specIndex = buildSpecIndex(rawSpecs || []);
+      const categoryOf = (appName) => {
+        const spec = specIndex[appName];
+        return isOpaqueRuntimeImage(spec?.repotag) ? 'other' : spec?.category || 'other';
+      };
+
+      setAgg(aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, categoryOf }));
+    })().catch(() => {});
+
     return () => { cancelled = true; };
   }, []);
 
@@ -214,6 +360,14 @@ export function NetworkTab() {
       + (globalRankings.officialNodeCounts?.STRATUS || 0)
     : null;
 
+  const stats = selectRegionStats(agg, scope);
+  const scopeLabel =
+    scope.level === 'country'
+      ? agg?.countries?.[scope.country]?.country || scope.country
+      : scope.level === 'continent'
+        ? scope.continent
+        : 'Whole network';
+
   return (
     <div className="network-tab">
       <div className="network-tab-hero">
@@ -221,9 +375,45 @@ export function NetworkTab() {
         <span className="network-tab-hero-label">Total nodes</span>
       </div>
 
-      <PanelGate panelKey="worldMap" feature="World Map" preview="blur">
-        <WorldMap countryCounts={countryCounts} />
-      </PanelGate>
+      {agg && <ScopeSelector agg={agg} scope={scope} onChange={setScope} />}
+
+      {/*
+        * Map and cards side by side. The map used to be full width and very
+        * tall; at a third of the page it still reads while leaving room for the
+        * figures it is now a control for (#254).
+        */}
+      <div className="network-tab-explorer">
+        <PanelGate panelKey="worldMap" feature="World Map" preview="blur">
+          <WorldMap
+            countryCounts={countryCounts}
+            scope={scope}
+            selectedCountry={scope.level === 'country' ? scope.country : null}
+            onSelectCountry={
+              agg
+                ? (code) => {
+                    const c = agg.countries?.[code];
+                    if (c) setScope({ level: 'country', continent: c.continent, country: code });
+                  }
+                : undefined
+            }
+          />
+        </PanelGate>
+
+        <div className="network-tab-cards">
+          {stats ? (
+            <>
+              <TotalNetworkCard stats={stats} label={scopeLabel} />
+              <NetworkResourcesCard stats={stats} label={scopeLabel} />
+              <HostedApplicationsCard stats={stats} label={scopeLabel} />
+            </>
+          ) : (
+            <div className="hov-panel hov-panel-center nt-card">
+              <Spinner size={20} />
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="network-tab-continent-row">
         <PanelGate panelKey="continentBreakdown" feature="Continent Breakdown" preview="blur">
           <ContinentBreakdown continents={continentData.continents} networkTotal={continentData.networkTotal} />

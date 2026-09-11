@@ -4,6 +4,7 @@ import './index.scss';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { getCountryCentroid, projectToPercent } from 'geo/countryCentroids';
 import { WORLD_LAND_PATH } from 'geo/worldLandPath';
+import { boundsFor, viewBoxFor, remapToBounds, WORLD_BOUNDS } from 'geo/regionBounds';
 
 const MIN_RADIUS_PX = 3;
 const MAX_RADIUS_PX = 11;
@@ -25,8 +26,10 @@ function fmtNum(n) {
   return n.toLocaleString();
 }
 
-export function WorldMap({ countryCounts }) {
+export function WorldMap({ countryCounts, scope, selectedCountry, onSelectCountry }) {
   const counts = countryCounts || [];
+  const bounds = boundsFor(scope) || WORLD_BOUNDS;
+  const viewBox = viewBoxFor(bounds);
   const maxCount = counts[0]?.nodeCount || 1;
 
   // Countries with no known centroid are left off the map rather than
@@ -71,7 +74,7 @@ export function WorldMap({ countryCounts }) {
               */}
             <svg
               className="wm-land"
-              viewBox="0 0 360 180"
+              viewBox={viewBox}
               preserveAspectRatio="none"
               aria-hidden="true"
               focusable="false"
@@ -83,37 +86,64 @@ export function WorldMap({ countryCounts }) {
               <div
                 key={`lat-${lat}`}
                 className="wm-graticule wm-graticule--h"
-                style={{ top: `${projectToPercent([lat, 0]).yPct}%` }}
+                style={{ top: `${remapToBounds(projectToPercent([lat, 0]), bounds).yPct}%` }}
               />
             ))}
             {GRATICULE_LONS.map((lon) => (
               <div
                 key={`lon-${lon}`}
                 className="wm-graticule wm-graticule--v"
-                style={{ left: `${projectToPercent([0, lon]).xPct}%` }}
+                style={{ left: `${remapToBounds(projectToPercent([0, lon]), bounds).xPct}%` }}
               />
             ))}
 
-            {bubbles.map((b) => (
-              <Tooltip2
-                key={b.countryCode}
-                content={`${b.country}: ${fmtNum(b.nodeCount)} nodes`}
-                placement="top"
-                hoverOpenDelay={150}
-                transitionDuration={80}
-              >
-                <div
-                  className="wm-bubble"
-                  title={`${b.country}: ${fmtNum(b.nodeCount)} nodes`}
-                  style={{
-                    left: `${b.xPct}%`,
-                    top: `${b.yPct}%`,
-                    width: `${b.radiusPx * 2}px`,
-                    height: `${b.radiusPx * 2}px`,
-                  }}
-                />
-              </Tooltip2>
-            ))}
+            {bubbles.map((b) => {
+              /*
+               * Bubbles are HTML in percent, the landmass is SVG -- both are
+               * remapped through the SAME bounds so a zoom cannot drift one off
+               * the other (#254).
+               */
+              const { xPct, yPct } = remapToBounds({ xPct: b.xPct, yPct: b.yPct }, bounds);
+              // Outside the current view. Hidden rather than clamped: pinned to
+              // an edge it would read as a real node in the wrong country.
+              if (xPct < -2 || xPct > 102 || yPct < -2 || yPct > 102) return null;
+
+              const isSelected = selectedCountry && b.countryCode === selectedCountry;
+              return (
+                <Tooltip2
+                  key={b.countryCode}
+                  content={`${b.country}: ${fmtNum(b.nodeCount)} nodes`}
+                  placement="top"
+                  hoverOpenDelay={150}
+                  transitionDuration={80}
+                >
+                  <div
+                    className={`wm-bubble${isSelected ? ' wm-bubble--selected' : ''}${onSelectCountry ? ' wm-bubble--clickable' : ''}`}
+                    role={onSelectCountry ? 'button' : undefined}
+                    tabIndex={onSelectCountry ? 0 : undefined}
+                    aria-label={onSelectCountry ? `Show ${b.country}` : undefined}
+                    onClick={onSelectCountry ? () => onSelectCountry(b.countryCode) : undefined}
+                    onKeyDown={
+                      onSelectCountry
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onSelectCountry(b.countryCode);
+                            }
+                          }
+                        : undefined
+                    }
+                    title={`${b.country}: ${fmtNum(b.nodeCount)} nodes`}
+                    style={{
+                      left: `${xPct}%`,
+                      top: `${yPct}%`,
+                      width: `${b.radiusPx * 2}px`,
+                      height: `${b.radiusPx * 2}px`,
+                    }}
+                  />
+                </Tooltip2>
+              );
+            })}
           </div>
           {unmappedCount > 0 && (
             <div className="wm-caption">
