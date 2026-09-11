@@ -6,17 +6,71 @@
   gap: 20px;
 }
 
+/*
+ * Six panels, so only a column count that DIVIDES six leaves a full last row
+ * (issue #248).
+ *
+ * This was `repeat(auto-fit, minmax(340px, 1fr))`, which resolves to 4 or 5
+ * columns at ordinary desktop widths -- 6 mod 5 = 1, 6 mod 4 = 2 -- stranding
+ * DEPLOYED TODAY alone on a second row at a third the width and two thirds the
+ * height of its siblings. It only looked correct on a very wide display, where
+ * auto-fit happened to give 6+ tracks and collapse the empties.
+ *
+ * Fixed counts rather than auto-fit because the constraint here is divisibility,
+ * which auto-fit cannot express.
+ */
 .apps-tab-panel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  // Below this the six tracks would each fall under the ~340px these panels
+  // need for their name + bar + value rows.
+  @media (min-width: 2200px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .apps-tab-ranked-panel {
   min-width: 0;
 }
 
+/*
+ * The team badge sits INSIDE .hov-ranked-name, which truncates with an
+ * ellipsis -- so the badge was being cut mid-word to "Flux tea..." (issue
+ * #255). Splitting the cell into a flex row lets the ADDRESS absorb the
+ * truncation while the badge keeps its full width.
+ *
+ * Scoped to .apps-tab-owner-name rather than changing .hov-ranked-name, which
+ * is shared with the Network and Donor tabs and has no badge to protect.
+ */
+.apps-tab-owner-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  // The shared rule sets these for the whole cell; the inner id owns them now.
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.apps-tab-owner-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .apps-tab-team-flag {
+  flex-shrink: 0;
+  white-space: nowrap;
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: 999px;

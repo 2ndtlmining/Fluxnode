@@ -164,8 +164,8 @@ function RankedAddressList({ title, rows, valueLabel, teamZelids = [] }) {
           rows.map(({ key, value }, i) => (
             <div key={key} className="hov-ranked-row">
               <span className={`hov-rank${i === 0 ? ' hov-rank--gold' : i === 1 ? ' hov-rank--silver' : i === 2 ? ' hov-rank--bronze' : ''}`}>#{i + 1}</span>
-              <span className="hov-ranked-name" title={key}>
-                {truncateAddr(key)}
+              <span className="hov-ranked-name apps-tab-owner-name" title={key}>
+                <span className="apps-tab-owner-id">{truncateAddr(key)}</span>
                 {teamZelids.includes(key) && <span className="apps-tab-team-flag">Flux team</span>}
               </span>
               <div className="hov-ranked-bar-wrap">
