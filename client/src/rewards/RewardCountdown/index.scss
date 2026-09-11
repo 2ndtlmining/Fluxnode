@@ -1,0 +1,41 @@
+// Countdown to the next block-reward reduction (issue #240).
+//
+// The .timer / .timer-blocks / .timer-block / .v-rule structure is inherited
+// from main/PayoutTimer's stylesheet, which is already global. Only the
+// differences live here: this clock counts down to a cut rather than a payout,
+// so it carries a warning accent instead of the payout styling.
+
+.rwc-timer {
+  width: 100%;
+
+  .rwc-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-amber, #f59e0b);
+  }
+
+  // The reduction is bad news for the operator; the digits say so without
+  // needing a second label to explain it.
+  .timer-number {
+    color: var(--accent-amber, #f59e0b);
+  }
+}
+
+// Sized down for a spot next to other content rather than a panel of its own.
+.rwc-timer--compact {
+  .timer-number {
+    font-size: 1.3rem;
+  }
+
+  .timer-info {
+    font-size: 0.6rem;
+  }
+}
+
+.rwc-caption {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding-top: 6px;
+  text-align: center;
+}
