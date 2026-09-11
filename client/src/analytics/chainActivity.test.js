@@ -1,4 +1,4 @@
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from './chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -239,5 +239,81 @@ describe('todaysUtilityBlocks', () => {
 
   it('returns 0 when the last entry has no utility count', () => {
     expect(todaysUtilityBlocks([{ date: '2026-09-10', emptyBlocks: 5 }])).toBe(0);
+  });
+});
+
+describe('fetch_chain_activity_blocks', () => {
+  afterEach(() => { jest.resetAllMocks(); });
+
+  function ok(body) {
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+  }
+
+  it('normalises snake_case to camelCase at the boundary', async () => {
+    global.fetch = jest.fn(() => ok({
+      success: true,
+      totals: { p2p_only: 462, dapp_only: 28, both: 4, utility_total: 494 },
+      blocks: [{ height: 2939035, date: '2026-09-11', is_p2p: true, is_dapp: false, transfer_count: 2 }],
+    }));
+
+    const result = await fetch_chain_activity_blocks(50);
+    expect(result.ok).toBe(true);
+    expect(result.totals).toEqual({ p2pOnly: 462, dappOnly: 28, both: 4, utilityTotal: 494 });
+    expect(result.blocks[0]).toEqual({
+      height: 2939035, date: '2026-09-11', isP2p: true, isDapp: false, transferCount: 2,
+    });
+  });
+
+  it('the disjoint totals sum to the utility total', async () => {
+    // Overlapping "any P2P"/"any Dapp" counts would not add up, and three
+    // numbers that visibly fail to sum read as a bug on screen.
+    global.fetch = jest.fn(() => ok({
+      success: true,
+      totals: { p2p_only: 10, dapp_only: 3, both: 2, utility_total: 15 },
+      blocks: [],
+    }));
+    const { totals } = await fetch_chain_activity_blocks();
+    expect(totals.p2pOnly + totals.dappOnly + totals.both).toBe(totals.utilityTotal);
+  });
+
+  it('passes the requested limit through', async () => {
+    global.fetch = jest.fn(() => ok({ success: true, totals: {}, blocks: [] }));
+    await fetch_chain_activity_blocks(25);
+    expect(global.fetch.mock.calls[0][0]).toContain('limit=25');
+  });
+
+  it('fails soft on success:false rather than throwing', async () => {
+    global.fetch = jest.fn(() => ok({ success: false }));
+    const result = await fetch_chain_activity_blocks();
+    expect(result.ok).toBe(false);
+    expect(result.blocks).toEqual([]);
+    expect(result.totals.utilityTotal).toBe(0);
+  });
+
+  it('fails soft on a network error', async () => {
+    global.fetch = jest.fn(() => Promise.reject(new Error('offline')));
+    const result = await fetch_chain_activity_blocks();
+    expect(result.ok).toBe(false);
+    expect(result.blocks).toEqual([]);
+  });
+
+  it('tolerates a malformed blocks field', async () => {
+    global.fetch = jest.fn(() => ok({ success: true, totals: {}, blocks: 'nope' }));
+    const result = await fetch_chain_activity_blocks();
+    expect(result.blocks).toEqual([]);
+  });
+});
+
+describe('blockCategoryLabel', () => {
+  it('names each category, including both', () => {
+    expect(blockCategoryLabel({ isP2p: true, isDapp: false })).toBe('P2P');
+    expect(blockCategoryLabel({ isP2p: false, isDapp: true })).toBe('Dapp');
+    expect(blockCategoryLabel({ isP2p: true, isDapp: true })).toBe('P2P + Dapp');
+  });
+
+  it('renders a dash for a block that is neither, and for junk', () => {
+    expect(blockCategoryLabel({ isP2p: false, isDapp: false })).toBe('\u2014');
+    expect(blockCategoryLabel(null)).toBe('\u2014');
+    expect(blockCategoryLabel(undefined)).toBe('\u2014');
   });
 });

@@ -292,3 +292,116 @@
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
+
+// ── Utility drill-down (issue #199) ──────────────────────────────────────
+
+// The utility figure is now a button. Reset the chrome so it still reads as
+// the stat it replaced, and add only the affordances that say it is clickable.
+.ca-utility-stat--button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px dashed currentColor;
+
+  &:hover { opacity: 0.85; }
+
+  // This is the only route into the drill-down, so keyboard focus has to be
+  // unmistakable.
+  &:focus-visible {
+    outline: 2px solid var(--accent-amber);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+.ca-utility-caret {
+  font-size: 0.65rem;
+}
+
+.ca-drilldown {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-secondary);
+
+  &--message {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+  }
+}
+
+.ca-drilldown-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ca-chip {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    margin-left: 3px;
+  }
+
+  &--p2p strong { color: var(--accent-green); }
+  &--dapp strong { color: var(--accent-amber); }
+  &--both strong { color: var(--accent-indigo); }
+}
+
+// Capped height: a day holds ~490 utility blocks in steady state, so the list
+// scrolls rather than pushing the rest of the tab off screen.
+.ca-drilldown-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ca-drilldown-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 60px 90px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+
+  &:hover { background: var(--surface-inset); }
+}
+
+.ca-drilldown-height {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.ca-drilldown-cat {
+  color: var(--accent-green);
+
+  &--both { color: var(--accent-indigo); }
+}
+
+.ca-drilldown-txs,
+.ca-drilldown-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.ca-drilldown-footer {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding-top: 8px;
+}
