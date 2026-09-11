@@ -30,7 +30,7 @@ import {
   fetch_total_donations,
   fetch_total_network_utils,
   fetch_gpu_prices
-} from './apidata';
+} from 'apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
 

@@ -11,7 +11,7 @@ import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
 import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { specResources } from 'appSpecs';
-import { fetch_global_app_specs } from 'main/apidata';
+import { fetch_global_app_specs } from 'apidata';
 import { hide_sensitive_number, blocksToHumanLong } from 'utils';
 
 export function AppsSection({ walletNodes, gstore }) {

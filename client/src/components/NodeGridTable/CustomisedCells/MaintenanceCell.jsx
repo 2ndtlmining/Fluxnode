@@ -1,5 +1,5 @@
 import { Tag } from '@blueprintjs/core';
-import { calc_mtn_window } from 'main/apidata';
+import { calc_mtn_window } from 'apidata';
 
 
 export const MaintenanceCell = (props) => {

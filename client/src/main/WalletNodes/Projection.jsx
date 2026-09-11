@@ -5,7 +5,7 @@ import './Projection.scss';
 import { Icon, ButtonGroup, Button, Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 
-import { wallet_health_full } from 'main/apidata';
+import { wallet_health_full } from 'apidata';
 import { FluxIcon } from 'components/FluxIcon.jsx';
 
 import { FiZap, FiCpu, FiPackage, FiHardDrive } from 'react-icons/fi';

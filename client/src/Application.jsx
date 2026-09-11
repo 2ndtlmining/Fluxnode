@@ -15,7 +15,7 @@ import LayoutConfigurationProvider from 'contexts/LayoutContext';
 import { DonorProvider } from 'contexts/DonorContext';
 import { DonorContext } from 'contexts/DonorContext';
 import { FocusStyleManager } from '@blueprintjs/core';
-import { lazy_load_currency_rate } from 'main/apidata';
+import { lazy_load_currency_rate } from 'apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
 import { PremiumGate } from 'donor/PremiumGate';
 

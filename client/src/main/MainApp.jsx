@@ -7,7 +7,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 
 import { Col, Container, Row } from 'react-grid-system';
 
-import { getEnterpriseNodes } from 'main/apidata';
+import { getEnterpriseNodes } from 'apidata';
 
 import { AppToaster } from 'components/AppToaster';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
@@ -34,7 +34,7 @@ import {
   fetch_total_donations,
   fetch_total_network_utils,
   fetch_global_performance_rankings,
-} from './apidata';
+} from 'apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
 

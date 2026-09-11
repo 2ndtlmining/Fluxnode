@@ -13,7 +13,7 @@ import {
   fillPartialNode,
   transformRawNode,
   getEnterpriseNodes
-} from 'main/apidata';
+} from 'apidata';
 import { LayoutContext } from 'contexts/LayoutContext';
 //import { setGAEvent } from 'g-analytic';
 import { NodeGridTable as NodeGridTableV2 } from 'components/NodeGridTable';
