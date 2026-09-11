@@ -6,29 +6,6 @@
   gap: 20px;
 }
 
-.apps-tab-stat-row {
-  display: flex;
-}
-
-.apps-tab-stat-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px;
-}
-
-.apps-tab-stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.apps-tab-stat-caption {
-  font-size: 0.78rem;
-  color: var(--text-tertiary);
-}
-
 .apps-tab-panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -240,20 +217,38 @@
 // plain-color-in-light-mode fallback) to a real page-level headline
 // instead of an in-panel accent.
 
-.apps-tab-hero {
+// ── KPI strip ────────────────────────────────────────────────────────────
+// Replaces .apps-tab-hero and .apps-tab-stat-row, which each occupied a full
+// row to show one figure. auto-fit keeps the tiles readable when the viewport
+// cannot hold four across, rather than crushing them.
+
+.apps-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.apps-kpi {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 4px;
+  position: relative;
+  // Reset button chrome for the interactive variant, so a <button> and a <div>
+  // tile are visually identical apart from the affordances added below.
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
 }
 
-.apps-tab-hero-value {
-  font-size: 2.75rem;
+.apps-kpi-value {
+  font-size: 1.85rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
   color: var(--text-primary);
-  line-height: 1.1;
 
   @include rule-mode-dark() {
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
@@ -263,10 +258,145 @@
   }
 }
 
-.apps-tab-hero-label {
-  font-size: 0.68rem;
+.apps-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-tertiary);
+}
+
+.apps-kpi-hint {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.apps-kpi--interactive {
+  cursor: pointer;
+  border-color: var(--border-hover);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+  &:hover { box-shadow: var(--shadow-hover); }
+
+  // Keyboard focus must stay obvious -- this is a real button and the only
+  // way into the team-apps table without a mouse.
+  &:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+  }
+}
+
+.apps-kpi--expanded {
+  border-color: var(--accent-blue);
+}
+
+.apps-kpi-chevron {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+// ── Flux-team apps table ─────────────────────────────────────────────────
+// Full width by design: seven columns do not fit in a grid cell, which is why
+// this expands below the strip instead of living in the panel grid.
+
+.apps-team-detail {
+  margin-bottom: 16px;
+  border-left: 2px solid var(--accent-blue);
+}
+
+// Tables are the one thing allowed to scroll horizontally rather than wrap --
+// narrow viewports get a scrollbar instead of an unreadable squeeze.
+.apps-team-scroll {
+  overflow-x: auto;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.apps-team-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-primary);
+    text-align: left;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-secondary);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.07);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  tbody tr:hover td { background: var(--surface-inset); }
+
+  tfoot td {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface-primary);
+    border-top: 1px solid var(--border-secondary);
+    border-bottom: none;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+}
+
+.apps-team-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.apps-team-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.apps-team-repo {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-tertiary);
+}
+
+// De-emphasised so the per-instance figure stays the one you read first.
+.apps-team-total {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.apps-team-muted {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.apps-team-expired {
+  color: var(--accent-red);
+  font-weight: 600;
+}
+
+.apps-team-caption {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding-top: 8px;
 }
