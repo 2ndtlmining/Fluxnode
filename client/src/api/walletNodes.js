@@ -32,6 +32,7 @@ import { FLUXNODE_INFO_API_MODE, FLUXNODE_INFO_API_URL } from 'app-buildinfo';
 // Moved with the code that uses them: nothing outside this module reads any of
 // these four.
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
+const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 const API_NODE_INFO_ENDPOINT = '/flux/info';
 const API_FLUX_APPLIST_ENDPOINT = '/apps/installedapps';
 const API_FLUX_UPTIME_ENDPOINT = '/flux/systemuptime';
@@ -353,4 +354,28 @@ export async function getDemoWallet() {
   } catch {
     return null;
   }
+}
+
+/*
+ * Whether a wallet's nodes are on the daemon's DOS list.
+ *
+ * Moved here from apidata.js (issue #147) rather than into its own module: it
+ * is a per-wallet node-health check, which is what this file is for, and a
+ * fifteen-line module of its own would be over-splitting.
+ */
+export async function isWalletDOSState(address) {
+  // Note: DOS list is updated very frequently, so there is no point in caching the response for
+  // future wallet addresses.
+
+  const listResponse = await fetch(API_DOS_LIST);
+  const json = await listResponse.json();
+  const dosList = json['data'];
+
+  for (let i = 0; i < dosList.length; i++)
+    //
+    if (dosList[i]['payment_address'] == address)
+      //
+      return true;
+
+  return false;
 }
