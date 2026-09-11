@@ -31,7 +31,11 @@ COPY client/ ./
 # the lint policy smuggled in through the Dockerfile.
 RUN yarn build
 
-FROM rust:1.67.1 as build
+# Rust 1.98 (pinned). Bumped from 1.67.1, which is an early-2023 toolchain that
+# could no longer build current dependency versions -- several security updates
+# in the tree now require edition 2024, which needs 1.85+. Staying on 1.67
+# meant staying on vulnerable openssl and h2 (issue #179).
+FROM rust:1.98.1 as build
 USER root
 
 # renew the argument after FROM directive
@@ -73,7 +77,16 @@ RUN cargo build --release
 # ==========================================================
 # ==========================================================
 
-FROM nginx:1.23.3
+# nginx 1.29 (Debian 13 / trixie). Bumped from 1.23.3, a December 2022 release.
+#
+# This is NOT optional alongside the Rust bump: the API binary is built on
+# rust:1.98.1 (Debian bookworm) and dynamically links libssl.so.3, while
+# nginx:1.23.3 is bullseye-based and ships only libssl.so.1.1 -- the container
+# started nginx fine and then died with
+#   /app/main: error while loading shared libraries: libssl.so.3
+# The two stages have to agree on the OpenSSL ABI. It also picks up three years
+# of nginx security fixes.
+FROM nginx:1.29
 USER root
 
 # --------------------
@@ -92,8 +105,13 @@ STOPSIGNAL SIGTERM
 
 ARG RUST_APP_PACKAGE_NAME
 
-# create a new non-root user
-RUN adduser --disabled-password myuser
+# create a new non-root user.
+#
+# useradd, not adduser: the Debian 13 nginx base dropped the `adduser`
+# wrapper, and the build failed with "adduser: not found". useradd is the
+# lower-level tool from `passwd` and is present on both the old and new bases,
+# so this stays portable if the base moves again.
+RUN useradd --create-home --shell /usr/sbin/nologin myuser
 
 RUN mkdir -p /app
 WORKDIR /app

@@ -37,7 +37,7 @@ Make sure to have the following stuff installed on your machine.
 
 - Node & Yarn (_npm can be used too, but yarn is recommended_)
 - Docker (_with BuildKit enabled_)
-- A Rust toolchain (_cargo and rustc, v1.62 or higher_)
+- A Rust toolchain (_cargo and rustc, **v1.85 or higher**_ — several dependencies now require edition 2024; the Docker build pins 1.98.1)
 
 Verify the installation with these commands:
 
