@@ -1,0 +1,713 @@
+{
+  "_comment": [
+    "Golden values captured from the build BEFORE the #147 apidata.js split",
+    "(commit 6038396, apidata.js at 741 lines with the global-stats region still inline).",
+    "They exist so a refactor of the API layer cannot silently change a number.",
+    "If a change here is intentional, regenerate deliberately and say why in the commit."
+  ],
+  "globalStore": {
+    "arcane_os": {
+      "arcane_nodes": 0,
+      "humanVersion": null,
+      "percentage": 0,
+      "total_nodes": 1
+    },
+    "bench_latest_version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    },
+    "current_block_height": 1234567,
+    "daemon_version": 5.1,
+    "enterpriseContainers": 0,
+    "fluxBlockHeight": 1234567,
+    "flux_price_usd": 0,
+    "fluxos_latest_version": {
+      "major": 1,
+      "minor": 2,
+      "patch": 3
+    },
+    "in_rich_list": false,
+    "nodePaymentAddresses": [
+      {
+        "activesince": "1700000000",
+        "added_height": 100,
+        "collateral": "COutPoint(abc, 0)",
+        "confirmed_height": 900,
+        "ip": "1.2.3.4:16127",
+        "last_confirmed_height": 1000,
+        "payment_address": "t1aaa",
+        "tier": "CUMULUS"
+      },
+      {
+        "activesince": "1700000001",
+        "added_height": 200,
+        "collateral": "COutPoint(def, 1)",
+        "confirmed_height": 800,
+        "ip": "5.6.7.8",
+        "last_confirmed_height": 990,
+        "payment_address": "t1bbb",
+        "tier": "NIMBUS"
+      },
+      {
+        "activesince": "1700000002",
+        "added_height": 300,
+        "collateral": "COutPoint(ghi, 2)",
+        "confirmed_height": 700,
+        "ip": "9.10.11.12:16137",
+        "last_confirmed_height": 980,
+        "payment_address": "t1aaa",
+        "tier": "STRATUS"
+      }
+    ],
+    "node_count": {
+      "cumulus": 8000,
+      "nimbus": 3000,
+      "stratus": 1400,
+      "total": 12400
+    },
+    "presearchRunningApps": 0,
+    "reward_projections": {
+      "cumulus": {
+        "apy": 26.276846399999997,
+        "pa_amount": 0.3599567999999999,
+        "pay_frequency": 4000,
+        "payment_amount": 0.35995679999999997
+      },
+      "nimbus": {
+        "apy": 19.6224,
+        "pa_amount": 3.36,
+        "pay_frequency": 1500,
+        "payment_amount": 3.36
+      },
+      "stratus": {
+        "apy": 33.785568000000005,
+        "pa_amount": 18.51264,
+        "pay_frequency": 700,
+        "payment_amount": 18.51264
+      }
+    },
+    "runningAppsFetchedAt": "__NORMALISED__",
+    "runningAppsStatus": "unavailable",
+    "runningCategoryMap": {},
+    "runningCategoryTop": {},
+    "streamrRunningApps": 0,
+    "topNodesByApps": [],
+    "topRunningApps": [],
+    "total": {
+      "cores": 0,
+      "ram": 0,
+      "ssd": 0
+    },
+    "totalRunningApps": 0,
+    "total_donations": 0,
+    "uniqueWalletAddressesCount": 2,
+    "unresolvedContainers": 0,
+    "utilized": {
+      "cores": 0,
+      "cores_percentage": 0,
+      "nodes": 0,
+      "nodes_percentage": 0,
+      "ram": 0,
+      "ram_percentage": 0,
+      "ssd": 0,
+      "ssd_percentage": 0
+    },
+    "wallet_amount_flux": 4321.99,
+    "wordpressCount": 0,
+    "workhorseNodes": []
+  },
+  "nodes": {
+    "health_empty": {
+      "cumulus": {
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "nimbus": {
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "stratus": {
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "total_nodes": 0
+    },
+    "health_filled": {
+      "cumulus": {
+        "amount": 2,
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "nimbus": {
+        "amount": 1,
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "stratus": {
+        "amount": 3,
+        "node_count": 0,
+        "projection_daily": {
+          "flux": 0,
+          "usd": 0
+        },
+        "projection_montly": {
+          "flux": 0,
+          "usd": 0
+        }
+      },
+      "total_nodes": 0
+    },
+    "mtn": [
+      "Closed",
+      "Closed",
+      "Closed",
+      "Closed",
+      "Closed",
+      "4 Hrs"
+    ],
+    "projections_empty": {
+      "apy": 0,
+      "pa_amount": 0,
+      "pay_frequency": 0,
+      "payment_amount": 0
+    },
+    "tiers": [
+      "CUMULUS",
+      "NIMBUS",
+      "STRATUS"
+    ],
+    "transformed": [
+      {
+        "appCount": 0,
+        "bench_version": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "benchmark_status": "unknown",
+        "cores": 0,
+        "down_speed": 0,
+        "dws": 0,
+        "eps": 0,
+        "flux_os": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "id": "1.2.3.4:16127",
+        "ip_display": "1.2.3.4:16127",
+        "ip_full": {
+          "active_port_api": 16127,
+          "active_port_os": 16126,
+          "host": "1.2.3.4",
+          "port": 16127
+        },
+        "last_benchmark": "-",
+        "last_confirmed_height": 1000,
+        "last_reward": "Invalid Date",
+        "maybe_online": true,
+        "next_reward": "2 mins",
+        "ram": 0,
+        "rank": 5,
+        "score": 0,
+        "threads": 0,
+        "tier": "CUMULUS",
+        "total_storage": 0,
+        "up_speed": 0,
+        "uptime": 0
+      },
+      {
+        "appCount": 0,
+        "bench_version": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "benchmark_status": "unknown",
+        "cores": 0,
+        "down_speed": 0,
+        "dws": 0,
+        "eps": 0,
+        "flux_os": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "id": "5.6.7.8",
+        "ip_display": "5.6.7.8",
+        "ip_full": {
+          "active_port_api": 16127,
+          "active_port_os": 16126,
+          "host": "5.6.7.8",
+          "port": null
+        },
+        "last_benchmark": "-",
+        "last_confirmed_height": 990,
+        "last_reward": "Invalid Date",
+        "maybe_online": true,
+        "next_reward": "6 mins",
+        "ram": 0,
+        "rank": 12,
+        "score": 0,
+        "threads": 0,
+        "tier": "NIMBUS",
+        "total_storage": 0,
+        "up_speed": 0,
+        "uptime": 0
+      },
+      {
+        "appCount": 0,
+        "bench_version": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "benchmark_status": "unknown",
+        "cores": 0,
+        "down_speed": 0,
+        "dws": 0,
+        "eps": 0,
+        "flux_os": {
+          "major": 0,
+          "minor": 0,
+          "patch": 0
+        },
+        "id": "9.10.11.12:16137",
+        "ip_display": "9.10.11.12:16137",
+        "ip_full": {
+          "active_port_api": 16137,
+          "active_port_os": 16136,
+          "host": "9.10.11.12",
+          "port": 16137
+        },
+        "last_benchmark": "-",
+        "last_confirmed_height": 0,
+        "last_reward": "Invalid Date",
+        "maybe_online": true,
+        "next_reward": "0 seconds",
+        "ram": 0,
+        "rank": 0,
+        "score": 0,
+        "threads": 0,
+        "tier": "STRATUS",
+        "total_storage": 0,
+        "up_speed": 0,
+        "uptime": 0
+      }
+    ]
+  },
+  "rewards": {
+    "__empty_store": {
+      "arcane_os": {
+        "arcane_nodes": 0,
+        "percentage": 0,
+        "total_nodes": 0
+      },
+      "bench_latest_version": {
+        "major": 0,
+        "minor": 0,
+        "patch": 0
+      },
+      "current_block_height": 0,
+      "daemon_version": 0,
+      "enterpriseContainers": 0,
+      "fluxBlockHeight": 0,
+      "flux_price_usd": 0,
+      "fluxos_latest_version": {
+        "major": 0,
+        "minor": 0,
+        "patch": 0
+      },
+      "in_rich_list": false,
+      "nodePaymentAddresses": [],
+      "node_count": {
+        "cumulus": 0,
+        "nimbus": 0,
+        "stratus": 0,
+        "total": 0
+      },
+      "presearchRunningApps": 0,
+      "reward_projections": {
+        "cumulus": {
+          "apy": 0,
+          "pa_amount": 0,
+          "pay_frequency": 0,
+          "payment_amount": 0
+        },
+        "nimbus": {
+          "apy": 0,
+          "pa_amount": 0,
+          "pay_frequency": 0,
+          "payment_amount": 0
+        },
+        "stratus": {
+          "apy": 0,
+          "pa_amount": 0,
+          "pay_frequency": 0,
+          "payment_amount": 0
+        }
+      },
+      "runningAppsFetchedAt": null,
+      "runningAppsStatus": "unavailable",
+      "runningCategoryMap": {},
+      "runningCategoryTop": {},
+      "streamrRunningApps": 0,
+      "topNodesByApps": [],
+      "topRunningApps": [],
+      "total": {
+        "cores": 0,
+        "ram": 0,
+        "ssd": 0
+      },
+      "totalRunningApps": 0,
+      "total_donations": 0,
+      "uniqueWalletAddressesCount": 0,
+      "unresolvedContainers": 0,
+      "utilized": {
+        "cores": 0,
+        "cores_percentage": 0,
+        "nodes": 0,
+        "nodes_percentage": 0,
+        "ram": 0,
+        "ram_percentage": 0,
+        "ssd": 0,
+        "ssd_percentage": 0
+      },
+      "wallet_amount_flux": 0,
+      "wordpressCount": 0,
+      "workhorseNodes": []
+    },
+    "__tier_projection_shape": {
+      "apy": 0,
+      "pa_amount": 0,
+      "pay_frequency": 0,
+      "payment_amount": 0
+    },
+    "asymmetric": {
+      "node_count": {
+        "cumulus": 12345,
+        "nimbus": 678,
+        "stratus": 91011,
+        "total": 104034
+      },
+      "reward_projections": {
+        "cumulus": {
+          "apy": 17.028333025516403,
+          "pa_amount": 0.2332648359659781,
+          "pay_frequency": 6172.5,
+          "payment_amount": 0.2332648359659781
+        },
+        "nimbus": {
+          "apy": 86.82477876106194,
+          "pa_amount": 14.867256637168142,
+          "pay_frequency": 339,
+          "payment_amount": 14.867256637168142
+        },
+        "stratus": {
+          "apy": 0.5197151465207502,
+          "pa_amount": 0.284775422751096,
+          "pay_frequency": 45505.5,
+          "payment_amount": 0.284775422751096
+        }
+      }
+    },
+    "large-network": {
+      "node_count": {
+        "cumulus": 50000,
+        "nimbus": 20000,
+        "stratus": 9000,
+        "total": 79000
+      },
+      "reward_projections": {
+        "cumulus": {
+          "apy": 4.204295424,
+          "pa_amount": 0.057593088,
+          "pay_frequency": 25000,
+          "payment_amount": 0.057593088
+        },
+        "nimbus": {
+          "apy": 2.94336,
+          "pa_amount": 0.504,
+          "pay_frequency": 10000,
+          "payment_amount": 0.504
+        },
+        "stratus": {
+          "apy": 5.2555328,
+          "pa_amount": 2.879744,
+          "pay_frequency": 4500,
+          "payment_amount": 2.879744
+        }
+      }
+    },
+    "lopsided": {
+      "node_count": {
+        "cumulus": 1,
+        "nimbus": 99999,
+        "stratus": 3,
+        "total": 100003
+      },
+      "reward_projections": {
+        "cumulus": {
+          "apy": 210214.7712,
+          "pa_amount": 2879.6544,
+          "pay_frequency": 0.5,
+          "payment_amount": 2879.6544
+        },
+        "nimbus": {
+          "apy": 0.5886778867788678,
+          "pa_amount": 0.1008010080100801,
+          "pay_frequency": 49999.5,
+          "payment_amount": 0.1008010080100801
+        },
+        "stratus": {
+          "apy": 15766.5984,
+          "pa_amount": 8639.232,
+          "pay_frequency": 1.5,
+          "payment_amount": 8639.232
+        }
+      }
+    },
+    "small-network": {
+      "node_count": {
+        "cumulus": 10,
+        "nimbus": 5,
+        "stratus": 2,
+        "total": 17
+      },
+      "reward_projections": {
+        "cumulus": {
+          "apy": 21021.47712,
+          "pa_amount": 287.96544,
+          "pay_frequency": 5,
+          "payment_amount": 287.96544
+        },
+        "nimbus": {
+          "apy": 11773.439999999999,
+          "pa_amount": 2016,
+          "pay_frequency": 2.5,
+          "payment_amount": 2016
+        },
+        "stratus": {
+          "apy": 23649.897599999997,
+          "pa_amount": 12958.848,
+          "pay_frequency": 1,
+          "payment_amount": 12958.848
+        }
+      }
+    },
+    "typical": {
+      "node_count": {
+        "cumulus": 8000,
+        "nimbus": 3000,
+        "stratus": 1400,
+        "total": 12400
+      },
+      "reward_projections": {
+        "cumulus": {
+          "apy": 26.276846399999997,
+          "pa_amount": 0.3599567999999999,
+          "pay_frequency": 4000,
+          "payment_amount": 0.35995679999999997
+        },
+        "nimbus": {
+          "apy": 19.6224,
+          "pa_amount": 3.36,
+          "pay_frequency": 1500,
+          "payment_amount": 3.36
+        },
+        "stratus": {
+          "apy": 33.785568000000005,
+          "pa_amount": 18.51264,
+          "pay_frequency": 700,
+          "payment_amount": 18.51264
+        }
+      }
+    }
+  },
+  "surface": {
+    "DISPLAY_DATE_FORMAT": {
+      "type": "string",
+      "value": "\"DD-MMM-YYYY HH:mm:ss\""
+    },
+    "SUPPORTED_CURRENCIES": {
+      "type": "object",
+      "value": "[\"USD\",\"EUR\",\"AUD\",\"GBP\"]"
+    },
+    "_extract_country_counts": {
+      "length": 1,
+      "name": "_extract_country_counts",
+      "type": "function"
+    },
+    "buildTierResolver": {
+      "length": 1,
+      "name": "buildTierResolver",
+      "type": "function"
+    },
+    "calc_mtn_window": {
+      "length": 2,
+      "name": "calc_mtn_window",
+      "type": "function"
+    },
+    "create_global_store": {
+      "length": 0,
+      "name": "create_global_store",
+      "type": "function"
+    },
+    "fetch_arcane_os_stats": {
+      "length": 1,
+      "name": "fetch_arcane_os_stats",
+      "type": "function"
+    },
+    "fetch_country_node_counts": {
+      "length": 0,
+      "name": "fetch_country_node_counts",
+      "type": "function"
+    },
+    "fetch_global_app_specs": {
+      "length": 1,
+      "name": "fetch_global_app_specs",
+      "type": "function"
+    },
+    "fetch_global_app_specs_raw": {
+      "length": 0,
+      "name": "fetch_global_app_specs_raw",
+      "type": "function"
+    },
+    "fetch_global_performance_rankings": {
+      "length": 0,
+      "name": "fetch_global_performance_rankings",
+      "type": "function"
+    },
+    "fetch_global_stats": {
+      "length": 0,
+      "name": "fetch_global_stats",
+      "type": "function"
+    },
+    "fetch_gpu_prices": {
+      "length": 0,
+      "name": "fetch_gpu_prices",
+      "type": "function"
+    },
+    "fetch_total_donations": {
+      "length": 1,
+      "name": "fetch_total_donations",
+      "type": "function"
+    },
+    "fetch_total_network_utils": {
+      "length": 1,
+      "name": "fetch_total_network_utils",
+      "type": "function"
+    },
+    "fillPartialNode": {
+      "length": 1,
+      "name": "fillPartialNode",
+      "type": "function"
+    },
+    "fill_health": {
+      "length": 2,
+      "name": "fill_health",
+      "type": "function"
+    },
+    "fill_rewards": {
+      "length": 1,
+      "name": "fill_rewards",
+      "type": "function"
+    },
+    "getDemoWallet": {
+      "length": 0,
+      "name": "getDemoWallet",
+      "type": "function"
+    },
+    "getEnterpriseNodes": {
+      "length": 0,
+      "name": "getEnterpriseNodes",
+      "type": "function"
+    },
+    "getWalletNodes": {
+      "length": 1,
+      "name": "getWalletNodes",
+      "type": "function"
+    },
+    "isWalletDOSState": {
+      "length": 1,
+      "name": "isWalletDOSState",
+      "type": "function"
+    },
+    "lazy_load_currency_rate": {
+      "length": 0,
+      "name": "lazy_load_currency_rate",
+      "type": "function"
+    },
+    "normalize_raw_node_tier": {
+      "length": 1,
+      "name": "normalize_raw_node_tier",
+      "type": "function"
+    },
+    "pa_summary_full": {
+      "length": 0,
+      "name": "pa_summary_full",
+      "type": "function"
+    },
+    "tier_global_projections": {
+      "length": 0,
+      "name": "tier_global_projections",
+      "type": "function"
+    },
+    "transformRawNode": {
+      "length": 1,
+      "name": "transformRawNode",
+      "type": "function"
+    },
+    "validateAddress": {
+      "length": 1,
+      "name": "validateAddress",
+      "type": "function"
+    },
+    "wallet_health_full": {
+      "length": 0,
+      "name": "wallet_health_full",
+      "type": "function"
+    },
+    "wallet_pas_summary": {
+      "length": 1,
+      "name": "wallet_pas_summary",
+      "type": "function"
+    }
+  }
+}
