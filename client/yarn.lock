@@ -2527,16 +2527,17 @@ adjust-sourcemap-loader@^4.0.0:
     loader-utils "^2.0.0"
     regex-parser "^2.2.11"
 
-ag-grid-community@^29.0.0, ag-grid-community@~29.3.5:
-  version "29.3.5"
-  resolved "https://registry.npmjs.org/ag-grid-community/-/ag-grid-community-29.3.5.tgz"
-  integrity sha512-LxUo21f2/CH31ACEs1C7Q/ggGGI1fQPSTB4aY5OThmM+lBkygZ7QszBE8jpfgWOIjvjdtcdIeQbmbjkHeMsA7A==
+ag-grid-community@^31.3.4, ag-grid-community@31.3.4:
+  version "31.3.4"
+  resolved "https://registry.npmjs.org/ag-grid-community/-/ag-grid-community-31.3.4.tgz"
+  integrity sha512-jOxQO86C6eLnk1GdP24HB6aqaouFzMWizgfUwNY5MnetiWzz9ZaAmOGSnW/XBvdjXvC5Fpk3gSbvVKKQ7h9kBw==
 
-ag-grid-react@^29.0.0:
-  version "29.3.5"
-  resolved "https://registry.npmjs.org/ag-grid-react/-/ag-grid-react-29.3.5.tgz"
-  integrity sha512-Eg0GJ8hEBuxdVaN5g+qITOzhw0MGL9avL0Oaajr+p7QRtq2pIFHLZSknWsCBzUTjidiu75WZMKwlZjtGEuafdQ==
+ag-grid-react@^31.3.4:
+  version "31.3.4"
+  resolved "https://registry.npmjs.org/ag-grid-react/-/ag-grid-react-31.3.4.tgz"
+  integrity sha512-WmPASHRFGSTxCMRStWG5bRtln0Ugsdqbb3+Y8sEyGHeLw4hXqfpqie3lT9kqCOl7wPWUjCpwmFdXzRnWPmyyeg==
   dependencies:
+    ag-grid-community "31.3.4"
     prop-types "^15.8.1"
 
 agent-base@6:
