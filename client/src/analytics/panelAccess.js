@@ -29,6 +29,14 @@ export const PANEL_ACCESS = {
   donorTab: 'donor',
   // Chain Activity tab (whole tab, one unit)
   chainActivity: 'donor',
+  // /nodes page tabs. Gated so a visitor can SEE that achievements and a
+  // per-wallet app breakdown exist behind the wall, rather than not knowing
+  // they are there at all -- which is the whole point of preview="blur".
+  // Both are derived from public, unauthenticated Flux APIs (node benchmarks,
+  // running-app lists), so mounting them blurred is a paywall choice, not a
+  // data-exposure one. See PanelGate's own note on that distinction.
+  nodesAchievements: 'donor',
+  nodesApps: 'donor',
   // Moving from /home in Session 2 — public per explicit user direction
   topDogs: 'public',
   expiringToday: 'public',

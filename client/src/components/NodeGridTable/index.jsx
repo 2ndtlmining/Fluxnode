@@ -19,6 +19,10 @@ import { FiServer, FiPackage } from 'react-icons/fi';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { GamificationSection } from 'main/Gamification';
 import { AppsSection } from 'main/AppsSection';
+// Lives under analytics/ for historical reasons -- it is a donor-gating
+// component, not an analytics-specific one, and panelAccess.js is the
+// single place that decides which panels are gated.
+import { PanelGate } from 'analytics/PanelGate';
 import { computeAchievements } from 'main/Gamification/achievements';
 
 export const NodeGridTable = ({
@@ -304,17 +308,21 @@ export const NodeGridTable = ({
 
       {activeTab === 'achievements' ? (
         <div className='gami-panel-scroll'>
-          <GamificationSection
-            gstore={gstore}
-            walletNodes={data}
-            walletPASummary={walletPASummary}
-            totalDonations={totalDonations}
-            globalRankings={globalRankings}
-          />
+          <PanelGate panelKey='nodesAchievements' feature='Achievements' preview='blur'>
+            <GamificationSection
+              gstore={gstore}
+              walletNodes={data}
+              walletPASummary={walletPASummary}
+              totalDonations={totalDonations}
+              globalRankings={globalRankings}
+            />
+          </PanelGate>
         </div>
       ) : activeTab === 'apps' ? (
         <div className='gami-panel-scroll'>
-          <AppsSection walletNodes={data} gstore={gstore} />
+          <PanelGate panelKey='nodesApps' feature='Your apps breakdown' preview='blur'>
+            <AppsSection walletNodes={data} gstore={gstore} />
+          </PanelGate>
         </div>
       ) : (
         <div className={appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine'} style={{ height: '100%' }}>
