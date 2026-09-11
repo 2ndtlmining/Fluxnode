@@ -514,3 +514,84 @@
     font-weight: 600;
   }
 }
+
+/*
+ * Filter + sort controls for the EXPIRING TODAY / DEPLOYED TODAY panels
+ * (issue #247).
+ */
+.hov-spec-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 6px;
+}
+
+.hov-spec-filter__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.72rem;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  background: var(--surface-inset);
+  color: inherit;
+
+  &::placeholder {
+    color: rgba(128, 128, 128, 0.75);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(43, 97, 209, 0.6);
+  }
+}
+
+.hov-spec-filter__clear {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 5px;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * Header cells are buttons now, so the browser's default button chrome has to
+ * be stripped back to what the spans looked like before.
+ */
+.hov-spec-header__btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity var(--transition-fast);
+
+  &:hover,
+  &--active {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 1px solid rgba(43, 97, 209, 0.7);
+    outline-offset: 2px;
+  }
+}
+
+.hov-spec-sort {
+  font-size: 0.6em;
+  opacity: 0.7;
+}
