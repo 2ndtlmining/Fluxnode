@@ -527,15 +527,30 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
     expect(result.countryTierCounts.DE.tiers.STRATUS).toBe(1);
   });
 
-  it('bumps the cache key to v4 and prunes the old v3 entry', async () => {
+  it('bumps the cache key to v5 and prunes every older entry', async () => {
+    // v3 held pre-sorted per-metric arrays (#153); v4 inlined a full geo
+    // object on every node row (also #153). Both are pruned rather than left
+    // to expire: a leftover v4 entry would feed consumers rows with no `cc`,
+    // silently yielding zero country ranks.
     sessionStorage.setItem('globalPerfRankings_v3', JSON.stringify({ data: { stale: true }, timestamp: Date.now() }));
+    sessionStorage.setItem('globalPerfRankings_v4', JSON.stringify({ data: { stale: true }, timestamp: Date.now() }));
     await fetch_global_performance_rankings();
     expect(sessionStorage.getItem('globalPerfRankings_v3')).toBeNull();
-    expect(sessionStorage.getItem('globalPerfRankings_v4')).not.toBeNull();
-    const cachedV4 = JSON.parse(sessionStorage.getItem('globalPerfRankings_v4'));
-    expect(cachedV4.data.nodeData).toHaveLength(3);
-    expect(cachedV4.data.tierRankings).toBeUndefined();
-    expect(cachedV4.data.countryRankings).toBeUndefined();
+    expect(sessionStorage.getItem('globalPerfRankings_v4')).toBeNull();
+    expect(sessionStorage.getItem('globalPerfRankings_v5')).not.toBeNull();
+
+    const cached = JSON.parse(sessionStorage.getItem('globalPerfRankings_v5'));
+    expect(cached.data.nodeData).toHaveLength(3);
+    expect(cached.data.tierRankings).toBeUndefined();
+    expect(cached.data.countryRankings).toBeUndefined();
+
+    // The v5 shape change itself: a country CODE on the row, and no
+    // duplicated geo record. The full records live in nodeGeoMap alone.
+    for (const row of cached.data.nodeData) {
+      expect(row).not.toHaveProperty('geo');
+      expect(Object.prototype.hasOwnProperty.call(row, 'cc')).toBe(true);
+    }
+    expect(cached.data.nodeGeoMap).toBeDefined();
   });
 
   afterEach(() => {

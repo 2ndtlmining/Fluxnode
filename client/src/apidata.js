@@ -1146,9 +1146,12 @@ function _flagFromCountryCode(cc) {
   );
 }
 
-const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v4';
+const GLOBAL_RANKINGS_CACHE_KEY = 'globalPerfRankings_v5';
 const GLOBAL_RANKINGS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-const GLOBAL_RANKINGS_STALE_KEYS = ['globalPerfRankings_v3'];
+// v4 rows carried a full `geo` object; v5 carries `cc` only (#153). A
+// leftover v4 entry would silently yield zero country ranks, so it is
+// pruned rather than left to expire.
+const GLOBAL_RANKINGS_STALE_KEYS = ['globalPerfRankings_v3', 'globalPerfRankings_v4'];
 
 function _prune_stale_global_rankings_caches() {
   for (const key of GLOBAL_RANKINGS_STALE_KEYS) {
@@ -1344,7 +1347,21 @@ export async function fetch_global_performance_rankings() {
         dws: bench.ddwrite || 0,
         down_speed: bench.download_speed || 0,
         up_speed: bench.upload_speed || 0,
-        geo: nodeGeoMap[host] || null,
+        // Country CODE only -- not the whole geo record.
+        //
+        // This used to inline nodeGeoMap[host], duplicating each host's full
+        // geolocation object (country, countryCode, continent, lat, lon, org,
+        // region, city) once per NODE, while nodeGeoMap already stores the
+        // same records once per HOST. With ~6,200 nodes across ~2,350 hosts
+        // that was ~1 MB of pure duplication in a cache measured at 63% of
+        // the sessionStorage quota (issue #153).
+        //
+        // Every consumer of the inlined object only ever read .countryCode
+        // (achievements.js's two country-rank filters, and countryTierCounts
+        // below). Anything needing the full record has nodeGeoMap, which is
+        // cached alongside this and keyed by the same host -- see
+        // live/apidata.js's lookupNodeInfo, which already works that way.
+        cc: nodeGeoMap[host]?.countryCode || null,
       });
     }
 
@@ -1371,9 +1388,13 @@ export async function fetch_global_performance_rankings() {
 
     const countryTierCounts = {};
     for (const node of nodeData) {
-      if (!node.geo?.countryCode) continue;
-      const cc = node.geo.countryCode;
-      if (!countryTierCounts[cc]) countryTierCounts[cc] = { country: node.geo.country, tiers: {} };
+      if (!node.cc) continue;
+      const cc = node.cc;
+      if (!countryTierCounts[cc]) {
+        // The display name comes from nodeGeoMap rather than the row, which
+        // now carries only the code.
+        countryTierCounts[cc] = { country: nodeGeoMap[node.ip]?.country || cc, tiers: {} };
+      }
       countryTierCounts[cc].tiers[node.tier] = (countryTierCounts[cc].tiers[node.tier] || 0) + 1;
     }
 

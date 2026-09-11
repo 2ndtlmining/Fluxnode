@@ -86,7 +86,7 @@ const CUMULUS_NODE_DATA = CUMULUS_EPS_VALUES.map((eps, i) => ({
   dws: 200 - i,
   down_speed: 300 - i,
   up_speed: 400 - i,
-  geo: null,
+  cc: null,
 }));
 // Verified by hand: eps rank for node i (0-indexed) = 1 + count of nodes with
 // strictly greater eps, plus (for a tie) count of earlier-indexed nodes with
@@ -276,9 +276,9 @@ describe('computeCountryPerformanceAchievements (characterization)', () => {
   // Reshaped from the old countryRankings-shaped fixture into flat nodeData:
   // 3 CUMULUS nodes, all geo-tagged US, eps 100/50/10 (ranks 1/2/3).
   const countryNodeData = [
-    { ip: '10.0.0.0', tier: 'CUMULUS', eps: 100, geo: { countryCode: 'US' } },
-    { ip: '10.0.0.1', tier: 'CUMULUS', eps: 50, geo: { countryCode: 'US' } },
-    { ip: '10.0.0.2', tier: 'CUMULUS', eps: 10, geo: { countryCode: 'US' } },
+    { ip: '10.0.0.0', tier: 'CUMULUS', eps: 100, cc: 'US' },
+    { ip: '10.0.0.1', tier: 'CUMULUS', eps: 50, cc: 'US' },
+    { ip: '10.0.0.2', tier: 'CUMULUS', eps: 10, cc: 'US' },
   ];
   // nodeGeoMap must carry `.country` (display name) too — achievements.js's
   // computeCountryPerformanceAchievements looks up the country's display
