@@ -289,6 +289,35 @@ pub struct TeamTx {
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct Checkpoint {
     pub last_scanned_height: i64,
+    /*
+     * Whether the one-time utility-block repair has run (issue #231).
+     *
+     * #[serde(default)] is load-bearing, not boilerplate: every checkpoint
+     * file written before this field existed deserializes to `false`, which is
+     * exactly the deployments that need the repair. Adding the field without a
+     * default would instead fail to parse those files and silently reset the
+     * scanner to a cold start.
+     */
+    #[serde(default)]
+    pub utility_backfill_done: bool,
+}
+
+/*
+ * Whether this cycle should rewind to repopulate utility blocks (issue #231).
+ *
+ * Utility blocks arrived with #199, but they are only ever recorded inside the
+ * scan loop. A deployment whose scanner had already reached the tip under the
+ * previous code has a checkpoint sitting at the tip, so every later cycle takes
+ * the "already caught up" early return and never records a single one. The
+ * daily rollup still reports real utility COUNTS from those earlier scans, so
+ * the Chain Activity tab shows a non-zero figure whose drill-down is empty.
+ *
+ * Gated on the checkpoint flag rather than purely on emptiness so that a
+ * retention window genuinely containing no utility blocks does not re-trigger a
+ * full 23,040-block rescan on every cycle, forever.
+ */
+pub fn should_backfill_utility_blocks(checkpoint: &Checkpoint, utility_blocks_empty: bool) -> bool {
+    !checkpoint.utility_backfill_done && utility_blocks_empty
 }
 
 /*
@@ -585,8 +614,12 @@ pub fn save_team_txs(team_txs: &[TeamTx]) -> std::io::Result<()> {
     write_json_atomic(Path::new(DATA_DIR), TEAM_TX_FILE, &TeamTxFile { team_txs: team_txs.to_vec() })
 }
 
-pub fn save_checkpoint(last_scanned_height: i64) -> std::io::Result<()> {
-    write_json_atomic(Path::new(DATA_DIR), CHECKPOINT_FILE, &Checkpoint { last_scanned_height })
+pub fn save_checkpoint(last_scanned_height: i64, utility_backfill_done: bool) -> std::io::Result<()> {
+    write_json_atomic(
+        Path::new(DATA_DIR),
+        CHECKPOINT_FILE,
+        &Checkpoint { last_scanned_height, utility_backfill_done },
+    )
 }
 
 pub fn load_scan_status() -> ScanStatus {
@@ -796,7 +829,19 @@ pub async fn run_scan_cycle() {
     // Bounded catch-up: never scan further back than the retention window,
     // whether this is a genuine cold start (checkpoint 0) or a replica that's
     // been down long enough to fall behind the window entirely.
-    let start_height = checkpoint.last_scanned_height.max(earliest_allowed);
+    let mut start_height = checkpoint.last_scanned_height.max(earliest_allowed);
+
+    // One-time repair for deployments that caught up before utility blocks
+    // existed. Rewinding to the window edge is the same range a cold start
+    // would scan, so this costs one backfill and then never fires again.
+    let backfilling_utility = should_backfill_utility_blocks(&checkpoint, load_utility_blocks().is_empty());
+    if backfilling_utility && start_height > earliest_allowed {
+        println!(
+            "[chain_activity] utility blocks missing at checkpoint {} -- rewinding to {} to backfill (issue #231)",
+            start_height, earliest_allowed
+        );
+        start_height = earliest_allowed;
+    }
 
     if start_height >= tip_height {
         // already caught up to the tip — nothing to scan is itself success
@@ -845,7 +890,10 @@ pub async fn run_scan_cycle() {
         if let Err(e) = save_utility_blocks(&utility_blocks) {
             eprintln!("[chain_activity] failed to save utility blocks: {}", e);
         }
-        if let Err(e) = save_checkpoint(new_checkpoint) {
+        // Writes the flag UNCHANGED mid-scan: promoting it here would mark the
+        // repair done on the first batch, so a cycle that stalls halfway would
+        // never retry it.
+        if let Err(e) = save_checkpoint(new_checkpoint, checkpoint.utility_backfill_done) {
             eprintln!("[chain_activity] failed to save checkpoint: {}", e);
         }
 
@@ -876,6 +924,19 @@ pub async fn run_scan_cycle() {
         }
     }
 
+    // The backfill only counts as done once the cycle reached the tip without
+    // stalling; a partial pass leaves the flag clear so the next cycle retries.
+    if backfilling_utility && !stalled {
+        if let Err(e) = save_checkpoint(checkpoint_height, true) {
+            eprintln!("[chain_activity] failed to mark utility backfill done: {}", e);
+        } else {
+            println!(
+                "[chain_activity] utility block backfill complete ({} blocks retained)",
+                load_utility_blocks().len()
+            );
+        }
+    }
+
     let outcome = if stalled { ScanOutcome::Stalled } else { ScanOutcome::CaughtUp };
     persist_scan_status(next_scan_status(previous_status, attempt_at, outcome));
 
@@ -888,6 +949,51 @@ pub async fn run_scan_cycle() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /*
+     * Issue #231: the drill-down was empty on a deployment whose checkpoint had
+     * already reached the tip before utility blocks existed.
+     */
+    #[test]
+    fn backfills_when_utility_blocks_are_missing_and_repair_has_not_run() {
+        let cp = Checkpoint { last_scanned_height: 3_000_000, utility_backfill_done: false };
+        assert!(should_backfill_utility_blocks(&cp, true));
+    }
+
+    #[test]
+    fn does_not_backfill_once_the_repair_has_run() {
+        // A window that genuinely holds no utility blocks must not re-trigger a
+        // full rescan on every cycle.
+        let cp = Checkpoint { last_scanned_height: 3_000_000, utility_backfill_done: true };
+        assert!(!should_backfill_utility_blocks(&cp, true));
+    }
+
+    #[test]
+    fn does_not_backfill_when_utility_blocks_are_already_present() {
+        let cp = Checkpoint { last_scanned_height: 3_000_000, utility_backfill_done: false };
+        assert!(!should_backfill_utility_blocks(&cp, false));
+    }
+
+    /*
+     * The serde default is what makes the repair reach existing deployments:
+     * their checkpoint files predate the field entirely.
+     */
+    #[test]
+    fn checkpoint_without_the_flag_parses_as_needing_the_backfill() {
+        let old_file = r#"{"last_scanned_height": 3000000}"#;
+        let cp: Checkpoint = serde_json::from_str(old_file).expect("old checkpoint must still parse");
+        assert_eq!(cp.last_scanned_height, 3_000_000);
+        assert!(!cp.utility_backfill_done);
+        assert!(should_backfill_utility_blocks(&cp, true));
+    }
+
+    #[test]
+    fn checkpoint_round_trips_the_flag() {
+        let cp = Checkpoint { last_scanned_height: 42, utility_backfill_done: true };
+        let encoded = serde_json::to_string(&cp).unwrap();
+        let decoded: Checkpoint = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(cp, decoded);
+    }
 
     #[test]
     fn unix_to_utc_date_epoch() {

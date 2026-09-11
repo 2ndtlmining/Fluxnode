@@ -107,7 +107,7 @@ const DRILLDOWN_LIMIT = 50;
  * this shows the category subtotals in full and caps the block list, rather
  * than rendering hundreds of rows nobody asked for.
  */
-function UtilityDrilldown({ open }) {
+function UtilityDrilldown({ open, expectedTotal }) {
   const [state, setState] = useState({ status: 'idle', data: null });
 
   useEffect(() => {
@@ -136,7 +136,23 @@ function UtilityDrilldown({ open }) {
 
   const { totals, blocks } = state.data;
   if (totals.utilityTotal === 0) {
-    return <div className="ca-drilldown ca-drilldown--message">No utility blocks recorded yet.</div>;
+    /*
+     * Two very different situations reach here, and saying "none recorded" for
+     * both is what made issue #231 read as a broken panel.
+     *
+     * The count above this drill-down comes from the daily rollup; the blocks
+     * come from a separate file the scanner only writes while it is actually
+     * scanning. A deployment that caught up before utility blocks existed has
+     * the former and not the latter, so the panel claimed there was nothing
+     * there directly underneath a non-zero figure. The API now backfills that
+     * case, but the scan takes a while, so say so instead of contradicting the
+     * number the user just clicked.
+     */
+    const message =
+      expectedTotal > 0
+        ? 'Block detail is still being built for this window. It appears once the scanner finishes its next pass.'
+        : 'No utility blocks recorded yet.';
+    return <div className="ca-drilldown ca-drilldown--message">{message}</div>;
   }
 
   return (
@@ -225,7 +241,7 @@ function UtilitySummary({ daily, syncStatus, theme }) {
               {fmtNum(emptyBlocks)} empty ({pct(emptyBlocks, total)}%)
             </span>
           </div>
-          <UtilityDrilldown open={drilldownOpen} />
+          <UtilityDrilldown open={drilldownOpen} expectedTotal={utilityBlocks} />
         </>
       )}
     </div>
