@@ -376,3 +376,115 @@
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
+
+// ── Recent activity (issue #211) ──────────────────────────────────
+
+// Spans the grid: two summary columns plus a transaction list need more width
+// than a single cell, and squeezing them would defeat the point.
+.dt-activity-panel {
+  grid-column: 1 / -1;
+}
+
+.dt-activity-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.dt-activity-col-title {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.dt-activity-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  min-height: 1.35em;
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  &--total {
+    border-top: 1px solid var(--border-secondary);
+    margin-top: 4px;
+    padding-top: 5px;
+    font-weight: 600;
+  }
+}
+
+.dt-activity-net {
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--border-secondary);
+  margin-bottom: 8px;
+
+  &--up { color: var(--accent-green); }
+  &--down { color: var(--accent-red); }
+}
+
+.dt-activity-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dt-activity-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.76rem;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+
+  &:hover { background: var(--surface-inset); }
+}
+
+.dt-activity-date {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dt-activity-party {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+
+  // Known counterparties are highlighted; an unknown address stays neutral so
+  // the named ones stand out rather than everything competing.
+  &--exchange { color: var(--accent-amber); font-weight: 600; }
+  &--foundation { color: var(--accent-indigo); font-weight: 600; }
+  &--reward { color: var(--accent-blue); }
+}
+
+.dt-activity-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+
+  &--in { color: var(--accent-green); }
+  &--out { color: var(--accent-red); }
+}
+
+.dt-activity-caption {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding-top: 8px;
+}
