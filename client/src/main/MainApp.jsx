@@ -20,6 +20,7 @@ import {
   processedAddressPatch,
   resolveHydrationTarget
 } from 'wallet/addressInput';
+import { sumEnterpriseScore } from 'wallet/enterpriseScore';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
@@ -267,11 +268,9 @@ class MainApp extends React.Component {
 
   async _getTotalScoreAgainstSearchedWallet(wallet) {
     const enterpriseNodesRaw = await getEnterpriseNodes();
-    const enterpriseNodesFiltered = enterpriseNodesRaw.filter((item) => item?.payment_address === wallet);
-    const sum = enterpriseNodesFiltered.reduce((prev, current) => prev + current.score, 0);
     this.setState({
       ...this.state,
-      totalScoreAgainstSearchedWallet: sum
+      totalScoreAgainstSearchedWallet: sumEnterpriseScore(enterpriseNodesRaw, wallet)
     });
   }
 
@@ -283,8 +282,6 @@ class MainApp extends React.Component {
     const { location } = this.props.router;
     let params = new URLSearchParams(location.search);
     let wallet = params.get('wallet');
-
-    this._getTotalScoreAgainstSearchedWallet(wallet);
 
     /*
      * resolveHydrationTarget owns the "which wallet, if any" decision (#249).
@@ -298,6 +295,13 @@ class MainApp extends React.Component {
       activeAddress: this.state.activeAddress,
       searchHistory: this.state.searchHistory
     });
+
+    /*
+     * #257: this used to run above with the raw ?wallet= param, which Privacy
+     * Mode has already masked -- so it filtered on a row of X's and scored 0.
+     * It needs the RESOLVED address, which only exists after this point.
+     */
+    this._getTotalScoreAgainstSearchedWallet(address);
 
     if (address) {
       this.onProcessAddress(address);
