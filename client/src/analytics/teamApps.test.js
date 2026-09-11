@@ -158,3 +158,31 @@ describe('formatExpiry', () => {
     expect(formatExpiry(undefined)).toBeNull();
   });
 });
+
+describe('buildTeamAppRows category (issue #229)', () => {
+  const TEAM = ['team-zelid'];
+
+  it('categorises a row using the same categoriser as the rest of the Apps tab', () => {
+    const specs = [
+      { name: 'fah', owner: 'team-zelid', instances: 3, compose: [{ repotag: 'runonflux/folding-at-home:latest', cpu: 1, ram: 1024, hdd: 10 }] },
+    ];
+    const { rows } = buildTeamAppRows(specs, 0, TEAM);
+    expect(rows[0].category).toBe('computing');
+  });
+
+  it('marks an encrypted enterprise spec as enterprise rather than other', () => {
+    const specs = [
+      { name: 'secret', owner: 'team-zelid', instances: 1, enterprise: true, compose: [] },
+    ];
+    const { rows } = buildTeamAppRows(specs, 0, TEAM);
+    expect(rows[0].category).toBe('enterprise');
+  });
+
+  it('falls back to other for an unrecognised image', () => {
+    const specs = [
+      { name: 'mystery', owner: 'team-zelid', instances: 1, compose: [{ repotag: 'someone/unknown-thing:1', cpu: 1, ram: 1024, hdd: 10 }] },
+    ];
+    const { rows } = buildTeamAppRows(specs, 0, TEAM);
+    expect(rows[0].category).toBe('other');
+  });
+});

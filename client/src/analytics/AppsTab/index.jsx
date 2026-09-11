@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
+import { FiBox, FiCpu, FiHardDrive, FiDatabase } from 'react-icons/fi';
 import { fetch_global_app_specs, fetch_global_stats, fetch_total_network_utils } from 'apidata';
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
@@ -227,6 +228,76 @@ function KpiTile({ value, label, hint, onClick, expanded }) {
  * what the percentage is made of -- one app at 100 instances outweighs fifty at
  * one instance each.
  */
+function TeamAppCard({ row }) {
+  const meta = APP_CATEGORY_META[row.category] || APP_CATEGORY_META.other;
+  const CatIcon = meta.Icon || FiBox;
+  const expiry = formatExpiry(row.expiresInBlocks);
+  const expired = expiry === 'expired';
+
+  return (
+    <div className="atc-card">
+      <div className="atc-head">
+        <span className="atc-name" title={row.name}>{row.name}</span>
+        <Tooltip2
+          content={<CategoryTooltip category={row.category} />}
+          placement="top"
+          hoverOpenDelay={200}
+          popoverClassName="hov-cat-tooltip"
+        >
+          {/* Same chip treatment as WorkhorsePanel's .whp-cat and the ecosystem
+              breakdown below, so one app reads identically wherever it appears. */}
+          <span className="atc-cat" style={{ borderColor: `${meta.color}44` }}>
+            <span style={{ color: meta.color, display: 'inline-flex' }}><CatIcon size={10} /></span>
+            {meta.label}
+          </span>
+        </Tooltip2>
+      </div>
+
+      <div className="atc-repo" title={row.repotag || ''}>
+        {row.repotag || (row.isEnterprise
+          ? <span className="atc-muted">encrypted specification</span>
+          : '—')}
+      </div>
+
+      <div className="atc-foot">
+        <span className="atc-instances">
+          {fmtNum(row.instances)}<small>{row.instances === 1 ? ' instance' : ' instances'}</small>
+        </span>
+
+        {/* Per-instance only. The fleet total each app accounts for is now in
+            the panel header, not repeated on every card -- "1 / 100" read as a
+            fraction and was the original complaint in #229. */}
+        <span className="atc-res">
+          <FiCpu size={10} />{fmtDec(row.cpuPerInst)}
+          <i>·</i>
+          <FiHardDrive size={10} />{fmtDec(row.ramGBPerInst)} GB
+          <i>·</i>
+          <FiDatabase size={10} />{fmtDec(row.ssdGBPerInst, 0)} GB
+        </span>
+
+        <span className={`atc-expiry${expired ? ' atc-expiry--expired' : ''}`}>
+          {expiry || '—'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/*
+ * The apps behind the Flux-team-sponsored percentage.
+ *
+ * The stat alone asserts that one owner runs roughly half the network's ordered
+ * instances, with no way to check it. This is the evidence: which apps, how many
+ * instances each, and what they reserve. Sorted by instance count because that
+ * is what the percentage is made of -- one app at 100 instances outweighs fifty
+ * at one instance each.
+ *
+ * A card grid rather than a table (issue #229): the seven-column table it
+ * replaced stretched the full panel width for four short values per row, and
+ * rendered each resource as "per-instance / fleet-total", which read as a
+ * fraction. Cards reflow by width, and the fleet totals live once in the header
+ * where a total belongs.
+ */
 function TeamAppsDetail({ rawSpecs, currentBlock }) {
   const { rows, totalApps, totalInstances, totalCpu, totalRamGB, totalSsdGB } =
     buildTeamAppRows(rawSpecs, currentBlock);
@@ -248,68 +319,24 @@ function TeamAppsDetail({ rawSpecs, currentBlock }) {
         </span>
       </div>
 
-      <div className="apps-team-scroll">
-        <table className="apps-team-table">
-          <thead>
-            <tr>
-              <th>App</th>
-              <th>Repository</th>
-              <th className="apps-team-num">Instances</th>
-              <th className="apps-team-num">CPU</th>
-              <th className="apps-team-num">RAM</th>
-              <th className="apps-team-num">SSD</th>
-              <th>Expires</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const expiry = formatExpiry(row.expiresInBlocks);
-              return (
-                <tr key={row.name}>
-                  <td className="apps-team-name" title={row.name}>{row.name}</td>
-                  <td className="apps-team-repo" title={row.repotag || ''}>
-                    {row.repotag || (row.isEnterprise
-                      ? <span className="apps-team-muted">encrypted</span>
-                      : '\u2014')}
-                  </td>
-                  <td className="apps-team-num">{fmtNum(row.instances)}</td>
-                  {/* Per-instance first, fleet total after: the fleet figure is
-                      what explains the share, the per-instance one is what an
-                      operator recognises. */}
-                  <td className="apps-team-num">
-                    {fmtDec(row.cpuPerInst)}
-                    {row.totalCpu != null && <span className="apps-team-total"> / {fmtDec(row.totalCpu)}</span>}
-                  </td>
-                  <td className="apps-team-num">
-                    {fmtDec(row.ramGBPerInst)}
-                    {row.totalRamGB != null && <span className="apps-team-total"> / {fmtDec(row.totalRamGB)}</span>}
-                  </td>
-                  <td className="apps-team-num">
-                    {fmtDec(row.ssdGBPerInst, 0)}
-                    {row.totalSsdGB != null && <span className="apps-team-total"> / {fmtDec(row.totalSsdGB, 0)}</span>}
-                  </td>
-                  <td className={expiry === 'expired' ? 'apps-team-expired' : ''}>{expiry || '\u2014'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2}>Fleet total</td>
-              <td className="apps-team-num">{fmtNum(totalInstances)}</td>
-              <td className="apps-team-num">{fmtDec(totalCpu)}</td>
-              <td className="apps-team-num">{fmtDec(totalRamGB)}</td>
-              <td className="apps-team-num">{fmtDec(totalSsdGB, 0)}</td>
-              <td />
-            </tr>
-          </tfoot>
-        </table>
+      {/* The fleet totals the table footer used to carry. One row, once. */}
+      <div className="atc-fleet">
+        <span>Fleet reserves</span>
+        <strong>{fmtDec(totalCpu)}</strong> cores
+        <i>·</i>
+        <strong>{fmtDec(totalRamGB)}</strong> GB RAM
+        <i>·</i>
+        <strong>{fmtDec(totalSsdGB, 0)}</strong> GB SSD
+      </div>
+
+      <div className="atc-grid">
+        {rows.map((row) => <TeamAppCard key={row.name} row={row} />)}
       </div>
 
       <div className="apps-team-caption">
-        Per-instance / fleet total. CPU in cores, RAM and SSD in GB. Expiry is derived
-        from each spec&apos;s height + expire against the current block, at the
-        30-second block target.
+        Figures are what each app reserves <strong>per instance</strong> &mdash; CPU in
+        cores, RAM and SSD in GB. Expiry is derived from each spec&apos;s height +
+        expire against the current block, at the 30-second block target.
       </div>
     </div>
   );

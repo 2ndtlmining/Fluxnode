@@ -1,5 +1,6 @@
 import { FLUX_TEAM_OWNER_ZELIDS } from 'analytics/teamSponsored';
 import { specResources } from 'appSpecs';
+import { categorizeAppSpec } from 'main/Gamification/appCategories';
 
 /*
  * The apps behind the "Flux-team-sponsored" percentage.
@@ -13,6 +14,8 @@ import { specResources } from 'appSpecs';
  * field comes from specs already in memory:
  *
  *   name        spec.name
+ *   category    categorizeAppSpec(spec) -- the same categoriser the rest of the
+ *               Apps tab uses, so a given app reads the same everywhere
  *   repo        specResources(spec).repotag (component 0 for compose apps)
  *   instances   spec.instances, defaulting to 1 for older specs that omit it
  *   cpu/ram/ssd specResources(spec), summed across compose components
@@ -58,6 +61,7 @@ export function buildTeamAppRows(rawSpecs, currentBlock, teamZelids = FLUX_TEAM_
 
     rows.push({
       name: spec.name,
+      category: categorizeAppSpec(spec),
       repotag,
       instances,
       cpuPerInst,
