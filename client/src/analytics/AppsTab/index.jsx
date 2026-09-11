@@ -9,6 +9,7 @@ import { CategoryTooltip } from 'components/CategoryTooltip';
 import { WorkhorsePanel } from 'home/WorkhorsePanel';
 import { rankNodeOperators, aggregateOwnerTotals, DEFAULT_TOP_N } from 'analytics/topOwners';
 import { FLUX_TEAM_OWNER_ZELIDS, computeTeamSponsoredShare } from 'analytics/teamSponsored';
+import { buildTeamAppRows, formatExpiry } from 'analytics/teamApps';
 import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
 
@@ -178,8 +179,145 @@ function RankedAddressList({ title, rows, valueLabel, teamZelids = [] }) {
   );
 }
 
+function fmtDec(n, digits = 1) {
+  if (n == null) return '\u2014';
+  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
+}
+
+/* One cell of the KPI strip. Passing `onClick` turns it into a real button. */
+function KpiTile({ value, label, hint, onClick, expanded }) {
+  const body = (
+    <>
+      <span className="apps-kpi-value">{value}</span>
+      <span className="apps-kpi-label">
+        {label}
+        {hint && <span className="apps-kpi-hint" aria-hidden="true">{'\u24d8'}</span>}
+      </span>
+    </>
+  );
+
+  const tile = onClick ? (
+    <button
+      type="button"
+      className={`hov-panel apps-kpi apps-kpi--interactive${expanded ? ' apps-kpi--expanded' : ''}`}
+      onClick={onClick}
+      aria-expanded={expanded}
+      aria-controls="apps-team-detail"
+    >
+      {body}
+      <span className="apps-kpi-chevron" aria-hidden="true">{expanded ? '\u25b4' : '\u25be'}</span>
+    </button>
+  ) : (
+    <div className="hov-panel apps-kpi">{body}</div>
+  );
+
+  return hint ? (
+    <Tooltip2 content={hint} placement="bottom" hoverOpenDelay={200} transitionDuration={80}>
+      {tile}
+    </Tooltip2>
+  ) : tile;
+}
+
+/*
+ * The apps behind the Flux-team-sponsored percentage.
+ *
+ * The stat alone asserts that one owner runs roughly half the network's ordered
+ * instances, with no way to check it. This is the evidence: which apps, how many
+ * instances each, and what they cost. Sorted by instance count because that is
+ * what the percentage is made of -- one app at 100 instances outweighs fifty at
+ * one instance each.
+ */
+function TeamAppsDetail({ rawSpecs, currentBlock }) {
+  const { rows, totalApps, totalInstances, totalCpu, totalRamGB, totalSsdGB } =
+    buildTeamAppRows(rawSpecs, currentBlock);
+
+  if (rows.length === 0) {
+    return (
+      <div className="hov-panel apps-team-detail" id="apps-team-detail">
+        <div className="hov-empty">No Flux-team-owned apps found in the current spec set</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hov-panel apps-team-detail" id="apps-team-detail">
+      <div className="hov-header">
+        <span className="hov-header-title">FLUX-TEAM-SPONSORED APPS</span>
+        <span className="hov-header-badge">
+          {fmtNum(totalApps)} apps &middot; {fmtNum(totalInstances)} instances
+        </span>
+      </div>
+
+      <div className="apps-team-scroll">
+        <table className="apps-team-table">
+          <thead>
+            <tr>
+              <th>App</th>
+              <th>Repository</th>
+              <th className="apps-team-num">Instances</th>
+              <th className="apps-team-num">CPU</th>
+              <th className="apps-team-num">RAM</th>
+              <th className="apps-team-num">SSD</th>
+              <th>Expires</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const expiry = formatExpiry(row.expiresInBlocks);
+              return (
+                <tr key={row.name}>
+                  <td className="apps-team-name" title={row.name}>{row.name}</td>
+                  <td className="apps-team-repo" title={row.repotag || ''}>
+                    {row.repotag || (row.isEnterprise
+                      ? <span className="apps-team-muted">encrypted</span>
+                      : '\u2014')}
+                  </td>
+                  <td className="apps-team-num">{fmtNum(row.instances)}</td>
+                  {/* Per-instance first, fleet total after: the fleet figure is
+                      what explains the share, the per-instance one is what an
+                      operator recognises. */}
+                  <td className="apps-team-num">
+                    {fmtDec(row.cpuPerInst)}
+                    {row.totalCpu != null && <span className="apps-team-total"> / {fmtDec(row.totalCpu)}</span>}
+                  </td>
+                  <td className="apps-team-num">
+                    {fmtDec(row.ramGBPerInst)}
+                    {row.totalRamGB != null && <span className="apps-team-total"> / {fmtDec(row.totalRamGB)}</span>}
+                  </td>
+                  <td className="apps-team-num">
+                    {fmtDec(row.ssdGBPerInst, 0)}
+                    {row.totalSsdGB != null && <span className="apps-team-total"> / {fmtDec(row.totalSsdGB, 0)}</span>}
+                  </td>
+                  <td className={expiry === 'expired' ? 'apps-team-expired' : ''}>{expiry || '\u2014'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={2}>Fleet total</td>
+              <td className="apps-team-num">{fmtNum(totalInstances)}</td>
+              <td className="apps-team-num">{fmtDec(totalCpu)}</td>
+              <td className="apps-team-num">{fmtDec(totalRamGB)}</td>
+              <td className="apps-team-num">{fmtDec(totalSsdGB, 0)}</td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div className="apps-team-caption">
+        Per-instance / fleet total. CPU in cores, RAM and SSD in GB. Expiry is derived
+        from each spec&apos;s height + expire against the current block, at the
+        30-second block target.
+      </div>
+    </div>
+  );
+}
+
 export function AppsTab() {
   const [gstore, setGstore] = useState(null);
+  const [teamOpen, setTeamOpen] = useState(false);
   const [appSpecs, setAppSpecs] = useState(null);
   const [nodeOperators, setNodeOperators] = useState([]);
   const [ownerTotals, setOwnerTotals] = useState({ owners: [], networkTotalInstances: 0 });
@@ -221,6 +359,8 @@ export function AppsTab() {
   }
 
   const { owners, networkTotalInstances } = ownerTotals;
+  const distinctApps = Array.isArray(appSpecs?.rawSpecs) ? appSpecs.rawSpecs.length : 0;
+  const appOwners = owners.length;
   const { sharePct } = computeTeamSponsoredShare(owners, networkTotalInstances);
 
   const nodeOperatorRows = nodeOperators.map((o) => ({ key: o.address, value: o.nodeCount }));
@@ -228,22 +368,32 @@ export function AppsTab() {
 
   return (
     <div className="apps-tab">
-      <div className="apps-tab-hero">
-        <span className="apps-tab-hero-value">{fmtNum(networkTotalInstances)}</span>
-        <span className="apps-tab-hero-label">Ordered app instances</span>
-      </div>
-
-      <div className="apps-tab-stat-row">
+      {/*
+        * One KPI strip, replacing a hero row and a stat row that each sat
+        * almost entirely empty. The team-sponsored tile is a button: clicking
+        * it expands the apps behind the percentage at full width, because a
+        * seven-column table cannot live in a grid cell.
+        */}
+      <div className="apps-kpi-strip">
+        <KpiTile value={fmtNum(networkTotalInstances)} label="Ordered app instances" />
+        <KpiTile value={fmtNum(distinctApps)} label="Distinct apps" />
+        <KpiTile value={fmtNum(appOwners)} label="App owners" />
         <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored stat" preview="blur">
-          <div className="hov-panel apps-tab-stat-card">
-            <span className="hov-header-title">FLUX-TEAM-SPONSORED</span>
-            <span className="apps-tab-stat-value">{sharePct.toFixed(1)}%</span>
-            <span className="apps-tab-stat-caption">
-              of {fmtNum(networkTotalInstances)} ordered app instances run under the Flux team's own owner ID
-            </span>
-          </div>
+          <KpiTile
+            value={`${sharePct.toFixed(1)}%`}
+            label="Flux-team-sponsored"
+            hint={`Share of all ${fmtNum(networkTotalInstances)} ordered app instances whose spec owner is the Flux team's own ZelID (${FLUX_TEAM_OWNER_ZELIDS.join(', ')}). Owner IDs are ZelIDs, not payment addresses. Click to see the apps.`}
+            onClick={() => setTeamOpen((open) => !open)}
+            expanded={teamOpen}
+          />
         </PanelGate>
       </div>
+
+      {teamOpen && (
+        <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored apps" preview="blur">
+          <TeamAppsDetail rawSpecs={appSpecs.rawSpecs} currentBlock={gstore?.fluxBlockHeight || 0} />
+        </PanelGate>
+      )}
 
       <div className="apps-tab-panel-grid">
         <PanelGate panelKey="appEcosystem" feature="App Ecosystem" preview="blur">
