@@ -3,17 +3,22 @@ import './index.scss';
 
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { getCountryCentroid, projectToPercent } from 'geo/countryCentroids';
+import { WORLD_LAND_PATH } from 'geo/worldLandPath';
 
 const MIN_RADIUS_PX = 3;
 const MAX_RADIUS_PX = 11;
 
-// Graticule: decorative lat/lon reference lines, not survey-accurate — same
-// spirit as countryCentroids.js's own centroids ("fine for a decorative
-// ping, not for navigation"). Denser than a first pass (20°/30° instead of
-// 30°/60°) so the grid gives a rough positional anchor in the absence of
-// coastlines — flagged as a legibility gap in the final branch review.
-const GRATICULE_LATS = [-80, -60, -40, -20, 0, 20, 40, 60, 80];
-const GRATICULE_LONS = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150];
+/*
+ * Graticule: decorative lat/lon reference lines, not survey-accurate.
+ *
+ * Deliberately SPARSER than before (30°/60° rather than 20°/30°). The dense
+ * grid existed to compensate for having no coastlines -- WorldMap's previous
+ * comment called that out as a legibility gap. Now that real landmasses carry
+ * the spatial reference, a dense grid competes with them instead of helping,
+ * so this is back to a light equator/tropic-ish scaffold.
+ */
+const GRATICULE_LATS = [-60, -30, 0, 30, 60];
+const GRATICULE_LONS = [-120, -60, 0, 60, 120];
 
 function fmtNum(n) {
   if (!n && n !== 0) return '—';
@@ -56,6 +61,24 @@ export function WorldMap({ countryCounts }) {
       ) : (
         <>
           <div className="wm-frame">
+            {/*
+              * Equirectangular landmass, drawn first so everything else sits
+              * on top of it. viewBox 0 0 360 180 with preserveAspectRatio
+              * "none" means the SVG's coordinate space IS lon+180 / 90-lat --
+              * identical to projectToPercent, which is what positions the
+              * bubbles. They therefore align by construction rather than by
+              * tuning, and stay aligned at any container size or aspect ratio.
+              */}
+            <svg
+              className="wm-land"
+              viewBox="0 0 360 180"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d={WORLD_LAND_PATH} />
+            </svg>
+
             {GRATICULE_LATS.map((lat) => (
               <div
                 key={`lat-${lat}`}
