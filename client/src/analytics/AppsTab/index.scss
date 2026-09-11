@@ -6,17 +6,71 @@
   gap: 20px;
 }
 
+/*
+ * Six panels, so only a column count that DIVIDES six leaves a full last row
+ * (issue #248).
+ *
+ * This was `repeat(auto-fit, minmax(340px, 1fr))`, which resolves to 4 or 5
+ * columns at ordinary desktop widths -- 6 mod 5 = 1, 6 mod 4 = 2 -- stranding
+ * DEPLOYED TODAY alone on a second row at a third the width and two thirds the
+ * height of its siblings. It only looked correct on a very wide display, where
+ * auto-fit happened to give 6+ tracks and collapse the empties.
+ *
+ * Fixed counts rather than auto-fit because the constraint here is divisibility,
+ * which auto-fit cannot express.
+ */
 .apps-tab-panel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  // Below this the six tracks would each fall under the ~340px these panels
+  // need for their name + bar + value rows.
+  @media (min-width: 2200px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .apps-tab-ranked-panel {
   min-width: 0;
 }
 
+/*
+ * The team badge sits INSIDE .hov-ranked-name, which truncates with an
+ * ellipsis -- so the badge was being cut mid-word to "Flux tea..." (issue
+ * #255). Splitting the cell into a flex row lets the ADDRESS absorb the
+ * truncation while the badge keeps its full width.
+ *
+ * Scoped to .apps-tab-owner-name rather than changing .hov-ranked-name, which
+ * is shared with the Network and Donor tabs and has no badge to protect.
+ */
+.apps-tab-owner-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  // The shared rule sets these for the whole cell; the inner id owns them now.
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.apps-tab-owner-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .apps-tab-team-flag {
+  flex-shrink: 0;
+  white-space: nowrap;
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: 999px;
@@ -459,4 +513,85 @@
     color: var(--accent-red);
     font-weight: 600;
   }
+}
+
+/*
+ * Filter + sort controls for the EXPIRING TODAY / DEPLOYED TODAY panels
+ * (issue #247).
+ */
+.hov-spec-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 6px;
+}
+
+.hov-spec-filter__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.72rem;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  background: var(--surface-inset);
+  color: inherit;
+
+  &::placeholder {
+    color: rgba(128, 128, 128, 0.75);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(43, 97, 209, 0.6);
+  }
+}
+
+.hov-spec-filter__clear {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 5px;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * Header cells are buttons now, so the browser's default button chrome has to
+ * be stripped back to what the spans looked like before.
+ */
+.hov-spec-header__btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity var(--transition-fast);
+
+  &:hover,
+  &--active {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 1px solid rgba(43, 97, 209, 0.7);
+    outline-offset: 2px;
+  }
+}
+
+.hov-spec-sort {
+  font-size: 0.6em;
+  opacity: 0.7;
 }

@@ -10,6 +10,19 @@
   margin: 0;
   overflow: hidden;
 
+  // The footer is a flex CHILD of .App, which is a fixed-height (100vh) flex
+  // column with `overflow: auto`. A flex item defaults to `flex-shrink: 1`, so
+  // on any route whose content overflows that height the footer was squeezed
+  // from its natural 62px down to 0.67px and clipped to nothing by the
+  // overflow: hidden above -- present in the DOM, invisible on screen, and
+  // positioned past the end of the scrollable area so it could not be reached
+  // by scrolling either (issue #246).
+  //
+  // /live is where this showed up because it is the tallest page; shorter
+  // routes never overflowed enough to trigger the shrink, which is why the
+  // footer looked fine everywhere else.
+  flex-shrink: 0;
+
   @include rule-mode-dark() {
     background-color: #101823;
     border-top-color: rgba(255, 255, 255, 0.06);

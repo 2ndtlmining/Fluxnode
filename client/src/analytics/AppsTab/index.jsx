@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { FiBox, FiCpu, FiHardDrive, FiDatabase } from 'react-icons/fi';
@@ -10,6 +10,7 @@ import { CategoryTooltip } from 'components/CategoryTooltip';
 import { WorkhorsePanel } from 'home/WorkhorsePanel';
 import { rankNodeOperators, aggregateOwnerTotals, DEFAULT_TOP_N } from 'analytics/topOwners';
 import { FLUX_TEAM_OWNER_ZELIDS, computeTeamSponsoredShare } from 'analytics/teamSponsored';
+import { filterAndSortSpecs, nextSortState } from 'analytics/AppsTab/specFilter';
 import { buildTeamAppRows, formatExpiry } from 'analytics/teamApps';
 import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
@@ -45,16 +46,42 @@ function fmtSpecVal(value, suffix) {
   return `${value.toFixed(2)}${suffix}`;
 }
 
-function SpecHeader() {
+/*
+ * Column headers double as sort controls (issue #247). Real <button>s, not
+ * click handlers on spans, so the panels stay keyboard-reachable and announce
+ * their sort state -- the same reasoning as the Chain Activity drill-down.
+ */
+const SPEC_COLUMNS = [
+  { key: 'name', label: 'Name', cls: 'hov-spec-header__name' },
+  { key: 'category', label: 'Cat', cls: 'hov-spec-header__cat' },
+  { key: 'instances', label: 'Inst', cls: 'hov-spec-header__inst' },
+  { key: 'cpuPerInst', label: 'CPU', cls: 'hov-spec-header__val' },
+  { key: 'ramGBPerInst', label: 'RAM', cls: 'hov-spec-header__val' },
+  { key: 'ssdGBPerInst', label: 'SSD', cls: 'hov-spec-header__val' },
+  { key: 'timeBlocks', label: 'Time', cls: 'hov-spec-header__time' }
+];
+
+function SpecHeader({ sortKey, sortDir, onSort }) {
   return (
     <div className="hov-spec-header">
-      <span className="hov-spec-header__name">Name</span>
-      <span className="hov-spec-header__cat">Cat</span>
-      <span className="hov-spec-header__inst">Inst</span>
-      <span className="hov-spec-header__val">CPU</span>
-      <span className="hov-spec-header__val">RAM</span>
-      <span className="hov-spec-header__val">SSD</span>
-      <span className="hov-spec-header__time">Time</span>
+      {SPEC_COLUMNS.map(({ key, label, cls }) => {
+        const active = sortKey === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            className={`${cls} hov-spec-header__btn${active ? ' hov-spec-header__btn--active' : ''}`}
+            onClick={() => onSort(key)}
+            aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+            title={`Sort by ${label}`}
+          >
+            {label}
+            <span className="hov-spec-sort" aria-hidden="true">
+              {active ? (sortDir === 'asc' ? '▴' : '▾') : '⇅'}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -72,37 +99,81 @@ function SpecCategoryIcon({ category }) {
   );
 }
 
-function ExpiringTodayPanel({ appSpecs }) {
-  if (!appSpecs) {
-    return (
-      <div className="hov-panel hov-panel-center">
-        <Spinner size={24} />
-      </div>
-    );
-  }
+/*
+ * One component for both panels (issue #247).
+ *
+ * These were two near-identical copies differing only in title, tone class and
+ * how the time column reads. That is the same duplication pattern that put the
+ * same bug in Home.jsx and MainApp.jsx twice over (#249/#251), so the filter
+ * and sort controls are added ONCE here rather than to two copies that would
+ * immediately start drifting.
+ *
+ * `timeBlocks` is normalised on the way in so specFilter can sort the time
+ * column without caring which panel it came from.
+ */
+function SpecPanel({ title, items, modifier, tone, emptyText, renderTime }) {
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState({ sortKey: null, sortDir: null });
 
-  const items = appSpecs.expiringToday || [];
+  const visible = useMemo(
+    () => filterAndSortSpecs(items, { query, ...sort }),
+    [items, query, sort]
+  );
+
+  const onSort = (key) => setSort((prev) => nextSortState(prev, key));
+  const filtering = query.trim().length > 0;
 
   return (
-    <div className="hov-panel hov-panel--expiring">
+    <div className={`hov-panel ${modifier}`}>
       <div className="hov-header">
-        <span className="hov-header-title">EXPIRING TODAY</span>
-        {items.length > 0 && <span className="hov-header-badge">{items.length}</span>}
+        <span className="hov-header-title">{title}</span>
+        {items.length > 0 && (
+          <span className="hov-header-badge">
+            {filtering ? `${visible.length}/${items.length}` : items.length}
+          </span>
+        )}
       </div>
-      {items.length > 0 && <SpecHeader />}
+
+      {items.length > 0 && (
+        <div className="hov-spec-filter">
+          <input
+            type="text"
+            className="hov-spec-filter__input"
+            placeholder="Filter by name or category…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label={`Filter ${title}`}
+          />
+          {filtering && (
+            <button
+              type="button"
+              className="hov-spec-filter__clear"
+              onClick={() => setQuery('')}
+              aria-label="Clear filter"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
+      {items.length > 0 && <SpecHeader sortKey={sort.sortKey} sortDir={sort.sortDir} onSort={onSort} />}
+
       <div className="hov-list">
         {items.length === 0 ? (
-          <div className="hov-empty">None expiring today</div>
+          <div className="hov-empty">{emptyText}</div>
+        ) : visible.length === 0 ? (
+          <div className="hov-empty">No apps match “{query.trim()}”</div>
         ) : (
-          items.map((spec, i) => (
+          visible.map((spec, i) => (
             <div key={spec.name + i} className="hov-spec-row">
-              <span className="hov-list-name">{spec.name}</span>
+              <span className="hov-list-name" title={spec.name}>{spec.name}</span>
               <SpecCategoryIcon category={spec.category} />
-              <span className="hov-badge hov-badge--warn">{spec.instances}×</span>
+              <span className={`hov-badge hov-badge--${tone}`}>{spec.instances}×</span>
               <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
               <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
               <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
-              <span className="hov-time hov-time--warn">in {blocksToHuman(spec.expiresInBlocks)}</span>
+              <span className={`hov-time hov-time--${tone}`}>{renderTime(spec)}</span>
             </div>
           ))
         )}
@@ -111,7 +182,12 @@ function ExpiringTodayPanel({ appSpecs }) {
   );
 }
 
-function DeployedTodayPanel({ appSpecs }) {
+function ExpiringTodayPanel({ appSpecs }) {
+  const items = useMemo(
+    () => (appSpecs?.expiringToday || []).map((s) => ({ ...s, timeBlocks: s.expiresInBlocks })),
+    [appSpecs]
+  );
+
   if (!appSpecs) {
     return (
       <div className="hov-panel hov-panel-center">
@@ -120,33 +196,41 @@ function DeployedTodayPanel({ appSpecs }) {
     );
   }
 
-  const items = appSpecs.deployedToday || [];
+  return (
+    <SpecPanel
+      title="EXPIRING TODAY"
+      items={items}
+      modifier="hov-panel--expiring"
+      tone="warn"
+      emptyText="None expiring today"
+      renderTime={(spec) => `in ${blocksToHuman(spec.expiresInBlocks)}`}
+    />
+  );
+}
+
+function DeployedTodayPanel({ appSpecs }) {
+  const items = useMemo(
+    () => (appSpecs?.deployedToday || []).map((s) => ({ ...s, timeBlocks: s.deployedAgeBlocks })),
+    [appSpecs]
+  );
+
+  if (!appSpecs) {
+    return (
+      <div className="hov-panel hov-panel-center">
+        <Spinner size={24} />
+      </div>
+    );
+  }
 
   return (
-    <div className="hov-panel hov-panel--deployed">
-      <div className="hov-header">
-        <span className="hov-header-title">DEPLOYED TODAY</span>
-        {items.length > 0 && <span className="hov-header-badge">{items.length}</span>}
-      </div>
-      {items.length > 0 && <SpecHeader />}
-      <div className="hov-list">
-        {items.length === 0 ? (
-          <div className="hov-empty">None deployed today</div>
-        ) : (
-          items.map((spec, i) => (
-            <div key={spec.name + i} className="hov-spec-row">
-              <span className="hov-list-name">{spec.name}</span>
-              <SpecCategoryIcon category={spec.category} />
-              <span className="hov-badge hov-badge--green">{spec.instances}×</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.cpuPerInst, 'c')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ramGBPerInst, 'GB')}</span>
-              <span className="hov-spec-val">{fmtSpecVal(spec.ssdGBPerInst, 'GB')}</span>
-              <span className="hov-time hov-time--green">{blocksToHuman(spec.deployedAgeBlocks)} ago</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+    <SpecPanel
+      title="DEPLOYED TODAY"
+      items={items}
+      modifier="hov-panel--deployed"
+      tone="green"
+      emptyText="None deployed today"
+      renderTime={(spec) => `${blocksToHuman(spec.deployedAgeBlocks)} ago`}
+    />
   );
 }
 
@@ -164,8 +248,8 @@ function RankedAddressList({ title, rows, valueLabel, teamZelids = [] }) {
           rows.map(({ key, value }, i) => (
             <div key={key} className="hov-ranked-row">
               <span className={`hov-rank${i === 0 ? ' hov-rank--gold' : i === 1 ? ' hov-rank--silver' : i === 2 ? ' hov-rank--bronze' : ''}`}>#{i + 1}</span>
-              <span className="hov-ranked-name" title={key}>
-                {truncateAddr(key)}
+              <span className="hov-ranked-name apps-tab-owner-name" title={key}>
+                <span className="apps-tab-owner-id">{truncateAddr(key)}</span>
                 {teamZelids.includes(key) && <span className="apps-tab-team-flag">Flux team</span>}
               </span>
               <div className="hov-ranked-bar-wrap">
