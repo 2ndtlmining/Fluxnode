@@ -12,7 +12,14 @@ import { getEnterpriseNodes } from 'apidata';
 import { AppToaster } from 'components/AppToaster';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
 import { CHECK_STATUS } from 'donor/donorWalletCheck';
-import { createNewHistoryList, displayedAddress, privacyStatePatch } from 'wallet/addressInput';
+import {
+  createNewHistoryList,
+  displayedAddress,
+  initialPrivacyState,
+  privacyStatePatch,
+  processedAddressPatch,
+  resolveHydrationTarget
+} from 'wallet/addressInput';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
@@ -131,7 +138,9 @@ class MainApp extends React.Component {
     let loadedHistory = [];
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
-      this.setState({ privacyMode: enablePrivacyMode });
+      // #251: see Home.jsx -- a bare setState left the address field unmasked
+      // on a load where privacy was already on.
+      this.setState((prev) => initialPrivacyState(enablePrivacyMode, prev.activeAddress));
     } catch { }
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
@@ -275,26 +284,25 @@ class MainApp extends React.Component {
 
     this._getTotalScoreAgainstSearchedWallet(wallet);
 
-    if (!!wallet && wallet != '') {
-      if (this.state.privacyMode) {
-        wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
-        
-      }
-      const address = wallet.toString();
+    /*
+     * resolveHydrationTarget owns the "which wallet, if any" decision (#249).
+     * This was inlined here and in Home.jsx with the same two bugs in both
+     * copies -- see wallet/addressInput.js for what they were.
+     */
+    const { address, inputAddress } = resolveHydrationTarget({
+      urlWallet: wallet,
+      donorWallet: this.props.donorWallet,
+      privacyMode: this.state.privacyMode,
+      activeAddress: this.state.activeAddress,
+      searchHistory: this.state.searchHistory
+    });
 
+    if (address) {
       this.onProcessAddress(address);
-      this.addressInputRef.current.value = address;
-      this.setState({ inputAddress: address });
-    } else if (this.props.donorWallet) {
-      // A wallet unlocked as a donor elsewhere (e.g. via the /live unlock
-      // dialog) but with no ?wallet= param on THIS page yet — surface it here
-      // too, the same way a URL-supplied wallet is processed above. Only
-      // engages when no URL wallet is present, so it never overrides an
-      // explicit navigation.
-      const address = this.props.donorWallet;
-      this.onProcessAddress(address);
-      this.addressInputRef.current.value = address;
-      this.setState({ inputAddress: address });
+      // The field shows the MASKED form when privacy is on; onProcessAddress
+      // still gets the real address to look up (#251).
+      if (this.addressInputRef.current) this.addressInputRef.current.value = inputAddress;
+      this.setState({ inputAddress });
     } else {
       fetch_global_stats(null)
         .then((gstore) => {
@@ -405,8 +413,7 @@ class MainApp extends React.Component {
       isPALoading: true, // Now start to fetch PA's (below)
 
       gstore,
-      activeAddress: address,
-      inputAddress: address
+      ...processedAddressPatch(this.state.privacyMode, address)
     });
 
     walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes, health }) => {

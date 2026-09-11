@@ -73,3 +73,117 @@ export function privacyStatePatch(privacyMode, prev) {
   if (!prev.activeAddress) return { privacyMode };
   return { privacyMode, inputAddress: displayedAddress(privacyMode, prev.activeAddress) };
 }
+
+/*
+ * Whether a value is the OUTPUT of hide_sensitive_string rather than a real
+ * address. That function replaces every alphanumeric with 'X', and Flux
+ * addresses are alphanumeric throughout, so a masked one is a pure run of X's
+ * -- which no genuine address can be.
+ */
+function isMaskedAddress(value) {
+  return /^X+$/.test(value);
+}
+
+/*
+ * Which wallet a page should hydrate with, and where it came from (issue #249).
+ *
+ * This decision was duplicated byte-for-byte in Home.jsx and MainApp.jsx, and
+ * the duplicate carried the same two defects in both copies:
+ *
+ *   wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
+ *
+ *   - `this.activeAddress` is never assigned anywhere; the field is
+ *     `this.state.activeAddress`, so the left side was always undefined.
+ *   - the right side indexes an ARRAY by `array - 1`, i.e. searchHistory[NaN],
+ *     so it was always undefined too.
+ *
+ * Both sides being undefined meant the next line's `wallet.toString()` threw,
+ * taking /home and /nodes down to the error boundary on any load with Privacy
+ * Mode on and a ?wallet= in the URL.
+ *
+ * Why the URL param can't just be used when privacy is on: LayoutContext masks
+ * ?wallet= to XXXX in place, so by the time this runs the param is a row of
+ * X's, not an address. The real address has to come from somewhere the mask
+ * hasn't touched -- the active address, or failing that the newest entry in the
+ * search history.
+ *
+ * Returns `{ address: null, source: null }` rather than throwing when nothing
+ * can be recovered; callers treat that as "no wallet", which is the same path
+ * a visitor with no ?wallet= takes.
+ *
+ * `inputAddress` is what the search field should SHOW, which is not always the
+ * address: with privacy on it is the masked form. Returning both together is
+ * deliberate -- hydrateApp writes this straight into state, and handing back
+ * only the raw address is what left /nodes' search box in plaintext while the
+ * URL, wallet header and IP column were all correctly masked.
+ */
+export function resolveHydrationTarget({
+  urlWallet,
+  donorWallet,
+  privacyMode,
+  activeAddress,
+  searchHistory,
+} = {}) {
+  const fromUrl = urlWallet == null ? '' : String(urlWallet);
+
+  if (fromUrl !== '') {
+    // Privacy being ON does not mean this particular param IS masked: following
+    // a shared link with the preference enabled hands us a genuine address, and
+    // throwing it away would silently ignore the link the user just clicked.
+    // Only a value that is actually masked needs recovering from state.
+    if (!privacyMode || !isMaskedAddress(fromUrl)) return _target(fromUrl, 'url', privacyMode);
+
+    const history = Array.isArray(searchHistory) ? searchHistory : [];
+    const recovered = activeAddress || history[history.length - 1] || null;
+    return recovered ? _target(recovered, 'url', privacyMode) : _target(null, null, privacyMode);
+  }
+
+  if (donorWallet) return _target(donorWallet, 'donor', privacyMode);
+
+  return _target(null, null, privacyMode);
+}
+
+function _target(address, source, privacyMode) {
+  return {
+    address: address || null,
+    source: address ? source : null,
+    inputAddress: address ? displayedAddress(privacyMode, address) : ''
+  };
+}
+
+/*
+ * The privacy slice of state as it should look at MOUNT (issue #251).
+ *
+ * privacyStatePatch above deliberately bails out when the mode has not changed,
+ * which is right for componentDidUpdate but wrong for mount: a page loaded with
+ * the preference ALREADY on has no transition to catch, so the address field
+ * was left showing the wallet in full plaintext while the URL and the wallet
+ * header were correctly masked.
+ *
+ * The stored preference comes from LocalForage and can be anything that was
+ * last written -- including undefined -- so it is coerced to a real boolean
+ * rather than trusted. `inputAddress` is only included when there is an address
+ * to mask, so this never blanks a field the user is midway through typing.
+ */
+export function initialPrivacyState(privacyMode, activeAddress) {
+  const enabled = privacyMode === true;
+  if (!activeAddress) return { privacyMode: enabled };
+  return { privacyMode: enabled, inputAddress: displayedAddress(enabled, activeAddress) };
+}
+
+/*
+ * The state a page should hold once it has successfully processed an address
+ * (issue #251).
+ *
+ * onProcessAddress used to end with a bare `inputAddress: address`, which runs
+ * AFTER hydrateApp and therefore overwrote the masked value with the raw one --
+ * leaving the search box in plaintext on a privacy-enabled load even though the
+ * URL, wallet header and IP column were all masked correctly.
+ *
+ * The distinction this encodes: `activeAddress` must stay the REAL address,
+ * because every downstream lookup and join keys on it. Only the displayed value
+ * is masked.
+ */
+export function processedAddressPatch(privacyMode, address) {
+  return { activeAddress: address, inputAddress: displayedAddress(privacyMode, address) };
+}

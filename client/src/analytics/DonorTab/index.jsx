@@ -266,13 +266,13 @@ function PayoutCard({ nextNode, lastPaidNode }) {
   );
 }
 
-// ── His nodes ────────────────────────────────────────────────────────────
+// ── Your nodes ────────────────────────────────────────────────────────────
 
 function DonorNodesList({ nodes }) {
   return (
     <div className="hov-panel dt-nodes-panel">
       <div className="hov-header">
-        <span className="hov-header-title">HIS NODES</span>
+        <span className="hov-header-title">YOUR NODES</span>
         <span className="hov-header-badge">{nodes.length}</span>
       </div>
       <div className="hov-ranked-list">
@@ -300,7 +300,7 @@ function AppsByCategoryPanel({ categories, totalApps }) {
   return (
     <div className="hov-panel dt-apps-panel">
       <div className="hov-header">
-        <span className="hov-header-title">APPS ON HIS NODES</span>
+        <span className="hov-header-title">APPS ON YOUR NODES</span>
         {totalApps > 0 && <span className="hov-header-badge">{totalApps}</span>}
       </div>
       <div className="dt-apps-list">
@@ -345,20 +345,20 @@ function UtilizationPanel({ donorUtil, networkPct }) {
         <span className="hov-header-title">UTILIZATION VS NETWORK AVERAGE</span>
       </div>
       {donorUtil.nodesWithCapacity === 0 ? (
-        <div className="hov-empty">No capacity data available for his nodes</div>
+        <div className="hov-empty">No capacity data available for your nodes</div>
       ) : (
         <div className="dt-util-list">
           {RESOURCE_ROWS.map(({ key, label }) => {
-            const his = donorUtil[key].percentage;
+            const yours = donorUtil[key].percentage;
             const net = networkPct[key] || 0;
             return (
               <div key={key} className="dt-util-row">
                 <span className="dt-util-label">{label}</span>
                 <div className="dt-util-bars">
                   <div className="dt-util-bar-wrap">
-                    <div className="dt-util-bar-fill dt-util-bar-fill--his" style={{ width: `${Math.min(his, 100)}%` }} />
+                    <div className="dt-util-bar-fill dt-util-bar-fill--yours" style={{ width: `${Math.min(yours, 100)}%` }} />
                   </div>
-                  <span className="dt-util-figure">{fmtPct(his)} his</span>
+                  <span className="dt-util-figure">{fmtPct(yours)} yours</span>
                 </div>
                 <div className="dt-util-bars">
                   <div className="dt-util-bar-wrap">

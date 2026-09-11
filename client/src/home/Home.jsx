@@ -12,7 +12,14 @@ import { HomeOverview } from 'home/HomeOverview';
 import { DonorBadge } from 'donor/DonorBadge';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
 import { CHECK_STATUS } from 'donor/donorWalletCheck';
-import { createNewHistoryList, displayedAddress, privacyStatePatch } from 'wallet/addressInput';
+import {
+  createNewHistoryList,
+  displayedAddress,
+  initialPrivacyState,
+  privacyStatePatch,
+  processedAddressPatch,
+  resolveHydrationTarget
+} from 'wallet/addressInput';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
@@ -71,6 +78,8 @@ class Home extends React.Component {
       totalDonations: 0,
 
       countryCounts: [],
+      countryCountsSettled: false,
+      countryCountsFailed: false,
       gpuPrices: null
     };
 
@@ -119,7 +128,11 @@ class Home extends React.Component {
     let loadedHistory = [];
     try {
       loadedHistory = await appStore.getItem(StoreKeys.ADDR_SEARCH_HISTORY);
-      this.setState({ privacyMode: await appStore.getItem(StoreKeys.PRIVACY_MODE) });
+      // #251: a bare setState here set the flag but left inputAddress
+      // unmasked, and privacyStatePatch's transition check then bailed out,
+      // so a page loaded with privacy ALREADY on showed the address in full.
+      const storedPrivacy = await appStore.getItem(StoreKeys.PRIVACY_MODE);
+      this.setState((prev) => initialPrivacyState(storedPrivacy, prev.activeAddress));
     } catch {}
 
     let searchHistory = this._createNewHistoryList(loadedHistory, null);
@@ -221,52 +234,70 @@ class Home extends React.Component {
     return createNewHistoryList(oldValues, newTop);
   }
 
+  /*
+   * NODE DISTRIBUTION and the Flux Edge GPU / FluxAI rows describe the whole
+   * network, not the wallet being viewed, so they load on EVERY mount (#250).
+   *
+   * They previously sat inside hydrateApp's no-wallet branch, so arriving with
+   * a ?wallet= link -- or as an unlocked donor, after #230 added that branch --
+   * left NODE DISTRIBUTION spinning forever and silently dropped two rows from
+   * the FLUX NETWORK panel. Neither has anything to do with the wallet.
+   *
+   * `countryCountsSettled` is what lets the panel tell "still loading" from
+   * "tried and failed"; the old `.catch(() => {})` made those identical.
+   */
+  _loadNetworkWideData() {
+    fetch_country_node_counts()
+      .then((counts) =>
+        this.setState({ countryCounts: counts, countryCountsSettled: true, countryCountsFailed: false })
+      )
+      .catch(() => this.setState({ countryCountsSettled: true, countryCountsFailed: true }));
+
+    fetch_gpu_prices()
+      .then((data) => this.setState({ gpuPrices: data }))
+      .catch(() => {});
+  }
+
   hydrateApp() {
     const { location } = this.props.router;
-    let params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(location.search);
 
-    let wallet = params.get('wallet');
-    if (!!wallet && wallet != '') {
-      if (this.state.privacyMode) {
-        wallet = this.activeAddress ?? this.state.searchHistory[this.state.searchHistory - 1];
-      }
-      const address = wallet.toString();
+    this._loadNetworkWideData();
+
+    /*
+     * resolveHydrationTarget owns the "which wallet, if any" decision (#249).
+     * It used to be inlined here and in MainApp.jsx, with the same two bugs in
+     * both copies -- see wallet/addressInput.js for what they were.
+     */
+    const { address, inputAddress } = resolveHydrationTarget({
+      urlWallet: params.get('wallet'),
+      donorWallet: this.props.donorWallet,
+      privacyMode: this.state.privacyMode,
+      activeAddress: this.state.activeAddress,
+      searchHistory: this.state.searchHistory
+    });
+
+    if (address) {
       this.onProcessAddress(address);
-      this.addressInputRef.current.value = address;
+      // The field shows the MASKED form when privacy is on; onProcessAddress
+      // still gets the real address to look up (#251).
+      if (this.addressInputRef.current) this.addressInputRef.current.value = inputAddress;
       // The input is controlled: without this it renders blank despite the
       // ref write above.
-      this.setState({ inputAddress: address });
-    } else if (this.props.donorWallet) {
-      /*
-       * A wallet unlocked as a donor elsewhere (the /live unlock dialog, or
-       * /nodes) but with no ?wallet= param on THIS page yet. /nodes already
-       * did this; /home ignored the unlocked wallet entirely.
-       *
-       * Only engages when no URL wallet is present, so it never overrides an
-       * explicit navigation.
-       */
-      const address = this.props.donorWallet;
-      this.onProcessAddress(address);
-      this.addressInputRef.current.value = address;
-      this.setState({ inputAddress: address });
-    } else {
-      fetch_global_stats(null)
-        .then((gstore) => {
-          this.setState({ gstore });
-          fetch_country_node_counts()
-            .then((counts) => this.setState({ countryCounts: counts }))
-            .catch(() => {});
-          fetch_gpu_prices()
-            .then((data) => this.setState({ gpuPrices: data }))
-            .catch(() => {});
-          return fetch_total_network_utils(gstore);
-        })
-        .then((gstore) => {
-          this.setState({ gstore });
-          this.context.setLastUpdated(new Date());
-          this.context.setArcaneHumanVersion(gstore.arcane_os?.humanVersion ?? null);
-        });
+      this.setState({ inputAddress });
+      return;
     }
+
+    fetch_global_stats(null)
+      .then((gstore) => {
+        this.setState({ gstore });
+        return fetch_total_network_utils(gstore);
+      })
+      .then((gstore) => {
+        this.setState({ gstore });
+        this.context.setLastUpdated(new Date());
+        this.context.setArcaneHumanVersion(gstore.arcane_os?.humanVersion ?? null);
+      });
   }
 
   async onProcessAddress(wAddress = null) {
@@ -359,7 +390,7 @@ class Home extends React.Component {
       isPALoading: true, // Now start to fetch PA's (below)
 
       gstore,
-      activeAddress: address
+      ...processedAddressPatch(this.state.privacyMode, address)
     });
 
     // walletView is a ref that has never actually been attached to a
@@ -627,6 +658,8 @@ class Home extends React.Component {
               <HomeOverview
                 gstore={this.state.gstore}
                 countryCounts={this.state.countryCounts}
+                countryCountsSettled={this.state.countryCountsSettled}
+                countryCountsFailed={this.state.countryCountsFailed}
                 gpuPrices={this.state.gpuPrices}
               />
             </>
