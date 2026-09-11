@@ -11,7 +11,20 @@
 !/service/*
 !/redirect-page/*
 
-!/client/build/*
+# Frontend SOURCE, not the host's build output (issue #219). The image now runs
+# `yarn build` itself, so client/build is no longer copied in -- and must not be,
+# or a stale host bundle would shadow the freshly built one.
+#
+# ** rather than *: these are directory trees, and a single * does not cross a
+# path separator, so `!/client/src/*` would admit src/App.jsx while still
+# excluding src/analytics/ChainActivityTab/index.jsx.
+!/client/package.json
+!/client/yarn.lock
+!/client/jsconfig.json
+!/client/.env
+!/client/.env.production
+!/client/src/**
+!/client/public/**
 
 !/api/src/*
 !/api/Cargo.toml

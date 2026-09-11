@@ -3,6 +3,34 @@
 # name of the rust crate
 ARG RUST_APP_PACKAGE_NAME=fluxnode_api_mask
 
+# ==========================================================
+# ================== FRONTEND BUILD STAGE ==================
+# ==========================================================
+
+# Issue #219: the image used to COPY a client/build produced on the host, so
+# `docker build` on a clean checkout silently shipped either a stale bundle or
+# no bundle at all, depending on what happened to be lying around. Building it
+# here makes the image reproducible from source alone.
+#
+# Node 20 (LTS). react-scripts 5.0.1 builds on it, and pinning the major keeps
+# a new Node release from changing the bundle underneath us.
+FROM node:20-bookworm-slim as frontend-build
+
+WORKDIR /client
+
+# Manifests first so the dependency layer is cached independently of source
+# edits -- without this split, every source change reinstalls the whole tree.
+COPY client/package.json client/yarn.lock ./
+RUN yarn install --frozen-lockfile --network-timeout 600000
+
+COPY client/ ./
+
+# NOT `CI=true`: react-scripts promotes warnings to errors under CI, and the
+# repo carries two long-standing lint warnings (a missing alt prop, an
+# exhaustive-deps hint). Failing the image build on those would be a change to
+# the lint policy smuggled in through the Dockerfile.
+RUN yarn build
+
 FROM rust:1.67.1 as build
 USER root
 
@@ -73,8 +101,24 @@ WORKDIR /app
 # Copy over API build files from the previous stage
 COPY --from=build /app-build/target/release/${RUST_APP_PACKAGE_NAME} ./main
 
+# Chain-activity state lives here (issue #231).
+#
+# services::chain_activity::DATA_DIR is the relative path "data" and the API
+# runs with WORKDIR /app, so this is where the scanner's checkpoint, daily
+# rollup, team txs and utility blocks land. Without a declared volume the whole
+# set is lost on every container restart, which meant re-fetching 8 days of
+# history from an explorer that rate-limits us -- and made the #231 drill-down
+# bug intermittent, since a fresh container backfills and a long-lived one
+# never does.
+#
+# Declared AFTER the directory is created and chowned so the image carries an
+# empty data dir with the right ownership for the volume to inherit.
+RUN mkdir -p /app/data
+
 # Change ownership of the application files to the new user
 RUN chown -R myuser:myuser /app
+
+VOLUME /app/data
 
 # switch to the new user
 USER myuser
@@ -83,9 +127,9 @@ USER myuser
 
 ## Static frontend files
 
-ARG FRONTED_SRC=./client
-# Copy build files. Also, as mentioned as above, don't add a trailing slash
-COPY ${FRONTED_SRC}/build /usr/share/nginx/html
+# Built by the frontend-build stage above rather than copied from the host
+# (issue #219).
+COPY --from=frontend-build /client/build /usr/share/nginx/html
 
 # --------------------
 

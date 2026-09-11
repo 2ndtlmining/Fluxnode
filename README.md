@@ -356,15 +356,12 @@ When Privacy Mode is enabled (toggle in the top navigation), the Network Footpri
 
 - First, [enable BuildKit](https://docs.docker.com/develop/develop-images/build_enhancements/#to-enable-buildkit-builds).
 
-- Build the frontend
-
-  ```sh
-  # This assumes your working directory is the repository's root
-  cd client
-  yarn build
-  ```
-
 - Build the docker image
+
+  The image builds the frontend itself (issue #219) — there is no longer a
+  separate `yarn build` step, and `client/build` is deliberately excluded from
+  the build context so a stale local bundle cannot shadow the one the image
+  produces.
 
   ```sh
   # This assumes your working directory is the repository's root
@@ -383,7 +380,17 @@ When Privacy Mode is enabled (toggle in the top navigation), the Network Footpri
 - Run the container locally (maps container port 80 → host port 9000):
 
   ```sh
-  docker run --rm --name="flux-node-web" -it -p 9000:80 <USERNAME>/<REPOSITORY>:<TAG>
+  docker run --rm --name="flux-node-web" -it -p 9000:80 -v fluxnode-data:/app/data <USERNAME>/<REPOSITORY>:<TAG>
   ```
 
   The app is then available at [http://localhost:9000](http://localhost:9000)
+
+  **Mount `/app/data`.** It holds the Chain Activity scanner's state: its
+  checkpoint, the daily rollup, team transactions and utility blocks. The image
+  declares `VOLUME /app/data`, but that only creates an *anonymous* volume,
+  which `--rm` discards along with the container — so without the explicit
+  `-v` above, every run re-scans eight days of chain history from an explorer
+  that rate-limits us, and the Chain Activity tab restarts from empty each
+  time.
+
+  Omit the `-v` only when you deliberately want a cold start.
