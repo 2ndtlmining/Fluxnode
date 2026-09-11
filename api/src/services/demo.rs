@@ -109,7 +109,7 @@ async fn run_demo_address_request() -> Result<String, reqwest::Error> {
         .map(jitter) // add jitter to delays
         .take(3); // limit to 3 retries
 
-    let result = Retry::spawn(retry_strategy.clone(), || async {
+    let result = Retry::start(retry_strategy.clone(), || async {
         get_demo_address_request(&client).await
     })
     .await?;

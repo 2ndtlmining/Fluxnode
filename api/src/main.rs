@@ -4,9 +4,7 @@ pub mod services;
 #[macro_use]
 extern crate lazy_static;
 
-use axum::{
-    handler::Handler, http::StatusCode, response::IntoResponse, routing::get, Router, Server,
-};
+use axum::{http::StatusCode, response::IntoResponse, routing::get, Router};
 use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
@@ -40,7 +38,7 @@ async fn main() {
     });
 
     // 404 handler
-    let app = app.fallback(g_handler_404.into_service());
+    let app = app.fallback(g_handler_404);
 
     // Cors handling
     let cors_layer = CorsLayer::new()
@@ -53,10 +51,12 @@ async fn main() {
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), read_port());
 
     println!("Listening on http://{}", socket);
-    Server::bind(&socket)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind(socket)
         .await
-        .unwrap();
+        .expect("failed to bind the API port");
+    axum::serve(listener, app)
+        .await
+        .expect("API server stopped unexpectedly");
 }
 
 async fn g_root() -> String {
@@ -101,7 +101,6 @@ pub mod api_v1 {
 
     pub mod node_demo {
         use super::*;
-        use axum::extract::Path;
 
         // Endpoint's response returned back
         #[derive(Debug, Serialize)]
