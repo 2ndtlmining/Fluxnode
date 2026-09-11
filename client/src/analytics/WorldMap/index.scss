@@ -93,12 +93,46 @@
   }
 }
 
-.wm-graticule {
+/*
+ * The landmass layer. Stretched to the frame with preserveAspectRatio="none",
+ * so its 0..360 / 0..180 viewBox maps 1:1 onto the same box the bubbles are
+ * positioned within as percentages -- alignment is structural, not tuned.
+ *
+ * Ocean is .wm-frame's own background; this only draws land. The hairline
+ * stroke is vector-effect: non-scaling-stroke so a coastline stays 1px at any
+ * container width instead of being stretched into a wedge by the non-uniform
+ * scaling (the frame is 2:1, the viewBox is 2:1, but the container can be any
+ * size).
+ */
+.wm-land {
   position: absolute;
-  background: rgba(30, 64, 120, 0.1);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+
+  path {
+    fill: #eef2e9;
+    stroke: rgba(30, 64, 120, 0.28);
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
 
   @include rule-mode-dark() {
-    background: rgba(255, 255, 255, 0.06);
+    path {
+      fill: #16324a;
+      stroke: rgba(148, 197, 255, 0.22);
+    }
+  }
+}
+
+.wm-graticule {
+  position: absolute;
+  background: rgba(30, 64, 120, 0.07);
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.045);
   }
 
   &--h {
