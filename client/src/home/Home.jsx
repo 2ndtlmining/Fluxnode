@@ -12,6 +12,7 @@ import { HomeOverview } from 'home/HomeOverview';
 import { DonorBadge } from 'donor/DonorBadge';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
 import { CHECK_STATUS } from 'donor/donorWalletCheck';
+import { createNewHistoryList, displayedAddress, privacyStatePatch } from 'wallet/addressInput';
 
 import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
@@ -35,7 +36,7 @@ import {
 import { appStore, StoreKeys } from 'persistance/store';
 
 import { LayoutContext } from 'contexts/LayoutContext';
-import { blurAllInputs, hide_sensitive_string } from 'utils';
+import { blurAllInputs } from 'utils';
 import { FaMedal } from 'react-icons/fa';
 
 
@@ -126,17 +127,20 @@ class Home extends React.Component {
     this.setState({ searchHistory }, () => this.hydrateApp());
 
     const hideSensitiveData = (isPrivateModeEnabled) => {
-      this.setState({ privacyMode: isPrivateModeEnabled });
-      if (!this.state.activeAddress) return;
-      if (!isPrivateModeEnabled) {
-        this.setSearch({ wallet: this.state.activeAddress }, { replace: false });
-        if (this.addressInputRef && this.addressInputRef.current)
-          this.addressInputRef.current.value = this.state.activeAddress;
-      } else {
-        this.setSearch({ wallet: hide_sensitive_string(this.state.activeAddress) }, { replace: false });
-        if (this.addressInputRef && this.addressInputRef.current)
-          this.addressInputRef.current.value = hide_sensitive_string(this.state.activeAddress);
+      const { activeAddress } = this.state;
+      if (!activeAddress) {
+        this.setState({ privacyMode: isPrivateModeEnabled });
+        return;
       }
+      /*
+       * The <InputGroup> is controlled by state.inputAddress, so the mask has
+       * to go through setState. Writing addressInputRef.current.value -- what
+       * this did before -- is undone by the very next render, which is why
+       * privacy mode never actually masked the field.
+       */
+      const shown = displayedAddress(isPrivateModeEnabled, activeAddress);
+      this.setState({ privacyMode: isPrivateModeEnabled, inputAddress: shown });
+      this.setSearch({ wallet: shown }, { replace: false });
     };
 
     await appStore.ready(function () {
@@ -160,7 +164,23 @@ class Home extends React.Component {
     if (this.context.autoRefresh) this._startAutoRefresh();
   }
 
+  /*
+   * Keep the address field in step with the privacy toggle (issue #166).
+   *
+   * This is the only thing that masks the field: the <InputGroup> is
+   * controlled by state.inputAddress, so writing addressInputRef.current.value
+   * is reverted by the next render. The URL is masked separately, by
+   * LayoutContext's own effect. privacyStatePatch returns null when nothing
+   * changed, which React treats as a bail-out, so this is safe to call on
+   * every update.
+   */
+  _syncPrivacyMode() {
+    this.setState((prev) => privacyStatePatch(this.context.enablePrivacyMode, prev));
+  }
+
   componentDidUpdate() {
+    this._syncPrivacyMode();
+
     const shouldRefresh = this.context.autoRefresh;
     if (shouldRefresh && !this._autoRefreshActive) {
       this._startAutoRefresh();
@@ -198,22 +218,7 @@ class Home extends React.Component {
   }
 
   _createNewHistoryList(oldValues, newTop) {
-    if (!oldValues || oldValues.constructor !== Array) {
-      if (!newTop) return [];
-      else return [newTop];
-    }
-
-    let _historyClone = [];
-    for (let i = 0; i < oldValues.length; i++) {
-      let val = oldValues[i];
-      if (val != newTop && _historyClone.indexOf(val) == -1)
-        //
-        _historyClone.push(val);
-    }
-
-    if (newTop) _historyClone.push(newTop);
-
-    return _historyClone;
+    return createNewHistoryList(oldValues, newTop);
   }
 
   hydrateApp() {
@@ -228,6 +233,22 @@ class Home extends React.Component {
       const address = wallet.toString();
       this.onProcessAddress(address);
       this.addressInputRef.current.value = address;
+      // The input is controlled: without this it renders blank despite the
+      // ref write above.
+      this.setState({ inputAddress: address });
+    } else if (this.props.donorWallet) {
+      /*
+       * A wallet unlocked as a donor elsewhere (the /live unlock dialog, or
+       * /nodes) but with no ?wallet= param on THIS page yet. /nodes already
+       * did this; /home ignored the unlocked wallet entirely.
+       *
+       * Only engages when no URL wallet is present, so it never overrides an
+       * explicit navigation.
+       */
+      const address = this.props.donorWallet;
+      this.onProcessAddress(address);
+      this.addressInputRef.current.value = address;
+      this.setState({ inputAddress: address });
     } else {
       fetch_global_stats(null)
         .then((gstore) => {
@@ -433,7 +454,7 @@ class Home extends React.Component {
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>
-          {this.state.privacyMode ? hide_sensitive_string(this.state.activeAddress) : this.state.activeAddress}
+          {displayedAddress(this.state.privacyMode, this.state.activeAddress)}
         </a>
       </div>
     );

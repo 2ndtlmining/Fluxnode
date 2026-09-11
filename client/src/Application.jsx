@@ -126,8 +126,8 @@ class Application extends React.Component {
                     <ErrorBoundary>
                       <React.Suspense fallback={<PageLoader />}>
                         <DonorContext.Consumer>
-                          {({ setDonorWallet }) => (
-                            <Home theme={darkMode ? 'dark' : 'light'} setDonorWallet={setDonorWallet} />
+                          {({ donorWallet, setDonorWallet }) => (
+                            <Home theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} setDonorWallet={setDonorWallet} />
                           )}
                         </DonorContext.Consumer>
                       </React.Suspense>
