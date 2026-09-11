@@ -51,7 +51,7 @@ describe('fetch_block_transactions / fetch_block_confirmations ok contract', () 
     });
 
     it('returns ok:true for a valid response that simply has no transactions', async () => {
-      global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ txs: [] }) });
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ txs: [] }) });
       await expect(fetch_block_transactions('somehash')).resolves.toEqual({ ok: true, coinbase: null, others: [] });
     });
   });
@@ -63,7 +63,7 @@ describe('fetch_block_transactions / fetch_block_confirmations ok contract', () 
     });
 
     it('returns ok:true for a valid response with no confirming transactions in the block', async () => {
-      global.fetch = jest.fn().mockResolvedValue({ json: async () => ({ data: { tx: [] } }) });
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ data: { tx: [] } }) });
       await expect(fetch_block_confirmations('somehash')).resolves.toEqual({ ok: true, confirmingTxs: [] });
     });
   });

@@ -472,10 +472,18 @@ describe('fetch_global_performance_rankings (redesigned shape)', () => {
   function mockFetchByUrl() {
     global.fetch = jest.fn((url) => {
       const u = typeof url === 'string' ? url : '';
-      if (u.includes('getFluxNodes')) return Promise.resolve({ json: async () => FLUX_NODES });
-      if (u.includes('projection=benchmark')) return Promise.resolve({ json: async () => ({ status: 'success', data: BENCH_DATA }) });
-      if (u.includes('projection=geolocation')) return Promise.resolve({ json: async () => ({ status: 'success', data: GEO_DATA }) });
-      if (u.includes('getzelnodecount')) return Promise.resolve({ json: async () => NODE_COUNT });
+      // ok/status/headers included because a real Response always has them,
+      // and the explorer pool checks status before parsing a body.
+      const res = (body) => Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => body,
+      });
+      if (u.includes('getFluxNodes')) return res(FLUX_NODES);
+      if (u.includes('projection=benchmark')) return res({ status: 'success', data: BENCH_DATA });
+      if (u.includes('projection=geolocation')) return res({ status: 'success', data: GEO_DATA });
+      if (u.includes('getzelnodecount')) return res(NODE_COUNT);
       return Promise.reject(new Error(`unexpected fetch: ${u}`));
     });
   }

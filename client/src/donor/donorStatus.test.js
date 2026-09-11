@@ -1,4 +1,5 @@
 import { computeDonorStatus, fetch_donor_status } from './donorStatus';
+import { EXPLORER_HOSTS } from 'explorer';
 import { OLD_ADDRESS_FLUX } from './config';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -127,6 +128,19 @@ describe('fetch_donor_status', () => {
   // an empty, complete old-address page right after whatever mocks the
   // test itself set up for the current address — same "no donations
   // found, scan complete" shape a real empty history would produce.
+  /*
+   * "Unreachable" means EVERY explorer host failed, not just one.
+   * donorStatus now fetches through the explorer pool (src/explorer.js), which
+   * fails over on a rate limit -- so simulating an outage needs one rejection
+   * per host, not one per address. Deriving the count from EXPLORER_HOSTS keeps
+   * these tests correct if a third host is ever added.
+   */
+  function mockAddressUnreachable() {
+    for (let i = 0; i < EXPLORER_HOSTS.length; i++) {
+      global.fetch.mockRejectedValueOnce(new Error('network down'));
+    }
+  }
+
   function mockEmptyOldAddressScan() {
     global.fetch.mockResolvedValueOnce(mockJsonResponse({ pagesTotal: 1, txs: [] }));
   }
@@ -221,9 +235,8 @@ describe('fetch_donor_status', () => {
   });
 
   it('fails soft — not a donor, not a throw — when the explorer is unreachable', async () => {
-    global.fetch
-      .mockRejectedValueOnce(new Error('network down')) // current address
-      .mockRejectedValueOnce(new Error('network down')); // old address
+    // Every host, both addresses: a total outage.
+    global.fetch.mockRejectedValue(new Error('network down'));
 
     await expect(fetch_donor_status(WALLET)).resolves.toEqual(
       expect.objectContaining({ isDonor: false })
@@ -231,16 +244,16 @@ describe('fetch_donor_status', () => {
   });
 
   it('does not cache a result from a failed fetch — retry will re-attempt the network call', async () => {
-    global.fetch
-      .mockRejectedValueOnce(new Error('network down')) // 1st call, current address
-      .mockRejectedValueOnce(new Error('network down')) // 1st call, old address
-      .mockRejectedValueOnce(new Error('network down')) // 2nd call, current address
-      .mockRejectedValueOnce(new Error('network down')); // 2nd call, old address
+    // Every host, both addresses, both calls: a sustained outage.
+    global.fetch.mockRejectedValue(new Error('network down'));
 
     const first = await fetch_donor_status(WALLET);
     const second = await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(4); // both scans, both calls — no cache from failure
+    // 2 fetch_donor_status calls x 2 addresses x every host (the pool tries
+    // each before giving up). The point of the assertion is unchanged: the
+    // second call re-hit the network rather than serving a cached failure.
+    expect(global.fetch).toHaveBeenCalledTimes(2 * 2 * EXPLORER_HOSTS.length);
     expect(first).toEqual(expect.objectContaining({ isDonor: false }));
     expect(second).toEqual(expect.objectContaining({ isDonor: false }));
   });
@@ -259,7 +272,8 @@ describe('fetch_donor_status', () => {
         pagesTotal: 3,
         txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
       }))
-      .mockRejectedValueOnce(new Error('network down'));
+      ;
+    mockAddressUnreachable(); // page 2 unreachable on every host
     mockEmptyOldAddressScan();
 
     const first = await fetch_donor_status(WALLET);
@@ -274,12 +288,15 @@ describe('fetch_donor_status', () => {
         pagesTotal: 3,
         txs: [realDonationTx({ blockheight: 200, time: nowSec - 5 * 86400, amount: 2 })],
       }))
-      .mockRejectedValueOnce(new Error('network down'));
+      ;
+    mockAddressUnreachable(); // page 2 unreachable on every host
     mockEmptyOldAddressScan();
 
     await fetch_donor_status(WALLET);
 
-    expect(global.fetch).toHaveBeenCalledTimes(6); // 3 calls per attempt (2 current-address pages + 1 old-address) x 2 attempts
+    // Per attempt: page 1 succeeds (1), page 2 fails on every host
+    // (EXPLORER_HOSTS.length), old-address scan succeeds (1). Twice.
+    expect(global.fetch).toHaveBeenCalledTimes(2 * (1 + EXPLORER_HOSTS.length + 1));
   });
 
   it('counts a donation sent to the OLD donation address toward the threshold', async () => {
@@ -312,7 +329,7 @@ describe('fetch_donor_status', () => {
       pagesTotal: 1,
       txs: [realDonationTx({ blockheight: 500, time: nowSec - 10 * 86400, amount: 15 })],
     }));
-    global.fetch.mockRejectedValueOnce(new Error('network down')); // old address unreachable
+    mockAddressUnreachable(); // old address unreachable on every host
 
     const result = await fetch_donor_status(WALLET);
 
@@ -323,7 +340,10 @@ describe('fetch_donor_status', () => {
     // re-hit the unreachable old address) on every subsequent check.
     const second = await fetch_donor_status(WALLET);
     expect(second).toEqual(result);
-    expect(global.fetch).toHaveBeenCalledTimes(2); // only from the first call
+    // 1 successful current-address fetch + one failed attempt per host for
+    // the unreachable old address, all from the FIRST call -- the second
+    // served from cache and added nothing.
+    expect(global.fetch).toHaveBeenCalledTimes(1 + EXPLORER_HOSTS.length);
   });
 
   it('sums donations split across both the old and new donation address', async () => {
@@ -349,7 +369,7 @@ describe('fetch_donor_status', () => {
 
   it('an unreachable old address alone is enough to make an otherwise-empty result unverified', async () => {
     global.fetch.mockResolvedValueOnce(mockJsonResponse({ pagesTotal: 1, txs: [] })); // current address: clean, empty scan
-    global.fetch.mockRejectedValueOnce(new Error('network down')); // old address: unreachable
+    mockAddressUnreachable(); // old address: unreachable on every host
 
     const result = await fetch_donor_status(WALLET);
 

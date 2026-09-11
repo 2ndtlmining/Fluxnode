@@ -6,6 +6,7 @@ import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { fetch_fluxinfo_aggregate } from 'fluxinfo';
 import { specResources, buildSpecIndex } from 'appSpecs';
 import { categorizeRunningApps } from 'runningAppsCategorized';
+import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
 import {
   fetch_node_benchmarks,
@@ -31,7 +32,7 @@ import {
 } from 'content/index';
 import { appStore, StoreKeys } from 'persistance/store';
 
-const API_FLUX_NODES_ALL_URL = 'https://explorer.runonflux.io/api/status?q=getFluxNodes';
+const API_FLUX_NODES_ALL_PATH = '/status?q=getFluxNodes';
 const API_FLUX_NODE_URL = 'https://api.runonflux.io/daemon/viewdeterministiczelnodelist?filter=';
 const API_DOS_LIST = 'https://api.runonflux.io/daemon/getdoslist';
 const API_NODE_BENCHMARKS = 'https://stats.runonflux.io/fluxinfo?projection=benchmark';
@@ -217,24 +218,18 @@ export function fill_rewards(gstore) {
  */
 export function fetch_total_donations(walletAddress) {
   return new Promise((resolve) => {
-    const safeFetchJson = async (url) => {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null; // e.g. 400/500 - skip this page
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) return null; // e.g. "Loading block index..."
-        return await res.json();
-      } catch (e) {
-        return null;
-      }
-    };
+    // Routed through the explorer pool (explorer.js) rather than one hardcoded
+    // host: a 429 on the primary now fails over instead of ending the scan.
+    // explorerFetchJson already rejects non-2xx and non-JSON bodies -- the
+    // "Loading block index..." text/plain case this used to handle by hand.
+    const safeFetchJson = (path) => explorerFetchJson(path);
 
     // Every page for one address. Returns null (not []) when the address could
     // not be read at all, so "explorer unreachable" stays distinguishable from
     // "this address has no donations".
     const scanAddress = async (address) => {
-      const baseUrl = 'https://explorer.runonflux.io/api/txs?address=' + address;
-      const firstPage = await safeFetchJson(baseUrl);
+      const basePath = '/txs?address=' + address;
+      const firstPage = await safeFetchJson(basePath);
       if (!firstPage) return null;
 
       const { pagesTotal } = firstPage;
@@ -243,7 +238,7 @@ export function fetch_total_donations(walletAddress) {
       // fetch pages sequentially (or in small batches) instead of all at once
       const pages = [firstPage];
       for (const page of pageNums) {
-        const json = await safeFetchJson(`${baseUrl}&pageNum=${page}`);
+        const json = await safeFetchJson(`${basePath}&pageNum=${page}`);
         if (json) pages.push(json);
       }
 
@@ -458,9 +453,8 @@ export async function fetch_global_stats(walletAddress = null) {
 
   const fetchCurrency = async () => {
     try {
-      const res = await fetch('https://explorer.runonflux.io/api/currency');
-      const json = await res.json();
-      store.flux_price_usd = json.data.rate;
+      const json = await explorerFetchJson('/currency');
+      if (json?.data?.rate != null) store.flux_price_usd = json.data.rate;
     } catch (error) {
       console.log('error', error);
     }
@@ -469,10 +463,11 @@ export async function fetch_global_stats(walletAddress = null) {
   const fetchWallet = async () => {
     try {
       if (walletAddress) {
-        const res = await fetch('https://explorer.runonflux.io/api/addr/' + walletAddress + '/?noTxList=1');
-        const json = await res.json();
-        const balance = json['balance'];
-        store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+        const json = await explorerFetchJson('/addr/' + walletAddress + '/?noTxList=1');
+        if (json && json.balance != null) {
+          const balance = json.balance;
+          store.wallet_amount_flux = Math.round((balance + Number.EPSILON) * 100) / 100;
+        }
       }
     } catch (error) {
       console.log('error', error);
@@ -547,9 +542,10 @@ export async function fetch_global_stats(walletAddress = null) {
 
   const fetchRichList = async () => {
     try {
-      const res = await fetch('https://explorer.runonflux.io/api/statistics/richest-addresses-list');
-      const json = await res.json();
-      store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+      const json = await explorerFetchJson('/statistics/richest-addresses-list');
+      if (Array.isArray(json)) {
+        store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+      }
     } catch (error) {
       console.log('error', error);
     }
@@ -1253,14 +1249,14 @@ export async function fetch_global_performance_rankings() {
   try {
     // benchmark and geolocation come from the shared fetchers so they are not
     // pulled a second time by fetch_total_network_utils / fetch_country_node_counts
-    const [nodesRes, benchData, geoData, countRes] = await Promise.all([
-      fetch(API_FLUX_NODES_ALL_URL),
+    const [nodesJsonRaw, benchData, geoData, countRes] = await Promise.all([
+      explorerFetchJson(API_FLUX_NODES_ALL_PATH),
       fetch_node_benchmarks(),
       fetch_node_geolocation(),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     ]);
 
-    const nodesJson = await nodesRes.json();
+    const nodesJson = nodesJsonRaw || {};
     const benchJson = { data: benchData };
     const geoJson = { data: geoData };
     const countJson = await countRes.json();

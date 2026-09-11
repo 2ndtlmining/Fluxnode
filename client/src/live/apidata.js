@@ -1,3 +1,5 @@
+import { explorerFetchJson } from 'explorer';
+
 // ── Recent blocks ────────────────────────────────────────────────────────────
 
 /*
@@ -7,13 +9,14 @@
  * chain rail: available immediately on page load, and a plain public HTTPS
  * endpoint with no proxy-mode or arbitrary-node-reachability requirement.
  */
-const RECENT_BLOCKS_ENDPOINT = 'https://explorer.runonflux.io/api/blocks';
-const TXS_BY_BLOCK_ENDPOINT = 'https://explorer.runonflux.io/api/txs/';
+// Paths only: explorerFetchJson picks a healthy host and fails over on a
+// rate limit. See explorer.js -- those 'CORS' errors were 429s in disguise.
+const RECENT_BLOCKS_PATH = '/blocks';
+const TXS_BY_BLOCK_PATH = '/txs/';
 
 export async function fetch_recent_blocks(limit = 6) {
   try {
-    const res = await fetch(`${RECENT_BLOCKS_ENDPOINT}?limit=${limit}`);
-    const json = await res.json();
+    const json = await explorerFetchJson(`${RECENT_BLOCKS_PATH}?limit=${limit}`);
     const blocks = Array.isArray(json?.blocks) ? json.blocks : [];
 
     return blocks.map((b) => ({
@@ -33,8 +36,10 @@ export async function fetch_recent_blocks(limit = 6) {
 // rewards/confirmations and P2P transfers from respectively.
 export async function fetch_block_transactions(blockHash) {
   try {
-    const res = await fetch(`${TXS_BY_BLOCK_ENDPOINT}?block=${blockHash}`);
-    const json = await res.json();
+    const json = await explorerFetchJson(`${TXS_BY_BLOCK_PATH}?block=${blockHash}`);
+    // A null means every explorer host failed. Report that as not-ok rather
+    // than as a block that genuinely had no transactions.
+    if (json === null) return { ok: false, coinbase: null, others: [] };
     const txs = Array.isArray(json?.txs) ? json.txs : [];
     const coinbase = txs.find((t) => t.isCoinBase) || txs[0] || null;
     const others = txs.filter((t) => t !== coinbase);

@@ -42,7 +42,21 @@ pub const TEAM_TX_FILE: &str = "chain_activity_team_tx.json";
 pub const CHECKPOINT_FILE: &str = "chain_activity_checkpoint.json";
 pub const SCAN_STATUS_FILE: &str = "chain_activity_scan_status.json";
 
-const EXPLORER_BASE: &str = "https://explorer.runonflux.io/api";
+/*
+ * A POOL, not a single host. Confirmed 2026-09-11: explorer.runonflux.io was
+ * returning 429 with `Retry-After: 31` while explorer.app.runonflux.io served
+ * the same endpoints with HTTP 200. Trying the other host costs one request;
+ * sleeping out a backoff on a banned host costs up to 62 seconds.
+ *
+ * That distinction is what made a cold start effectively never finish. A
+ * full backfill is RETENTION_BLOCKS (23,040) blocks at 2+ requests each; at
+ * up to 62s of sleep per rate-limited request on one host, the scan reports
+ * "block 0 of <tip>" indefinitely and Chain Activity renders nothing.
+ */
+const EXPLORER_BASES: &[&str] = &[
+    "https://explorer.runonflux.io/api",
+    "https://explorer.app.runonflux.io/api",
+];
 const APP_SPECS_URL: &str = "https://api.runonflux.io/apps/globalappsspecifications";
 const HTTP_TIMEOUT_SECS: u64 = 15;
 
@@ -82,6 +96,51 @@ async fn get_with_backoff(client: &Client, url: &str) -> Option<reqwest::Respons
             }
             Ok(res) => return Some(res),
             Err(_) => return None,
+        }
+    }
+    None
+}
+
+/*
+ * GET `path` from the first explorer host that answers.
+ *
+ * Ordering matters: every host is tried BEFORE any sleeping. A 429 on one host
+ * says nothing about the other, so switching is strictly cheaper than backing
+ * off -- one request versus up to 62 seconds. Only when the whole pool is
+ * rate-limited in the same pass does this fall back to exponential backoff and
+ * try the pool again.
+ *
+ * A non-429 response is returned as-is, preserving the previous contract that
+ * a 404/500 is this request's failure rather than something to retry.
+ */
+async fn explorer_get(client: &Client, path: &str) -> Option<reqwest::Response> {
+    for attempt in 0..=MAX_RETRIES {
+        let mut all_rate_limited = true;
+
+        for base in EXPLORER_BASES {
+            let url = format!("{}{}", base, path);
+            match client.get(&url).send().await {
+                Ok(res) if res.status() == reqwest::StatusCode::TOO_MANY_REQUESTS => continue,
+                Ok(res) => return Some(res),
+                Err(_) => {
+                    // Host unreachable rather than throttled: try the next one,
+                    // but do not let it trigger a pool-wide backoff by itself.
+                    all_rate_limited = false;
+                    continue;
+                }
+            }
+        }
+
+        if attempt == MAX_RETRIES {
+            return None;
+        }
+        if all_rate_limited {
+            let delay_ms = RETRY_BASE_DELAY_MS * 2u64.pow(attempt);
+            println!(
+                "[chain_activity] every explorer host rate-limited, backing off {}ms",
+                delay_ms
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
         }
     }
     None
@@ -479,8 +538,7 @@ pub fn unix_now() -> i64 {
 }
 
 pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
-    let url = format!("{}/blocks?limit=1", EXPLORER_BASE);
-    let res = get_with_backoff(client, &url).await?;
+    let res = explorer_get(client, "/blocks?limit=1").await?;
     let parsed: RecentBlocksResponse = res.json().await.ok()?;
     parsed.blocks.get(0).map(|b| b.height)
 }
@@ -511,8 +569,7 @@ pub async fn fetch_deployment_heights(client: &Client) -> HashSet<i64> {
 }
 
 async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
-    let url = format!("{}/block-index/{}", EXPLORER_BASE, height);
-    let res = get_with_backoff(client, &url).await?;
+    let res = explorer_get(client, &format!("/block-index/{}", height)).await?;
     let parsed: BlockIndexResponse = res.json().await.ok()?;
     Some(parsed.block_hash)
 }
@@ -534,8 +591,7 @@ async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Option<Vec<Ra
     let mut pages_total = 1i64;
 
     while page_num < pages_total {
-        let url = format!("{}/txs/?block={}&pageNum={}", EXPLORER_BASE, block_hash, page_num);
-        let res = get_with_backoff(client, &url).await?;
+        let res = explorer_get(client, &format!("/txs/?block={}&pageNum={}", block_hash, page_num)).await?;
         let page = res.json::<TxsPageResponse>().await.ok()?;
         pages_total = page.pages_total.max(1);
         all_txs.extend(page.txs);
@@ -683,9 +739,12 @@ pub async fn run_scan_cycle() {
         start_height,
         tip_height,
     ));
+    // Report the REMAINING count, not two absolute heights. "block 0 of
+    // 2,939,881" reads as a 2.9-million-block sync when the real work is the
+    // difference between them -- bounded by RETENTION_BLOCKS (23,040).
     println!(
-        "[chain_activity] scan starting: {} blocks to cover ({} -> {})",
-        tip_height - start_height, start_height, tip_height
+        "[chain_activity] scan starting: {} blocks remaining (heights {} -> {}, retention window {})",
+        tip_height - start_height, start_height, tip_height, RETENTION_BLOCKS
     );
 
     let deployment_heights = fetch_deployment_heights(&client).await;
