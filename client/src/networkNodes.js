@@ -16,12 +16,20 @@
  * duplication; a second load refetches, as it did before.
  */
 
+import { explorerFetchJson } from 'explorer';
+import { EXPLORER_FLUX_NODES_PATH } from 'api/endpoints';
+
 const BENCHMARKS_URL = 'https://stats.runonflux.io/fluxinfo?projection=benchmark';
 
 // `ip` so utilisation rows can be attributed to a node for the showcase.
 const RESOURCES_URL = 'https://stats.runonflux.io/fluxinfo?projection=apps.resources,ip';
 
 const GEOLOCATION_URL = 'https://stats.runonflux.io/fluxinfo?projection=geolocation';
+
+// Running app container names per node, for the Network tab's per-region app
+// breakdown (#254). `ip` carries the port, so this keys per NODE rather than
+// per machine -- two nodes on one host run different apps.
+const RUNNING_APPS_URL = 'https://stats.runonflux.io/fluxinfo?projection=apps.runningapps.Names,ip';
 
 /*
  * In-flight sharing alone only helps when callers overlap. fetch_country_node_counts
@@ -74,6 +82,51 @@ function _shared(url) {
 export const fetch_node_benchmarks = _shared(BENCHMARKS_URL);
 export const fetch_node_resources = _shared(RESOURCES_URL);
 export const fetch_node_geolocation = _shared(GEOLOCATION_URL);
+export const fetch_node_running_apps = _shared(RUNNING_APPS_URL);
+
+/*
+ * The deterministic node list: the only feed carrying ip:port, tier AND
+ * payment_address on one record.
+ *
+ * Shared for the same reason as the projections above -- it is ~4 MB, and
+ * fetch_global_performance_rankings and the Network tab's region aggregation
+ * both need it on the same page load. It goes through the explorer pool rather
+ * than plain fetch so a 429 on the primary host fails over.
+ */
+let _fluxNodesInFlight = null;
+let _fluxNodesCache = null;
+let _fluxNodesAt = 0;
+
+export async function fetch_flux_nodes() {
+  if (_fluxNodesCache && Date.now() - _fluxNodesAt < RESULT_TTL_MS) return _fluxNodesCache;
+  if (_fluxNodesInFlight) return _fluxNodesInFlight;
+
+  _fluxNodesInFlight = (async () => {
+    try {
+      const json = await explorerFetchJson(EXPLORER_FLUX_NODES_PATH);
+      const nodes = json?.fluxNodes;
+      if (!Array.isArray(nodes)) {
+        console.warn('[networkNodes] explorer returned no fluxNodes');
+        return [];
+      }
+      return nodes;
+    } catch (error) {
+      console.warn('[networkNodes] flux node list fetch failed:', error?.message);
+      return [];
+    }
+  })();
+
+  try {
+    const data = await _fluxNodesInFlight;
+    if (data.length > 0) {
+      _fluxNodesCache = data;
+      _fluxNodesAt = Date.now();
+    }
+    return data;
+  } finally {
+    _fluxNodesInFlight = null;
+  }
+}
 
 /** The bare IP, no port. Geolocation is per-machine, so it keys on this. */
 export function hostOf(address) {

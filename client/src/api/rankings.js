@@ -19,7 +19,7 @@
  */
 
 import { explorerFetchJson } from 'explorer';
-import { fetch_node_benchmarks, fetch_node_geolocation } from 'networkNodes';
+import { fetch_node_benchmarks, fetch_node_geolocation, fetch_flux_nodes } from 'networkNodes';
 import { topInGroup } from 'main/Gamification/rankInGroup';
 import { EXPLORER_FLUX_NODES_PATH } from 'api/endpoints';
 
@@ -145,13 +145,15 @@ export async function fetch_global_performance_rankings() {
     // benchmark and geolocation come from the shared fetchers so they are not
     // pulled a second time by fetch_total_network_utils / fetch_country_node_counts
     const [nodesJsonRaw, benchData, geoData, countRes] = await Promise.all([
-      explorerFetchJson(EXPLORER_FLUX_NODES_PATH),
+      // Shared so the Network tab's region aggregation does not pull this 4 MB
+      // list a second time on the same page load (#254).
+      fetch_flux_nodes(),
       fetch_node_benchmarks(),
       fetch_node_geolocation(),
       fetch('https://api.runonflux.io/daemon/getzelnodecount'),
     ]);
 
-    const nodesJson = nodesJsonRaw || {};
+    const nodesJson = { fluxNodes: Array.isArray(nodesJsonRaw) ? nodesJsonRaw : [] };
     const benchJson = { data: benchData };
     const geoJson = { data: geoData };
     const countJson = await countRes.json();
