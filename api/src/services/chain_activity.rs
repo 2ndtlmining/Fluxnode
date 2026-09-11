@@ -39,6 +39,7 @@ const SCAN_BATCH_SIZE: i64 = 300;
 pub const DATA_DIR: &str = "data";
 pub const DAILY_ROLLUP_FILE: &str = "chain_activity_daily.json";
 pub const TEAM_TX_FILE: &str = "chain_activity_team_tx.json";
+pub const UTILITY_BLOCKS_FILE: &str = "chain_activity_utility_blocks.json";
 pub const CHECKPOINT_FILE: &str = "chain_activity_checkpoint.json";
 pub const SCAN_STATUS_FILE: &str = "chain_activity_scan_status.json";
 
@@ -237,8 +238,34 @@ pub struct TxTransfer {
 pub struct BlockScanResult {
     pub height: i64,
     pub is_utility: bool,
+    // The two reasons a block counts as utility, kept separately rather than
+    // collapsed into `is_utility`. Both were already computed inside
+    // scan_one_block and thrown away -- issue #199 is a persistence and
+    // exposure gap, not a new-algorithm problem.
+    pub is_p2p: bool,
+    pub is_dapp: bool,
+    pub transfer_count: u32,
     pub date: String,
     pub team_txs: Vec<TeamTx>,
+}
+
+/*
+ * One utility block, persisted so the Utility count can be drilled into.
+ *
+ * ONLY utility blocks are recorded. Empty blocks stay aggregate-only in
+ * DailyCount -- nobody drills into "nothing happened", and storing them would
+ * roughly sextuple this file for no reader. A live probe (2026-09-11, 12 blocks
+ * sampled across ~24h) measured ~17% of blocks as utility, so the retained set
+ * is ~3,900 records over the 8-day window: a few hundred KB, in a data
+ * directory that is rebuilt from the explorer on every restart anyway.
+ */
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct UtilityBlockRecord {
+    pub height: i64,
+    pub date: String,
+    pub is_p2p: bool,
+    pub is_dapp: bool,
+    pub transfer_count: u32,
 }
 
 // ── Persisted shapes ──────────────────────────────────────────────────────────
@@ -338,6 +365,11 @@ struct DailyRollupFile {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 struct TeamTxFile {
     team_txs: Vec<TeamTx>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+struct UtilityBlocksFile {
+    blocks: Vec<UtilityBlockRecord>,
 }
 
 /*
@@ -465,6 +497,7 @@ pub fn fold_contiguous_results(
     mut results: Vec<(i64, Option<BlockScanResult>)>,
     daily: &mut Vec<DailyCount>,
     team_txs: &mut Vec<TeamTx>,
+    utility_blocks: &mut Vec<UtilityBlockRecord>,
 ) -> i64 {
     results.sort_by_key(|(h, _)| *h);
     let mut checkpoint = start_height;
@@ -473,6 +506,18 @@ pub fn fold_contiguous_results(
             Some(r) if height == checkpoint + 1 => {
                 upsert_daily_count(daily, &r.date, r.is_utility);
                 team_txs.extend(r.team_txs);
+                // Utility blocks only. The contiguous-run discipline above
+                // already guarantees each height is folded exactly once, so
+                // this cannot double-record and needs no dedupe.
+                if r.is_utility {
+                    utility_blocks.push(UtilityBlockRecord {
+                        height: r.height,
+                        date: r.date.clone(),
+                        is_p2p: r.is_p2p,
+                        is_dapp: r.is_dapp,
+                        transfer_count: r.transfer_count,
+                    });
+                }
                 checkpoint = height;
             }
             _ => break,
@@ -500,6 +545,28 @@ pub fn read_json_or_default<T: for<'de> Deserialize<'de> + Default>(base_dir: &P
 
 pub fn load_daily_rollup() -> Vec<DailyCount> {
     read_json_or_default::<DailyRollupFile>(Path::new(DATA_DIR), DAILY_ROLLUP_FILE).daily
+}
+
+pub fn load_utility_blocks() -> Vec<UtilityBlockRecord> {
+    read_json_or_default::<UtilityBlocksFile>(Path::new(DATA_DIR), UTILITY_BLOCKS_FILE).blocks
+}
+
+pub fn save_utility_blocks(blocks: &[UtilityBlockRecord]) -> std::io::Result<()> {
+    write_json_atomic(
+        Path::new(DATA_DIR),
+        UTILITY_BLOCKS_FILE,
+        &UtilityBlocksFile { blocks: blocks.to_vec() },
+    )
+}
+
+/*
+ * Same bounded-retention rule as trim_team_txs: drop anything below the window
+ * edge. Without this the file grows without limit while daily/team data stays
+ * bounded, and a long-lived replica would slowly fill its disk with blocks no
+ * endpoint can return.
+ */
+pub fn trim_utility_blocks(blocks: &mut Vec<UtilityBlockRecord>, min_height: i64) {
+    blocks.retain(|b| b.height >= min_height);
 }
 
 pub fn load_team_txs() -> Vec<TeamTx> {
@@ -605,6 +672,11 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
     let hash = resolve_block_hash(client, height).await?;
     let txs = fetch_all_block_txs(client, &hash).await?;
     let transfers = extract_p2p_transfers(&txs);
+    // The two categories, kept rather than collapsed. is_utility stays exactly
+    // `is_p2p || is_dapp`, so every existing is_block_utility test still holds.
+    let is_p2p = !transfers.is_empty();
+    let is_dapp = deployment_heights.contains(&height);
+    let transfer_count = transfers.len() as u32;
     let is_utility = is_block_utility(height, &transfers, deployment_heights);
     let team_txs = extract_team_txs(height, &transfers);
     // Every tx in a block shares (approximately) the same blocktime — prefer
@@ -617,7 +689,7 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
         .or_else(|| txs.first().and_then(|t| t.time))
         .unwrap_or(0);
     let date = unix_to_utc_date(block_time);
-    Some(BlockScanResult { height, is_utility, date, team_txs })
+    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, date, team_txs })
 }
 
 /*
@@ -635,6 +707,7 @@ async fn scan_range(
     deployment_heights: &HashSet<i64>,
     daily: &mut Vec<DailyCount>,
     team_txs: &mut Vec<TeamTx>,
+    utility_blocks: &mut Vec<UtilityBlockRecord>,
 ) -> i64 {
     if start_height >= tip_height {
         return start_height;
@@ -651,7 +724,7 @@ async fn scan_range(
         results.push(pair);
     }
 
-    fold_contiguous_results(start_height, results, daily, team_txs)
+    fold_contiguous_results(start_height, results, daily, team_txs, utility_blocks)
 }
 
 /*
@@ -750,22 +823,27 @@ pub async fn run_scan_cycle() {
     let deployment_heights = fetch_deployment_heights(&client).await;
     let mut daily = load_daily_rollup();
     let mut team_txs = load_team_txs();
+    let mut utility_blocks = load_utility_blocks();
 
     let mut checkpoint_height = start_height;
     let mut stalled = false;
 
     while checkpoint_height < tip_height {
         let batch_end = (checkpoint_height + SCAN_BATCH_SIZE).min(tip_height);
-        let new_checkpoint = scan_range(&client, checkpoint_height, batch_end, &deployment_heights, &mut daily, &mut team_txs).await;
+        let new_checkpoint = scan_range(&client, checkpoint_height, batch_end, &deployment_heights, &mut daily, &mut team_txs, &mut utility_blocks).await;
 
         trim_daily_retention(&mut daily, RETENTION_DAYS as usize);
         trim_team_txs(&mut team_txs, tip_height - RETENTION_BLOCKS);
+        trim_utility_blocks(&mut utility_blocks, tip_height - RETENTION_BLOCKS);
 
         if let Err(e) = save_daily_rollup(&daily) {
             eprintln!("[chain_activity] failed to save daily rollup: {}", e);
         }
         if let Err(e) = save_team_txs(&team_txs) {
             eprintln!("[chain_activity] failed to save team txs: {}", e);
+        }
+        if let Err(e) = save_utility_blocks(&utility_blocks) {
+            eprintln!("[chain_activity] failed to save utility blocks: {}", e);
         }
         if let Err(e) = save_checkpoint(new_checkpoint) {
             eprintln!("[chain_activity] failed to save checkpoint: {}", e);
@@ -953,15 +1031,34 @@ mod tests {
         assert_eq!(txs[0].txid, "new");
     }
 
+    /*
+     * Scan result for a block that is utility because of a P2P transfer.
+     * `is_utility` is always `is_p2p || is_dapp` here, exactly as
+     * scan_one_block computes it -- a helper that let those drift apart would
+     * make every test below meaningless.
+     */
+    fn scan_result(height: i64, is_p2p: bool, is_dapp: bool, date: &str) -> BlockScanResult {
+        BlockScanResult {
+            height,
+            is_utility: is_p2p || is_dapp,
+            is_p2p,
+            is_dapp,
+            transfer_count: if is_p2p { 2 } else { 0 },
+            date: date.into(),
+            team_txs: vec![],
+        }
+    }
+
     #[test]
     fn fold_contiguous_results_applies_every_success_when_theres_no_gap() {
         let mut daily = vec![];
         let mut team_txs = vec![];
+        let mut utility_blocks = vec![];
         let results = vec![
-            (101, Some(BlockScanResult { height: 101, is_utility: true, date: "2026-09-06".into(), team_txs: vec![] })),
-            (102, Some(BlockScanResult { height: 102, is_utility: false, date: "2026-09-06".into(), team_txs: vec![] })),
+            (101, Some(scan_result(101, true, false, "2026-09-06"))),
+            (102, Some(scan_result(102, false, false, "2026-09-06"))),
         ];
-        let new_checkpoint = fold_contiguous_results(100, results, &mut daily, &mut team_txs);
+        let new_checkpoint = fold_contiguous_results(100, results, &mut daily, &mut team_txs, &mut utility_blocks);
         assert_eq!(new_checkpoint, 102);
         assert_eq!(daily, vec![DailyCount { date: "2026-09-06".into(), utility_blocks: 1, empty_blocks: 1 }]);
     }
@@ -972,13 +1069,76 @@ mod tests {
         // double-counted once 101 is retried and the scan re-reaches 102).
         let mut daily = vec![];
         let mut team_txs = vec![];
+        let mut utility_blocks = vec![];
         let results = vec![
             (101, None),
-            (102, Some(BlockScanResult { height: 102, is_utility: true, date: "2026-09-06".into(), team_txs: vec![] })),
+            (102, Some(scan_result(102, true, false, "2026-09-06"))),
         ];
-        let new_checkpoint = fold_contiguous_results(100, results, &mut daily, &mut team_txs);
+        let new_checkpoint = fold_contiguous_results(100, results, &mut daily, &mut team_txs, &mut utility_blocks);
         assert_eq!(new_checkpoint, 100); // unchanged — nothing new was safely applied
         assert_eq!(daily, vec![]);
+        // And nothing was recorded for the drill-down either: a block past a
+        // gap must not appear there any more than it appears in the rollup.
+        assert!(utility_blocks.is_empty());
+    }
+
+    #[test]
+    fn fold_records_only_utility_blocks_with_their_categories() {
+        let mut daily = vec![];
+        let mut team_txs = vec![];
+        let mut utility_blocks = vec![];
+        let results = vec![
+            (101, Some(scan_result(101, true, false, "2026-09-06"))),   // P2P only
+            (102, Some(scan_result(102, false, true, "2026-09-06"))),   // Dapp only
+            (103, Some(scan_result(103, true, true, "2026-09-06"))),    // both
+            (104, Some(scan_result(104, false, false, "2026-09-06"))),  // empty
+        ];
+        fold_contiguous_results(100, results, &mut daily, &mut team_txs, &mut utility_blocks);
+
+        // The empty block is aggregate-only: nobody drills into "nothing
+        // happened", and recording them would multiply this file for no reader.
+        assert_eq!(utility_blocks.len(), 3);
+        assert_eq!(utility_blocks.iter().map(|b| b.height).collect::<Vec<_>>(), vec![101, 102, 103]);
+
+        assert!(utility_blocks[0].is_p2p && !utility_blocks[0].is_dapp);
+        assert!(!utility_blocks[1].is_p2p && utility_blocks[1].is_dapp);
+        assert!(utility_blocks[2].is_p2p && utility_blocks[2].is_dapp);
+        assert_eq!(utility_blocks[0].transfer_count, 2);
+        assert_eq!(utility_blocks[1].transfer_count, 0);
+
+        // The rollup still agrees: 3 utility, 1 empty.
+        assert_eq!(daily, vec![DailyCount { date: "2026-09-06".into(), utility_blocks: 3, empty_blocks: 1 }]);
+    }
+
+    #[test]
+    fn trim_utility_blocks_drops_everything_below_the_window_edge() {
+        let mut blocks = vec![
+            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
+            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
+            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0 },
+        ];
+        trim_utility_blocks(&mut blocks, 200);
+        // Boundary is inclusive, matching trim_team_txs: a block exactly at the
+        // edge is still inside the retention window.
+        assert_eq!(blocks.iter().map(|b| b.height).collect::<Vec<_>>(), vec![200, 300]);
+    }
+
+    #[test]
+    fn utility_block_categories_partition_cleanly() {
+        // The API reports p2p_only / dapp_only / both, and those must sum to the
+        // total -- overlapping "any P2P" / "any Dapp" counts would not add up
+        // and would read as a bug on screen.
+        let blocks = vec![
+            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3 },
+            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
+            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0 },
+            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2 },
+        ];
+        let p2p_only = blocks.iter().filter(|b| b.is_p2p && !b.is_dapp).count();
+        let dapp_only = blocks.iter().filter(|b| !b.is_p2p && b.is_dapp).count();
+        let both = blocks.iter().filter(|b| b.is_p2p && b.is_dapp).count();
+        assert_eq!((p2p_only, dapp_only, both), (2, 1, 1));
+        assert_eq!(p2p_only + dapp_only + both, blocks.len());
     }
 
     fn temp_test_dir(name: &str) -> std::path::PathBuf {

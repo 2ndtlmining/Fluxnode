@@ -153,3 +153,72 @@ export function todaysUtilityBlocks(daily) {
   if (!daily || daily.length === 0) return 0;
   return daily[daily.length - 1].utilityBlocks || 0;
 }
+
+/*
+ * The blocks behind the Utility count (issue #199).
+ *
+ * A separate endpoint from fetch_chain_activity, and fetched LAZILY -- only
+ * when the drill-down is actually opened. The retained utility-block set is a
+ * few hundred KB, and every Chain Activity tab load already fetches
+ * /chain-activity; folding these in would tax every visitor for something only
+ * some open.
+ *
+ * `totals` are disjoint and cover the WHOLE retained set, not the returned
+ * page: p2pOnly + dappOnly + both === utilityTotal. The UI shows "showing N of
+ * M", so M has to be the real total or the footer lies. is_p2p and is_dapp are
+ * independent booleans on the backend, so overlapping "any P2P"/"any Dapp"
+ * tallies would not sum and would read as a bug on screen.
+ *
+ * Fails soft to an empty result, matching fetch_chain_activity: a drill-down
+ * that cannot load should collapse quietly, not blank the tab.
+ */
+export async function fetch_chain_activity_blocks(limit = 50) {
+  const empty = {
+    ok: false,
+    totals: { p2pOnly: 0, dappOnly: 0, both: 0, utilityTotal: 0 },
+    blocks: [],
+  };
+
+  try {
+    const response = await fetch(
+      `${FLUXNODE_INFO_API_URL}/api/v1/chain-activity/blocks?limit=${limit}`,
+      { method: 'GET', headers: { Accept: 'application/json' } }
+    );
+    const json = await response.json();
+    if (!json?.success) {
+      console.log('[ChainActivity] blocks endpoint reported success:false');
+      return empty;
+    }
+
+    const t = json.totals || {};
+    return {
+      ok: true,
+      totals: {
+        p2pOnly: t.p2p_only || 0,
+        dappOnly: t.dapp_only || 0,
+        both: t.both || 0,
+        utilityTotal: t.utility_total || 0,
+      },
+      blocks: Array.isArray(json.blocks)
+        ? json.blocks.map((b) => ({
+            height: b.height,
+            date: b.date,
+            isP2p: !!b.is_p2p,
+            isDapp: !!b.is_dapp,
+            transferCount: b.transfer_count || 0,
+          }))
+        : [],
+    };
+  } catch (error) {
+    console.log('[ChainActivity] blocks fetch failed:', error?.message || error);
+    return empty;
+  }
+}
+
+/* "P2P", "Dapp", or "P2P + Dapp" for one block's category badges. */
+export function blockCategoryLabel(block) {
+  if (block?.isP2p && block?.isDapp) return 'P2P + Dapp';
+  if (block?.isP2p) return 'P2P';
+  if (block?.isDapp) return 'Dapp';
+  return '\u2014';
+}

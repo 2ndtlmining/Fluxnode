@@ -92,6 +92,7 @@ pub mod api_v1 {
                 post(self::live_winners::handler),
             )
             .route("/chain-activity", get(self::chain_activity::handler))
+            .route("/chain-activity/blocks", get(self::chain_activity_blocks::handler))
     }
 
     async fn root() -> String {
@@ -311,6 +312,83 @@ pub mod api_v1 {
                 scan_start_height: scan_status.scan_start_height,
                 scan_target_height: scan_status.scan_target_height,
                 last_outcome: scan_status.last_outcome,
+            };
+            (StatusCode::OK, Json(body))
+        }
+    }
+
+    /*
+     * The blocks behind the Utility count (issue #199).
+     *
+     * A SEPARATE endpoint rather than more fields on /chain-activity, which
+     * every Chain Activity tab load already fetches. The retained utility-block
+     * set is a few hundred KB; adding it to the common payload would tax every
+     * visitor for a drill-down only some open. This one is fetched lazily, on
+     * first expand.
+     */
+    pub mod chain_activity_blocks {
+        use super::*;
+        use axum::extract::Query;
+
+        const DEFAULT_LIMIT: usize = 50;
+        const MAX_LIMIT: usize = 200;
+
+        #[derive(Debug, Deserialize)]
+        pub struct BlocksQuery {
+            limit: Option<usize>,
+        }
+
+        #[derive(Debug, Serialize)]
+        struct CategoryTotals {
+            /*
+             * DISJOINT counts: p2p_only + dapp_only + both == utility_total.
+             *
+             * is_p2p and is_dapp are independent booleans, so overlapping
+             * "any P2P" / "any Dapp" tallies would not sum to the total and
+             * would read as a bug on screen. Partitioning here means the UI
+             * can render three numbers that visibly add up.
+             */
+            p2p_only: usize,
+            dapp_only: usize,
+            both: usize,
+            utility_total: usize,
+        }
+
+        #[derive(Debug, Serialize)]
+        pub struct ChainActivityBlocksBody {
+            success: bool,
+            totals: CategoryTotals,
+            blocks: Vec<services::chain_activity::UtilityBlockRecord>,
+            returned: usize,
+        }
+
+        // Synchronous read of what the background scanner has already
+        // persisted; never triggers a scan on the request path, matching the
+        // sibling chain-activity handler.
+        pub async fn handler(Query(params): Query<BlocksQuery>) -> impl IntoResponse {
+            let mut blocks = services::chain_activity::load_utility_blocks();
+
+            // Totals are over the WHOLE retained set, not the returned page --
+            // the UI shows "showing N of M", and M has to be the real total or
+            // the footer lies.
+            let totals = CategoryTotals {
+                p2p_only: blocks.iter().filter(|b| b.is_p2p && !b.is_dapp).count(),
+                dapp_only: blocks.iter().filter(|b| !b.is_p2p && b.is_dapp).count(),
+                both: blocks.iter().filter(|b| b.is_p2p && b.is_dapp).count(),
+                utility_total: blocks.len(),
+            };
+
+            // Most recent first, then truncate. Clamped so a hand-crafted
+            // ?limit=99999 cannot ask for the entire retained set.
+            blocks.sort_by(|a, b| b.height.cmp(&a.height));
+            let limit = params.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
+            blocks.truncate(limit);
+
+            let body = ChainActivityBlocksBody {
+                success: true,
+                totals,
+                returned: blocks.len(),
+                blocks,
             };
             (StatusCode::OK, Json(body))
         }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from 'analytics/chainActivity';
 import './index.scss';
 
 /*
@@ -92,7 +92,93 @@ function pct(n, total) {
   return total > 0 ? ((n / total) * 100).toFixed(0) : '0';
 }
 
+const DRILLDOWN_LIMIT = 50;
+
+/*
+ * The blocks behind the Utility count (issue #199).
+ *
+ * Fetched LAZILY, on first expand: the retained utility-block set is a few
+ * hundred KB and most visitors never open this, so the tab's initial network
+ * cost is unchanged. Once fetched it is kept for the tab's lifetime -- toggling
+ * closed and open again does not refetch.
+ *
+ * The issue's own example ("P2P (2) Dapp (2)") came from live-testing a scanner
+ * that had barely started. In steady state a day holds ~490 utility blocks, so
+ * this shows the category subtotals in full and caps the block list, rather
+ * than rendering hundreds of rows nobody asked for.
+ */
+function UtilityDrilldown({ open }) {
+  const [state, setState] = useState({ status: 'idle', data: null });
+
+  useEffect(() => {
+    if (!open || state.status !== 'idle') return;
+    let cancelled = false;
+    setState({ status: 'loading', data: null });
+    (async () => {
+      const result = await fetch_chain_activity_blocks(DRILLDOWN_LIMIT);
+      if (cancelled) return;
+      setState({ status: result.ok ? 'ready' : 'error', data: result });
+    })().catch(() => {
+      if (!cancelled) setState({ status: 'error', data: null });
+    });
+    return () => { cancelled = true; };
+  }, [open, state.status]);
+
+  if (!open) return null;
+
+  if (state.status === 'loading' || state.status === 'idle') {
+    return <div className="ca-drilldown ca-drilldown--message">Loading blocks...</div>;
+  }
+  if (state.status === 'error') {
+    // Fails soft: say so and stay collapsed rather than blanking the panel.
+    return <div className="ca-drilldown ca-drilldown--message">Could not load block detail right now.</div>;
+  }
+
+  const { totals, blocks } = state.data;
+  if (totals.utilityTotal === 0) {
+    return <div className="ca-drilldown ca-drilldown--message">No utility blocks recorded yet.</div>;
+  }
+
+  return (
+    <div className="ca-drilldown" id="ca-utility-drilldown">
+      <div className="ca-drilldown-chips">
+        <span className="ca-chip ca-chip--p2p">
+          P2P <strong>{fmtNum(totals.p2pOnly)}</strong>
+        </span>
+        <span className="ca-chip ca-chip--dapp">
+          Dapp <strong>{fmtNum(totals.dappOnly)}</strong>
+        </span>
+        <span className="ca-chip ca-chip--both" title="Blocks carrying a P2P transfer AND an app deployment">
+          Both <strong>{fmtNum(totals.both)}</strong>
+        </span>
+      </div>
+
+      <div className="ca-drilldown-list">
+        {blocks.map((b) => (
+          <div key={b.height} className="ca-drilldown-row">
+            <span className="ca-drilldown-height">#{fmtNum(b.height)}</span>
+            <span className={`ca-drilldown-cat${b.isP2p && b.isDapp ? ' ca-drilldown-cat--both' : ''}`}>
+              {blockCategoryLabel(b)}
+            </span>
+            <span className="ca-drilldown-txs">
+              {b.transferCount > 0 ? `${fmtNum(b.transferCount)} tx` : '\u2014'}
+            </span>
+            <span className="ca-drilldown-date">{b.date}</span>
+          </div>
+        ))}
+      </div>
+
+      {blocks.length < totals.utilityTotal && (
+        <div className="ca-drilldown-footer">
+          showing {fmtNum(blocks.length)} of {fmtNum(totals.utilityTotal)} utility blocks, most recent first
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UtilitySummary({ daily, syncStatus, theme }) {
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
   const { utilityBlocks, emptyBlocks } = summarizeDaily(daily);
   const total = utilityBlocks + emptyBlocks;
   const badgeText = daily.length === 1 ? '1 day' : `${daily.length} days`;
@@ -120,13 +206,26 @@ function UtilitySummary({ daily, syncStatus, theme }) {
             <UtilityTrendChart daily={daily} theme={theme} />
           </Suspense>
           <div className="ca-utility-stats">
-            <span className="ca-utility-stat ca-utility-stat--utility">
+            {/*
+              * A real <button>, not a click handler on a span: this is the only
+              * way into the drill-down, and it has to be reachable and
+              * announceable without a mouse.
+              */}
+            <button
+              type="button"
+              className={`ca-utility-stat ca-utility-stat--utility ca-utility-stat--button${drilldownOpen ? ' ca-utility-stat--open' : ''}`}
+              onClick={() => setDrilldownOpen((v) => !v)}
+              aria-expanded={drilldownOpen}
+              aria-controls="ca-utility-drilldown"
+            >
               {fmtNum(utilityBlocks)} utility ({pct(utilityBlocks, total)}%)
-            </span>
+              <span className="ca-utility-caret" aria-hidden="true">{drilldownOpen ? '\u25b4' : '\u25be'}</span>
+            </button>
             <span className="ca-utility-stat ca-utility-stat--empty">
               {fmtNum(emptyBlocks)} empty ({pct(emptyBlocks, total)}%)
             </span>
           </div>
+          <UtilityDrilldown open={drilldownOpen} />
         </>
       )}
     </div>
