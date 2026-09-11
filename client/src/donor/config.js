@@ -37,6 +37,22 @@ export const DONOR_MAX_PAGES_FETCHED = 20;
 export const OLD_ADDRESS_FLUX = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
 
 /*
+ * Addresses whose transfers to the donation address are NOT third-party
+ * donations -- project-owned wallets moving funds -- and are therefore left out
+ * of the network-wide totals on Home (issue #258).
+ *
+ * This matters more than it looks. One of these addresses accounts for roughly
+ * 99% of everything the donation addresses have received in the last year.
+ * Including it would headline the Home panel with a number implying broad
+ * community backing that the remaining data does not support, which is the
+ * opposite of what a transparency panel is for.
+ *
+ * Only affects the aggregate display. Donor STATUS (donorStatus.js) is
+ * unchanged: an excluded address that really did donate still qualifies.
+ */
+export const EXCLUDED_FROM_DONATION_TOTALS = ['t1gesjNJGfzU8shfMZj6DVDatRKA3LQj8Nh'];
+
+/*
  * The full donor-gate mechanism (wallet -> chain-donation check -> unlock)
  * is built: DonorContext verifies a wallet's real on-chain donations via
  * fetch_donor_status and gates premium features (currently just /live) on

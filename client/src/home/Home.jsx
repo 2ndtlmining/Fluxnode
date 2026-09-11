@@ -10,6 +10,7 @@ import { Col, Container, Row } from 'react-grid-system';
 import { AppToaster } from 'components/AppToaster';
 import { HomeOverview } from 'home/HomeOverview';
 import { DonorBadge } from 'donor/DonorBadge';
+import { WalletDonationChip } from 'donor/WalletDonationChip';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
 import { CHECK_STATUS } from 'donor/donorWalletCheck';
 import {
@@ -35,7 +36,8 @@ import {
   pa_summary_full,
   validateAddress,
   wallet_pas_summary,
-  fetch_total_donations,
+  fetch_wallet_donation_summary,
+  fetch_donation_totals,
   fetch_total_network_utils,
   fetch_gpu_prices
 } from 'apidata';
@@ -44,7 +46,6 @@ import { appStore, StoreKeys } from 'persistance/store';
 
 import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs } from 'utils';
-import { FaMedal } from 'react-icons/fa';
 
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
@@ -76,8 +77,13 @@ class Home extends React.Component {
       isZelId: false,
 
       totalDonations: 0,
+      donationsChecked: false,
+      donationsCheckFailed: false,
 
       countryCounts: [],
+      donations: null,
+      donationsSettled: false,
+      donationsFailed: false,
       countryCountsSettled: false,
       countryCountsFailed: false,
       gpuPrices: null
@@ -256,6 +262,14 @@ class Home extends React.Component {
     fetch_gpu_prices()
       .then((data) => this.setState({ gpuPrices: data }))
       .catch(() => {});
+
+    // #258: community donation totals. Network-wide, so it belongs here with
+    // the other panels that describe the network rather than the wallet.
+    fetch_donation_totals()
+      .then(({ ok, totals }) =>
+        this.setState({ donations: totals, donationsSettled: true, donationsFailed: !ok })
+      )
+      .catch(() => this.setState({ donationsSettled: true, donationsFailed: true }));
   }
 
   hydrateApp() {
@@ -375,8 +389,14 @@ class Home extends React.Component {
 
     const gstore = await fetch_global_stats(address);
 
-    fetch_total_donations(address).then((res) => {
-      this.setState({ totalDonations: res });
+    // #258: the chip has to tell "never donated" from "could not check",
+    // which fetch_total_donations cannot express -- it resolves 0 for both.
+    fetch_wallet_donation_summary(address).then(({ ok, donationCount }) => {
+      this.setState({
+        totalDonations: donationCount,
+        donationsChecked: true,
+        donationsCheckFailed: !ok
+      });
     });
 
     fetch_total_network_utils(gstore).then((store) => {
@@ -463,25 +483,20 @@ class Home extends React.Component {
         <div className='d-flex gap-2'>
           <span>Current Wallet Address</span>
           <DonorBadge />
-          {this.state.totalDonations > 0 ? (
-            <Tooltip2
-              usePortal={true}
-              intent='danger'
-              placement='bottom'
-              transitionDuration={100}
-              content={
-                <div>
-                  Total donations: <strong>{this.state.totalDonations}</strong>
-                </div>
-              }
-              hoverOpenDelay={60}
-            >
-              <span className='d-inline-flex align-items-center gap-1'>
-                <FaMedal color='gold' size={16} />
-                {this.state.totalDonations}
-              </span>
-            </Tooltip2>
-          ) : null}
+          {/*
+            #258: replaces a second gold medal that sat here showing a raw
+            donation count. Two identical medals meaning different things
+            (premium unlocked vs. this wallet has donated) was confusing, and
+            a wallet that had never donated got nothing at all -- which is the
+            state most visitors are in.
+          */}
+          <WalletDonationChip
+            address={this.state.activeAddress}
+            donationCount={this.state.totalDonations}
+            settled={this.state.donationsChecked}
+            failed={this.state.donationsCheckFailed}
+            donationAddress={window.gContent?.ADDRESS_FLUX}
+          />
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>
@@ -661,6 +676,9 @@ class Home extends React.Component {
                 countryCountsSettled={this.state.countryCountsSettled}
                 countryCountsFailed={this.state.countryCountsFailed}
                 gpuPrices={this.state.gpuPrices}
+                donations={this.state.donations}
+                donationsSettled={this.state.donationsSettled}
+                donationsFailed={this.state.donationsFailed}
               />
             </>
           );

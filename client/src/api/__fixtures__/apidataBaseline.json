@@ -599,6 +599,11 @@
       "name": "fetch_country_node_counts",
       "type": "function"
     },
+    "fetch_donation_totals": {
+      "type": "function",
+      "length": 0,
+      "name": "fetch_donation_totals"
+    },
     "fetch_global_app_specs": {
       "length": 1,
       "name": "fetch_global_app_specs",
@@ -633,6 +638,11 @@
       "length": 1,
       "name": "fetch_total_network_utils",
       "type": "function"
+    },
+    "fetch_wallet_donation_summary": {
+      "type": "function",
+      "length": 1,
+      "name": "fetch_wallet_donation_summary"
     },
     "fillPartialNode": {
       "length": 1,

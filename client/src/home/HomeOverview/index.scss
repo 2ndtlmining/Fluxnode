@@ -547,3 +547,111 @@
     color: #94a3b8;
   }
 }
+
+/*
+ * Community Support panel (issue #258).
+ *
+ * A full-width band rather than a third-width card. The honest community figure
+ * is a few hundred FLUX from single-digit donors -- too little to fill a tall
+ * column without looking padded, and putting it alone in the three-column row
+ * above would have stranded it exactly the way DEPLOYED TODAY was stranded on
+ * the Apps tab (#248). Laid out horizontally it reads as a summary line across
+ * the page, which is what it is.
+ */
+.hov-panel--support {
+  .hov-support-band {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding-top: 4px;
+  }
+
+  .hov-support-figure {
+    flex: 0 0 auto;
+  }
+
+  .hov-support-hero {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .hov-support-total {
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1.05;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hov-support-unit {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #22c55e;
+  }
+
+  .hov-support-sub {
+    font-size: 0.72rem;
+    color: var(--text-tertiary, rgba(128, 128, 128, 0.9));
+    margin-top: 2px;
+  }
+
+  /*
+   * Held to a readable measure. Left to grow, the kv rows' space-between
+   * pushed each label and its value to opposite ends of a 1,700px band, so
+   * "Supporters" and "9" ended up too far apart to read as a pair.
+   */
+  .hov-kv-list {
+    flex: 0 1 auto;
+    min-width: 240px;
+    max-width: 340px;
+  }
+
+  /*
+   * The address sits in the panel, not behind a link: someone persuaded by the
+   * numbers should not then have to go looking for where to send anything.
+   */
+  .hov-support-cta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-size: 0.74rem;
+  }
+
+  .hov-support-cta--standalone {
+    margin-left: 0;
+  }
+
+  .hov-support-cta--standalone {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(128, 128, 128, 0.14);
+  }
+
+  .hov-support-cta-icon {
+    color: #d6336c;
+    flex-shrink: 0;
+  }
+
+  .hov-support-cta-text {
+    color: var(--text-secondary, rgba(128, 128, 128, 0.95));
+  }
+
+  .hov-support-address {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-inset);
+    color: var(--text-secondary, inherit);
+    cursor: default;
+  }
+
+  @media (max-width: 720px) {
+    .hov-support-band {
+      gap: 14px;
+    }
+  }
+}

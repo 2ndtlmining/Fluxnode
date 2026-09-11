@@ -11,6 +11,8 @@ import ReactCountryFlag from 'react-country-flag';
 // page animated while the rest of the app did not.
 import CountUp from 'components/CountUp';
 import { geoPanelState } from 'home/networkPanels';
+import { relativeAge } from 'donor/donationTotals';
+import { FaHeart } from 'react-icons/fa';
 
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
@@ -457,9 +459,119 @@ function FluxAIPanel({ gpuPrices }) {
   );
 }
 
+
+// ── Panel: Community Support ──────────────────────────────────────────────────
+
+/*
+ * What the community has actually given, over the same 365-day window the donor
+ * benefit uses (issue #258).
+ *
+ * The honest figure is small -- a few hundred FLUX from single-digit donors --
+ * because the one wallet that dwarfs everything is project-owned and excluded
+ * (donor/config.js). A panel about transparency that headlined the unfiltered
+ * total would imply broad backing the data does not show, so the number here is
+ * deliberately the modest true one, and the panel is built to look composed at
+ * that size rather than padded out to seem larger.
+ *
+ * The donation address is part of the panel rather than a link elsewhere: a
+ * reader persuaded by the numbers should not then have to go looking.
+ */
+function CommunitySupportPanel({ donations, donationsSettled, donationsFailed }) {
+  if (!donationsSettled) {
+    return (
+      <div className="hov-panel hov-panel-center hov-panel--support">
+        <Spinner size={20} />
+      </div>
+    );
+  }
+
+  if (donationsFailed || !donations) {
+    return (
+      <div className="hov-panel hov-panel-center hov-panel--support">
+        <div className="hov-empty">Couldn&rsquo;t load donation history &mdash; this may be temporary.</div>
+      </div>
+    );
+  }
+
+  const { totalFlux, uniqueDonors, donationCount, lastDonation } = donations;
+  const address = (typeof window !== 'undefined' && window.gContent?.ADDRESS_FLUX) || '';
+  const shortAddress = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : '—';
+  const lastAge = lastDonation ? relativeAge(lastDonation.timeSec) : null;
+
+  return (
+    <div className="hov-panel hov-panel--support">
+      <PanelHeader title="COMMUNITY SUPPORT" badge={uniqueDonors} />
+
+      {donationCount === 0 ? (
+        <div className="hov-empty">No donations recorded in the last year</div>
+      ) : (
+        <>
+          <div className="hov-support-band">
+            <div className="hov-support-figure">
+              <div className="hov-support-hero">
+                <span className="hov-support-total">{fmtNum(totalFlux, 2)}</span>
+                <span className="hov-support-unit">FLUX</span>
+              </div>
+              <div className="hov-support-sub">donated by the community over the last year</div>
+            </div>
+
+            <div className="hov-kv-list">
+            <div className="hov-kv-row">
+              <span className="hov-kv-label">Supporters</span>
+              <span className="hov-kv-value">{fmtNum(uniqueDonors)}</span>
+            </div>
+            <div className="hov-kv-row">
+              <span className="hov-kv-label">Donations</span>
+              <span className="hov-kv-value">{fmtNum(donationCount)}</span>
+            </div>
+            {lastDonation && (
+              <div className="hov-kv-row">
+                <span className="hov-kv-label">Most recent</span>
+                <span className="hov-kv-value">
+                  {fmtNum(lastDonation.amount, 2)} FLUX &middot; {lastAge}
+                </span>
+              </div>
+            )}
+            </div>
+
+            <div className="hov-support-cta">
+              <FaHeart size={11} className="hov-support-cta-icon" aria-hidden="true" />
+              <span className="hov-support-cta-text">Keep FluxNode running</span>
+              <Tooltip2 content={address || 'Donation address unavailable'} placement="top" hoverOpenDelay={120}>
+                <code className="hov-support-address">{shortAddress}</code>
+              </Tooltip2>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* With no donations there is no band to hang the address off, so it
+          gets its own row rather than disappearing. */}
+      {donationCount === 0 && (
+        <div className="hov-support-cta hov-support-cta--standalone">
+          <FaHeart size={11} className="hov-support-cta-icon" aria-hidden="true" />
+          <span className="hov-support-cta-text">Keep FluxNode running</span>
+          <Tooltip2 content={address || 'Donation address unavailable'} placement="top" hoverOpenDelay={120}>
+            <code className="hov-support-address">{shortAddress}</code>
+          </Tooltip2>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function HomeOverview({ gstore, countryCounts, countryCountsSettled, countryCountsFailed, gpuPrices }) {
+export function HomeOverview({
+  gstore,
+  countryCounts,
+  countryCountsSettled,
+  countryCountsFailed,
+  gpuPrices,
+  donations,
+  donationsSettled,
+  donationsFailed
+}) {
   return (
     <div className="home-overview">
       <div className="home-overview-row">
@@ -467,6 +579,11 @@ export function HomeOverview({ gstore, countryCounts, countryCountsSettled, coun
         <NetworkResourcesPanel gstore={gstore} />
         <AppEcosystemBreakdown gstore={gstore} />
       </div>
+      <CommunitySupportPanel
+        donations={donations}
+        donationsSettled={donationsSettled}
+        donationsFailed={donationsFailed}
+      />
       <TopHostedApps gstore={gstore} />
       {SHOW_FLUX_AI_PANEL && <FluxAIPanel gpuPrices={gpuPrices} />}
       <GeoDistributionPanel
