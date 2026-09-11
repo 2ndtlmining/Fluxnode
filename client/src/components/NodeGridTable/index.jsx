@@ -84,10 +84,17 @@ export const NodeGridTable = ({
     gridRef.current.api.sizeColumnsToFit();
   }, [data]);
 
+  /*
+   * Column API calls go through `api`, not `columnApi` (ag-grid 31, issue #235).
+   *
+   * v31 folded every Column API method into GridApi and kept `columnApi` only
+   * as a deprecated shim, which a later major removes. Both work today; using
+   * the shim would mean doing this migration again on the next upgrade.
+   */
   const reloadColumnState = () => {
     var columnState = JSON.parse(localStorage.getItem('myColumnState'));
     if (columnState) {
-      gridRef.current.columnApi.applyColumnState({ state: columnState, applyOrder: true });
+      gridRef.current.api.applyColumnState({ state: columnState, applyOrder: true });
     }
   };
 
@@ -99,21 +106,21 @@ export const NodeGridTable = ({
   const autoSizeAll = useCallback(() => {
     if (data && data.length > 0) {
       const allColumnIds = [];
-      gridRef.current.columnApi.getColumns().forEach((column) => {
+      gridRef.current.api.getColumns().forEach((column) => {
         allColumnIds.push(column.getId());
       });
-      gridRef.current.columnApi.autoSizeColumns(allColumnIds, false);
+      gridRef.current.api.autoSizeColumns(allColumnIds, false);
     }
     reloadColumnState();
   }, [data]);
 
   const onColumnMoved = (params) => {
-    let columnState = JSON.stringify(params.columnApi.getColumnState());
+    let columnState = JSON.stringify(params.api.getColumnState());
     localStorage.setItem('myColumnState', columnState);
   };
 
   const handleResetColumnState = () => {
-    gridRef.current.columnApi.resetColumnState();
+    gridRef.current.api.resetColumnState();
     localStorage.removeItem('myColumnState');
   };
 
