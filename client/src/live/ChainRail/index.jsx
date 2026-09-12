@@ -2,6 +2,7 @@ import React from 'react';
 import { DETAIL_SECTIONS } from 'live/categoryMeta';
 import { FluxMark } from 'live/FluxMark';
 import { relativeTime, exactTimestamp } from 'live/timeFormat';
+import { BUSIEST_LABEL } from 'live/busiestBlock';
 import './index.scss';
 
 function sectionKeyFor(event) {
@@ -78,6 +79,48 @@ function ChainBlock({ block, isSelected, isTip, onSelect }) {
 }
 
 /*
+ * The busiest block of the last 24 hours (#286), sectioned off from the live
+ * blocks by a rule.
+ *
+ * Rendered differently from a live block on purpose: it is not part of the
+ * chain flowing past, it is one block pulled out of the last day for a reason,
+ * so it says what that reason is rather than showing a relative time it cannot
+ * know precisely (the record carries a date, not a block timestamp).
+ */
+function BusiestBlock({ block, isSelected, onSelect }) {
+  const activate = () => onSelect(block);
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      activate();
+    }
+  };
+
+  const parts = [];
+  if (block.transferCount) parts.push(`${block.transferCount} transfer${block.transferCount === 1 ? '' : 's'}`);
+  if (block.deploymentCount) parts.push(`${block.deploymentCount} deploy${block.deploymentCount === 1 ? '' : 's'}`);
+
+  return (
+    <div
+      className={`live-chain-block live-chain-block--busiest${isSelected ? ' live-chain-block--selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${BUSIEST_LABEL} ${block.height}, ${parts.join(', ') || 'no activity'}`}
+      onClick={activate}
+      onKeyDown={onKeyDown}
+      title={`Busiest block of the last 24h${block.date ? ` (${block.date})` : ''}: ${parts.join(', ')}`}
+    >
+      <span className="live-chain-block-busiest-marker">{BUSIEST_LABEL}</span>
+      <span className="live-chain-block-height">#{block.height}</span>
+      <span className="live-chain-block-time">last 24h</span>
+      <span className="live-chain-block-chips">
+        <span className="live-chain-chip live-chain-chip--busiest">{block.activity}</span>
+      </span>
+    </div>
+  );
+}
+
+/*
  * The track is keyed on the current tip height: React remounts it (and every
  * block inside) exactly once per genuine new block, which is what makes each
  * card's CSS keyframe animation replay — a keyframe only plays on mount,
@@ -86,7 +129,7 @@ function ChainBlock({ block, isSelected, isTip, onSelect }) {
  * with no remount and so no animation, which is correct. See
  * live/blockAnimation.js for the phase state machine this renders.
  */
-export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock }) {
+export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock, busiestBlock }) {
   return (
     <div className="live-panel live-chain-rail">
       <div className="live-panel-header">
@@ -109,6 +152,22 @@ export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock }) 
               {i < blocks.length - 1 && <span className="live-chain-connector" aria-hidden="true" />}
             </React.Fragment>
           ))
+        )}
+
+        {/*
+          Sectioned off with a rule rather than a connector (#286): a connector
+          would claim this block sits next to the live ones in the chain, and it
+          does not -- it is one block pulled out of the last 24 hours.
+        */}
+        {busiestBlock && (
+          <>
+            <span className="live-chain-divider" aria-hidden="true" />
+            <BusiestBlock
+              block={busiestBlock}
+              isSelected={selectedHeight === busiestBlock.height}
+              onSelect={onSelectBlock}
+            />
+          </>
         )}
       </div>
     </div>

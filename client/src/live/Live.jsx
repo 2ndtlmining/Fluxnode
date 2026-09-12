@@ -22,6 +22,8 @@ import { computeLiveStatus } from 'live/liveStatus';
 import { relativeTime } from 'live/timeFormat';
 
 import { ChainRail } from 'live/ChainRail';
+import { busiestBlockToRailBlock } from 'live/busiestBlock';
+import { fetch_chain_activity } from 'analytics/chainActivity';
 import { DetailsPanel } from 'live/DetailsPanel';
 import { FlowCanvas } from 'live/FlowCanvas';
 import { LiveStatusBadge } from 'live/LiveStatusBadge';
@@ -43,6 +45,14 @@ const MAX_VISIBLE_BLOCK_COUNT = 10;
 // since this lives in a different file from the CSS that defines it.
 const CHAIN_BLOCK_SLOT_WIDTH = 150;
 const CHAIN_PANEL_HORIZONTAL_PADDING = 32;
+/*
+ * Width held back for the busiest-block slot and the divider before it (#286).
+ * Reserved unconditionally rather than only when a busiest block exists: it
+ * keeps the count stable instead of reflowing the whole rail the moment the
+ * scanner produces one, and "show fewer live blocks" is part of what #286
+ * asked for.
+ */
+const BUSIEST_SLOT_WIDTH = 190;
 const LEAVE_ANIMATION_MS = 550;
 // A handful of consecutive failed block fetches means "unavailable", not a
 // single blip — matches the resilience shape used elsewhere (#144).
@@ -63,6 +73,10 @@ export default function Live() {
   // every 5 minutes, but recreating pollFast would tear down and rebuild the
   // setInterval timers for no reason).
   const [globalRankings, setGlobalRankings] = useState(null);
+  // #286: the busiest block of the last 24h, from the chain-activity scanner
+  // rather than the live poll -- it is almost never among the blocks on the
+  // rail, which is the whole reason it gets its own slot.
+  const [busiestBlock, setBusiestBlock] = useState(null);
   // How many blocks the rail shows — grows/shrinks with available width
   // (see the ResizeObserver effect below), bounded to [5, 10].
   const [visibleBlockCount, setVisibleBlockCount] = useState(MIN_VISIBLE_BLOCK_COUNT);
@@ -159,6 +173,13 @@ export default function Live() {
     globalRankingsRef.current = rankings;
     setGlobalRankings(rankings);
 
+    // Cheap, synchronous on the server (a read of persisted scanner state) and
+    // only meaningful once per block, so it rides the 5-minute refresh rather
+    // than the fast poll.
+    fetch_chain_activity()
+      .then((activity) => setBusiestBlock(busiestBlockToRailBlock(activity?.busiestBlock)))
+      .catch(() => {});
+
     const currentHeight = tipBlocks[0]?.height || 0;
     const specs = await fetch_global_app_specs({ fluxBlockHeight: currentHeight });
 
@@ -182,7 +203,7 @@ export default function Live() {
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
 
     const computeCount = (width) => {
-      const usable = Math.max(0, width - CHAIN_PANEL_HORIZONTAL_PADDING);
+      const usable = Math.max(0, width - CHAIN_PANEL_HORIZONTAL_PADDING - BUSIEST_SLOT_WIDTH);
       const fit = Math.floor(usable / CHAIN_BLOCK_SLOT_WIDTH);
       return Math.min(MAX_VISIBLE_BLOCK_COUNT, Math.max(MIN_VISIBLE_BLOCK_COUNT, fit || MIN_VISIBLE_BLOCK_COUNT));
     };
@@ -247,7 +268,11 @@ export default function Live() {
 
   const tipHeight = displayBlocks.find((b) => b.phase !== 'leaving')?.height ?? null;
   const displayedHeight = selectedHeight ?? tipHeight;
-  const displayedBlock = displayBlocks.find((b) => b.height === displayedHeight) || null;
+  const displayedBlock =
+    displayBlocks.find((b) => b.height === displayedHeight) ||
+    // #286: the busiest block is not on the rail, so it would otherwise resolve
+    // to null and leave the details panel blank when selected.
+    (busiestBlock && displayedHeight === busiestBlock.height ? busiestBlock : null);
   const summary = useMemo(() => buildBlockFlowSummary(displayedBlock), [displayedBlock]);
   const locked = selectedHeight != null;
 
@@ -321,10 +346,14 @@ export default function Live() {
   // 5-slot window entirely has nothing left to show — resume following the
   // tip rather than leaving the panel stuck on "loading" forever.
   useEffect(() => {
-    if (selectedHeight != null && !displayBlocks.some((b) => b.height === selectedHeight)) {
+    if (selectedHeight == null) return;
+    // #286: the busiest block is deliberately not in displayBlocks, so it must
+    // be exempted here or selecting it would clear itself on the next poll.
+    if (busiestBlock && selectedHeight === busiestBlock.height) return;
+    if (!displayBlocks.some((b) => b.height === selectedHeight)) {
       setSelectedHeight(null);
     }
-  }, [displayBlocks, selectedHeight]);
+  }, [displayBlocks, selectedHeight, busiestBlock]);
 
   return (
     <div className="live-page">
@@ -378,6 +407,7 @@ export default function Live() {
             tipHeight={tipHeight}
             selectedHeight={selectedHeight}
             onSelectBlock={handleSelectBlock}
+            busiestBlock={busiestBlock}
           />
         </div>
         <DetailsPanel

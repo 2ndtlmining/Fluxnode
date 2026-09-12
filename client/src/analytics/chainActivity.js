@@ -43,6 +43,9 @@ export async function fetch_chain_activity() {
     scanStartHeight: 0,
     scanTargetHeight: 0,
     syncStatus: 'api_unreachable',
+    // #286: absent when the API cannot be reached, same as every other field
+    // here -- /live simply renders no busiest-block card.
+    busiestBlock: null,
   };
   try {
     const response = await fetch(`${FLUXNODE_INFO_API_URL}/api/v1/chain-activity`, {
@@ -71,6 +74,27 @@ export async function fetch_chain_activity() {
       scanStartHeight: json.scan_start_height || 0,
       scanTargetHeight: json.scan_target_height || 0,
       syncStatus: json.last_outcome || 'never_run',
+      /*
+       * #286. null until a scan has produced both a checkpoint and a utility
+       * block inside the 24h window -- a cold start has neither, and /live must
+       * show nothing rather than a placeholder.
+       */
+      busiestBlock: json.busiest_block_24h
+        ? {
+            height: json.busiest_block_24h.height,
+            date: json.busiest_block_24h.date,
+            transferCount: json.busiest_block_24h.transfer_count || 0,
+            deploymentCount: json.busiest_block_24h.deployment_count || 0,
+            transfers: Array.isArray(json.busiest_block_24h.transfers)
+              ? json.busiest_block_24h.transfers.map((t) => ({
+                  txid: t.txid,
+                  from: t.from || null,
+                  to: t.to,
+                  amount: typeof t.amount === 'number' ? t.amount : 0,
+                }))
+              : [],
+          }
+        : null,
     };
 
     // Visibility for anyone watching devtools during local testing — the
