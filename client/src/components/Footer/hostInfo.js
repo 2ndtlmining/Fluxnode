@@ -53,6 +53,14 @@ export function formatUptime(seconds) {
  * than the host's kernel uptime. A redeployed app resets the former while the
  * latter keeps climbing, and "up 40 days" under a site that restarted an hour
  * ago is the sort of number nobody can act on.
+ *
+ * Each segment carries a `kind` (issue #285). They were bare strings, which
+ * left the footer no way to emphasise one of them -- "Hosted in Melbourne,
+ * Australia" is the segment that makes the app feel like it is running on
+ * somebody's actual node, and it was carrying exactly the same weight as the
+ * build timestamp. Identifying them here keeps the "a missing field removes
+ * its segment" rule in one place: the component never has to guess which dot
+ * belongs to which fact.
  */
 export function hostInfoSegments(payload) {
   const host = payload?.host;
@@ -61,10 +69,10 @@ export function hostInfoSegments(payload) {
   const segments = [];
 
   const where = formatHostLocation(host.location);
-  if (where) segments.push(`Hosted in ${where}`);
+  if (where) segments.push({ kind: 'location', text: `Hosted in ${where}` });
 
   const uptime = formatUptime(host.appUptimeSeconds);
-  if (uptime) segments.push(`Up ${uptime}`);
+  if (uptime) segments.push({ kind: 'uptime', text: `Up ${uptime}` });
 
   return segments;
 }

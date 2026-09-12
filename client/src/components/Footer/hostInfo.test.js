@@ -78,16 +78,38 @@ describe('formatUptime', () => {
 describe('hostInfoSegments', () => {
   const full = { host: { location: { city: 'Helsinki', country: 'Finland' }, appUptimeSeconds: 90000 } };
 
-  it('produces the location and uptime segments', () => {
-    expect(hostInfoSegments(full)).toEqual(['Hosted in Helsinki, Finland', 'Up 1d 1h']);
+  /*
+   * Issue #285 wants the location emphasised, so segments carry a `kind` --
+   * the footer cannot style one of them apart while they are interchangeable
+   * strings joined by a separator.
+   */
+  it('produces the location and uptime segments, each identified', () => {
+    expect(hostInfoSegments(full)).toEqual([
+      { kind: 'location', text: 'Hosted in Helsinki, Finland' },
+      { kind: 'uptime', text: 'Up 1d 1h' },
+    ]);
   });
 
   it('drops the location segment when the lookup failed', () => {
-    expect(hostInfoSegments({ host: { location: null, appUptimeSeconds: 300 } })).toEqual(['Up 5m']);
+    expect(hostInfoSegments({ host: { location: null, appUptimeSeconds: 300 } })).toEqual([
+      { kind: 'uptime', text: 'Up 5m' },
+    ]);
   });
 
   it('drops the uptime segment when it is unavailable', () => {
-    expect(hostInfoSegments({ host: { location: { country: 'Finland' } } })).toEqual(['Hosted in Finland']);
+    expect(hostInfoSegments({ host: { location: { country: 'Finland' } } })).toEqual([
+      { kind: 'location', text: 'Hosted in Finland' },
+    ]);
+  });
+
+  /*
+   * The emphasis must not strand a separator. With no location there is no
+   * location segment at all, so the footer has nothing to hang a stray dot off.
+   */
+  it('leaves no location segment behind when only uptime is known', () => {
+    const segs = hostInfoSegments({ host: { location: {}, appUptimeSeconds: 60 } });
+    expect(segs.some((s) => s.kind === 'location')).toBe(false);
+    expect(segs).toHaveLength(1);
   });
 
   it('is empty when the endpoint gave nothing usable, so the footer is unchanged', () => {

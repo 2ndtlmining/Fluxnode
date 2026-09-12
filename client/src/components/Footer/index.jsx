@@ -97,10 +97,10 @@ export function Footer() {
                 up. Empty unless the Rust API is deployed, in which case the
                 footer is unchanged.
               */}
-              {hostSegments.map((segment) => (
-                <React.Fragment key={segment}>
+              {hostSegments.map(({ kind, text }) => (
+                <React.Fragment key={kind}>
                   <span className="footer-meta__sep">·</span>
-                  <span className="footer-meta__host">{segment}</span>
+                  <span className={`footer-meta__host footer-meta__host--${kind}`}>{text}</span>
                 </React.Fragment>
               ))}
               {lastUpdated && <span className="footer-meta__sep">·</span>}
