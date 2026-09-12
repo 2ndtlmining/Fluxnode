@@ -405,3 +405,49 @@
   color: var(--text-tertiary);
   padding-top: 8px;
 }
+
+/*
+ * The hero as a control (issue #253).
+ *
+ * It is the largest element on the tab and the first thing anyone clicks, but
+ * it used to be inert -- the only way into the drill-down was a small caret on
+ * a stat line below the chart. Styled to stay visually identical to the plain
+ * figure it replaces, with the affordance carried by a hint and a hover state
+ * rather than by making it look like a button; a dashboard hero dressed as a
+ * form control would be worse.
+ */
+.ca-tab-hero--button {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 1px solid rgba(43, 97, 209, 0.7);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.ca-tab-hero-hint {
+  margin-left: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #2b61d1;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+
+  .app-mode-dark & {
+    color: #5b9bf5;
+  }
+}
+
+.ca-tab-hero--button:hover .ca-tab-hero-hint,
+.ca-tab-hero--button:focus-visible .ca-tab-hero-hint,
+.ca-tab-hero--open .ca-tab-hero-hint {
+  opacity: 1;
+}

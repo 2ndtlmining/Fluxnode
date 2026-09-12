@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from 'analytics/chainActivity';
+import { shouldFetchDrilldown, stateAfterCancel } from './drilldownState';
 import './index.scss';
 
 /*
@@ -66,7 +67,9 @@ function SyncStatusBanner({ syncStatus, lastSuccessAt, lastScannedHeight, scanSt
   // 2,937,099") read as "syncing millions of blocks" at a glance, even
   // though the actual gap being scanned is small (bounded by
   // RETENTION_BLOCKS) — show the real remaining count instead.
-  const blocksRemaining = hasRange ? Math.max(0, scanTargetHeight - lastScannedHeight) : 0;
+  const blocksRemaining = hasRange
+    ? blocksRemainingInScan({ lastScannedHeight, scanStartHeight, scanTargetHeight })
+    : 0;
   const progressText = hasRange
     ? ` ${fmtNum(blocksRemaining)} blocks remaining in this scan (${scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight })}%).`
     : '';
@@ -110,19 +113,54 @@ const DRILLDOWN_LIMIT = 50;
 function UtilityDrilldown({ open, expectedTotal }) {
   const [state, setState] = useState({ status: 'idle', data: null });
 
+  /*
+   * Status is mirrored in a ref so it can gate the fetch WITHOUT being an
+   * effect dependency.
+   *
+   * Keeping `state.status` in the dependency array is what made the first
+   * attempt at this fix loop: the cleanup runs on every dependency change, not
+   * only on close, so resetting to 'idle' there drove
+   * idle -> loading -> cleanup -> idle -> ... and fired ~290,000 requests in a
+   * few seconds. With `[open]` alone the cleanup runs only when the panel
+   * actually closes or unmounts, which is the only moment a reset is wanted.
+   */
+  const statusRef = useRef('idle');
+
   useEffect(() => {
-    if (!open || state.status !== 'idle') return;
+    if (!open) {
+      /*
+       * Closing mid-flight used to strand this on 'loading' forever: the late
+       * resolve is discarded below because `cancelled` is set, and the guard
+       * then refused every retry -- so reopening showed "Loading blocks..."
+       * with no request behind it at all (issue #253).
+       */
+      const reset = stateAfterCancel({ status: statusRef.current, data: null });
+      if (reset.status !== statusRef.current) {
+        statusRef.current = reset.status;
+        setState(reset);
+      }
+      return;
+    }
+
+    if (!shouldFetchDrilldown(open, statusRef.current)) return;
+
     let cancelled = false;
+    statusRef.current = 'loading';
     setState({ status: 'loading', data: null });
+
     (async () => {
       const result = await fetch_chain_activity_blocks(DRILLDOWN_LIMIT);
       if (cancelled) return;
-      setState({ status: result.ok ? 'ready' : 'error', data: result });
+      statusRef.current = result.ok ? 'ready' : 'error';
+      setState({ status: statusRef.current, data: result });
     })().catch(() => {
-      if (!cancelled) setState({ status: 'error', data: null });
+      if (cancelled) return;
+      statusRef.current = 'error';
+      setState({ status: 'error', data: null });
     });
+
     return () => { cancelled = true; };
-  }, [open, state.status]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -193,8 +231,7 @@ function UtilityDrilldown({ open, expectedTotal }) {
   );
 }
 
-function UtilitySummary({ daily, syncStatus, theme }) {
-  const [drilldownOpen, setDrilldownOpen] = useState(false);
+function UtilitySummary({ daily, syncStatus, theme, drilldownOpen, onToggleDrilldown }) {
   const { utilityBlocks, emptyBlocks } = summarizeDaily(daily);
   const total = utilityBlocks + emptyBlocks;
   const badgeText = daily.length === 1 ? '1 day' : `${daily.length} days`;
@@ -230,7 +267,7 @@ function UtilitySummary({ daily, syncStatus, theme }) {
             <button
               type="button"
               className={`ca-utility-stat ca-utility-stat--utility ca-utility-stat--button${drilldownOpen ? ' ca-utility-stat--open' : ''}`}
-              onClick={() => setDrilldownOpen((v) => !v)}
+              onClick={onToggleDrilldown}
               aria-expanded={drilldownOpen}
               aria-controls="ca-utility-drilldown"
             >
@@ -289,6 +326,9 @@ export function ChainActivityTab({ theme = 'dark' }) {
     syncStatus: 'never_run',
   });
   const [loading, setLoading] = useState(true);
+  // Lifted out of UtilitySummary so the hero above can open the same panel.
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const toggleDrilldown = () => setDrilldownOpen((v) => !v);
 
   useEffect(() => {
     let cancelled = false;
@@ -315,12 +355,40 @@ export function ChainActivityTab({ theme = 'dark' }) {
     );
   }
 
+  const { utilityBlocks, emptyBlocks } = summarizeDaily(data.daily);
+  const hasBlocks = utilityBlocks + emptyBlocks > 0;
+
   return (
     <div className="chain-activity-tab">
-      <div className="ca-tab-hero">
-        <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
-        <span className="ca-tab-hero-label">Utility blocks today</span>
-      </div>
+      {/*
+        * The hero is the biggest thing on the tab and the first thing anyone
+        * tries to click, but it did nothing -- the only way into the block
+        * drill-down was a small caret on a stat line below the chart, which
+        * reads as decoration (issue #253). It opens the same panel now.
+        *
+        * Only interactive when there are blocks to show: a button that does
+        * nothing is worse than a plain figure.
+        */}
+      {hasBlocks ? (
+        <button
+          type="button"
+          className={`ca-tab-hero ca-tab-hero--button${drilldownOpen ? ' ca-tab-hero--open' : ''}`}
+          onClick={toggleDrilldown}
+          aria-expanded={drilldownOpen}
+          aria-controls="ca-utility-drilldown"
+        >
+          <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
+          <span className="ca-tab-hero-label">
+            Utility blocks today
+            <span className="ca-tab-hero-hint">{drilldownOpen ? 'Hide blocks' : 'Show blocks'}</span>
+          </span>
+        </button>
+      ) : (
+        <div className="ca-tab-hero">
+          <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
+          <span className="ca-tab-hero-label">Utility blocks today</span>
+        </div>
+      )}
       <SyncStatusBanner
         syncStatus={data.syncStatus}
         lastSuccessAt={data.lastSuccessAt}
@@ -328,7 +396,13 @@ export function ChainActivityTab({ theme = 'dark' }) {
         scanStartHeight={data.scanStartHeight}
         scanTargetHeight={data.scanTargetHeight}
       />
-      <UtilitySummary daily={data.daily} syncStatus={data.syncStatus} theme={theme} />
+      <UtilitySummary
+        daily={data.daily}
+        syncStatus={data.syncStatus}
+        theme={theme}
+        drilldownOpen={drilldownOpen}
+        onToggleDrilldown={toggleDrilldown}
+      />
       <TeamTxList teamTxs={data.teamTxs} lastScannedHeight={data.lastScannedHeight} />
     </div>
   );
