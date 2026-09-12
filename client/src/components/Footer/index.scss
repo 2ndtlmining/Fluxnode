@@ -267,3 +267,12 @@
     padding: 5px 8px;
   }
 }
+
+/*
+ * Host info segments (issue #145). Same weight as the rest of the footer meta
+ * line -- this is provenance, not a feature announcement, and it sits next to
+ * the version and last-updated time it belongs with.
+ */
+.footer-meta__host {
+  white-space: nowrap;
+}
