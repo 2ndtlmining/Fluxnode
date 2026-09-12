@@ -1,5 +1,5 @@
 import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel,
-  blocksRemainingInScan, shouldPollSync } from './chainActivity';
+  blocksRemainingInScan, shouldPollSync, blockTransfersState } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -262,7 +262,32 @@ describe('fetch_chain_activity_blocks', () => {
     expect(result.totals).toEqual({ p2pOnly: 462, dappOnly: 28, both: 4, utilityTotal: 494 });
     expect(result.blocks[0]).toEqual({
       height: 2939035, date: '2026-09-11', isP2p: true, isDapp: false, transferCount: 2,
+      // #282. Empty here because this fixture's payload predates the field --
+      // which is also the shape a real pre-#282 record deserializes to.
+      transfers: [],
     });
+  });
+
+  it("maps a block's stored transfers through (#282)", async () => {
+    global.fetch = jest.fn(() => ok({
+      success: true,
+      totals: { p2p_only: 1, dapp_only: 0, both: 0, utility_total: 1 },
+      blocks: [{
+        height: 42, date: '2026-09-12', is_p2p: true, is_dapp: false, transfer_count: 2,
+        transfers: [
+          { txid: 'abc', from: 't1alice', to: 't1bob', amount: 1.5 },
+          // `from` is genuinely absent on some inputs; it must map to null
+          // rather than undefined so the UI can test it.
+          { txid: 'def', to: 't1carol', amount: 0.25 },
+        ],
+      }],
+    }));
+
+    const result = await fetch_chain_activity_blocks(50);
+    expect(result.blocks[0].transfers).toEqual([
+      { txid: 'abc', from: 't1alice', to: 't1bob', amount: 1.5 },
+      { txid: 'def', from: null, to: 't1carol', amount: 0.25 },
+    ]);
   });
 
   it('the disjoint totals sum to the utility total', async () => {
@@ -384,5 +409,46 @@ describe('shouldPollSync', () => {
 
   test('stops once the scanner has caught up, because nothing further changes', () => {
     expect(shouldPollSync('caught_up')).toBe(false);
+  });
+});
+
+/*
+ * Issue #282: a utility block's transactions are now persisted, so the
+ * drill-down can open one. Three states have to be told apart, and the awkward
+ * one is the third.
+ */
+describe('blockTransfersState', () => {
+  test('a block whose transfers are all stored is complete', () => {
+    const state = blockTransfersState({ transferCount: 2, transfers: [{}, {}] });
+    expect(state).toEqual({ kind: 'complete', shown: 2, total: 2 });
+  });
+
+  test('a block past the storage cap reports how many of how many', () => {
+    const state = blockTransfersState({ transferCount: 40, transfers: new Array(25).fill({}) });
+    expect(state).toEqual({ kind: 'capped', shown: 25, total: 40 });
+  });
+
+  /*
+   * The one that matters. Records written before #282 carry a transferCount
+   * but no transfers -- the list was never stored for them. Reporting that as
+   * "no transactions" would be a flat lie about a block that had 4.
+   */
+  test('a pre-#282 record is unavailable, not empty', () => {
+    const state = blockTransfersState({ transferCount: 4, transfers: [] });
+    expect(state).toEqual({ kind: 'unavailable', shown: 0, total: 4 });
+  });
+
+  test('a block that genuinely had no transfers is empty', () => {
+    expect(blockTransfersState({ transferCount: 0, transfers: [] })).toEqual({
+      kind: 'empty',
+      shown: 0,
+      total: 0,
+    });
+  });
+
+  test('tolerates a block with no transfers field at all', () => {
+    expect(blockTransfersState({ transferCount: 0 }).kind).toBe('empty');
+    expect(blockTransfersState({}).kind).toBe('empty');
+    expect(blockTransfersState(null).kind).toBe('empty');
   });
 });

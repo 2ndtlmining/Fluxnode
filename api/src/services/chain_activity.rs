@@ -226,7 +226,7 @@ pub struct RawTx {
 
 // ── Classification output shapes ─────────────────────────────────────────────
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTransfer {
     pub txid: String,
     pub from: Option<String>,
@@ -250,6 +250,9 @@ pub struct BlockScanResult {
     pub deployment_count: u32,
     pub date: String,
     pub team_txs: Vec<TeamTx>,
+    // Capped at MAX_STORED_TRANSFERS; transfer_count above stays the true
+    // total (issue #282).
+    pub transfers: Vec<TxTransfer>,
 }
 
 /*
@@ -279,6 +282,18 @@ pub struct UtilityBlockRecord {
      */
     #[serde(default)]
     pub deployment_count: u32,
+    /*
+     * The block's P2P transfers, capped at MAX_STORED_TRANSFERS (issue #282).
+     *
+     * `serde(default)` for the same reason as deployment_count above: this file
+     * is already on disk everywhere without the field, and a missing-field
+     * error fails the whole read -- discarding the retained window and forcing
+     * a ~23,040-block rescan on upgrade. Records written before this change
+     * report an empty list, which is honest: the transfers were never stored
+     * for them. They refill as the scanner moves on.
+     */
+    #[serde(default)]
+    pub transfers: Vec<TxTransfer>,
 }
 
 // ── Persisted shapes ──────────────────────────────────────────────────────────
@@ -560,6 +575,7 @@ pub fn fold_contiguous_results(
                         is_dapp: r.is_dapp,
                         transfer_count: r.transfer_count,
                         deployment_count: r.deployment_count,
+                        transfers: r.transfers.clone(),
                     });
                 }
                 checkpoint = height;
@@ -656,6 +672,35 @@ pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
     let res = explorer_get(client, "/blocks?limit=1").await?;
     let parsed: RecentBlocksResponse = res.json().await.ok()?;
     parsed.blocks.get(0).map(|b| b.height)
+}
+
+/*
+ * How many of a block's transfers are kept (issue #282).
+ *
+ * Chosen against measured data, not a guess. Over the 80 utility blocks
+ * retained at the time: 121 transfers in total, mean 1.51, median 1, p90 2,
+ * max 13, and 71 of the 80 held exactly one. So 25 is a bound on a pathological
+ * block rather than a limit anything ordinary reaches.
+ *
+ * It matters because this file is retained for 23,040 blocks (8 days). At the
+ * measured rate the transfers add roughly 1.6 MB; an uncapped run on a block
+ * stuffed with transactions could add far more, and this directory is rebuilt
+ * from the explorer on every restart, so a runaway file costs a slow start for
+ * nobody's benefit.
+ */
+pub const MAX_STORED_TRANSFERS: usize = 25;
+
+/*
+ * The transfers to persist for a block.
+ *
+ * The caller keeps `transfers.len()` as transfer_count BEFORE calling this:
+ * the count must stay true even when the list is capped, because busiest_block
+ * ranks on it (#286) and the UI needs it to say "showing 25 of 40" rather than
+ * silently under-reporting the block.
+ */
+pub fn cap_transfers(mut transfers: Vec<TxTransfer>) -> Vec<TxTransfer> {
+    transfers.truncate(MAX_STORED_TRANSFERS);
+    transfers
 }
 
 /*
@@ -786,6 +831,8 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
     let transfer_count = transfers.len() as u32;
     let is_utility = is_block_utility(height, &transfers, deployment_heights);
     let team_txs = extract_team_txs(height, &transfers);
+    // After transfer_count is taken above, so the count stays true.
+    let stored_transfers = cap_transfers(transfers);
     // Every tx in a block shares (approximately) the same blocktime — prefer
     // the coinbase's (always present, page 0, item 0 in practice) but fall
     // back to any tx if that lookup ever comes up empty.
@@ -796,7 +843,7 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
         .or_else(|| txs.first().and_then(|t| t.time))
         .unwrap_or(0);
     let date = unix_to_utc_date(block_time);
-    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, deployment_count, date, team_txs })
+    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, deployment_count, date, team_txs, transfers: stored_transfers })
 }
 
 /*
@@ -1105,6 +1152,67 @@ mod tests {
         assert_eq!(parsed[0].deployment_count, 0);
     }
 
+    /*
+     * Issue #282: clicking a utility block should show its transactions, and
+     * they were never stored -- scan_one_block computed the full list and kept
+     * only `.len()`.
+     *
+     * Measured before choosing a cap, over the 80 utility blocks retained at
+     * the time: 121 transfers total, mean 1.51, median 1, p90 2, max 13, with
+     * 71 of 80 blocks holding exactly one. The cap is a bound on a pathological
+     * block, not a limit anything normal reaches.
+     */
+    #[test]
+    fn keeps_a_blocks_transfers_up_to_the_cap() {
+        let transfers: Vec<TxTransfer> = (0..5).map(|i| transfer(i)).collect();
+        let kept = cap_transfers(transfers);
+        assert_eq!(kept.len(), 5);
+        assert_eq!(kept[0].txid, "tx0");
+        assert_eq!(kept[4].txid, "tx4");
+    }
+
+    #[test]
+    fn caps_a_pathological_block_rather_than_storing_it_whole() {
+        let transfers: Vec<TxTransfer> = (0..(MAX_STORED_TRANSFERS + 40)).map(|i| transfer(i as i32)).collect();
+        assert_eq!(cap_transfers(transfers).len(), MAX_STORED_TRANSFERS);
+    }
+
+    /*
+     * transfer_count must stay the TRUE count even when the stored list is
+     * capped: it is what busiest_block ranks on (#286), and it is what lets the
+     * UI say "showing N of M" instead of quietly under-reporting the block.
+     */
+    #[test]
+    fn capping_does_not_change_the_reported_transfer_count() {
+        let total = MAX_STORED_TRANSFERS + 7;
+        let transfers: Vec<TxTransfer> = (0..total).map(|i| transfer(i as i32)).collect();
+        let count = transfers.len() as u32;
+        let stored = cap_transfers(transfers);
+        assert_eq!(count, total as u32);
+        assert!(stored.len() < count as usize);
+    }
+
+    #[test]
+    fn a_block_with_no_transfers_stores_an_empty_list() {
+        assert!(cap_transfers(vec![]).is_empty());
+    }
+
+    /*
+     * The upgrade path, same shape as #286's deployment_count: the retained
+     * file is already on disk everywhere WITHOUT this field, and a
+     * missing-field error would fail the whole read and force a ~23,040-block
+     * rescan.
+     */
+    #[test]
+    fn reads_records_written_before_transfers_were_stored() {
+        let old = r#"[{"height":7,"date":"2026-09-01","is_p2p":true,"is_dapp":false,"transfer_count":4}]"#;
+        let parsed: Vec<UtilityBlockRecord> =
+            serde_json::from_str(old).expect("pre-#282 records must still deserialize");
+        assert_eq!(parsed[0].transfer_count, 4);
+        // The count survives; the list is simply unavailable for old records.
+        assert!(parsed[0].transfers.is_empty());
+    }
+
     #[test]
     fn busiest_block_in_window_ignores_blocks_older_than_the_window() {
         let blocks = vec![
@@ -1334,6 +1442,16 @@ mod tests {
      * scan_one_block computes it -- a helper that let those drift apart would
      * make every test below meaningless.
      */
+    /// A distinct transfer, for cap tests.
+    fn transfer(i: i32) -> TxTransfer {
+        TxTransfer {
+            txid: format!("tx{}", i),
+            from: Some(format!("t1from{}", i)),
+            to: format!("t1to{}", i),
+            amount: 1.0 + i as f64,
+        }
+    }
+
     /// A retained utility block with a given transfer and deployment count.
     fn utility_record(height: i64, transfers: u32, deployments: u32) -> UtilityBlockRecord {
         UtilityBlockRecord {
@@ -1343,6 +1461,7 @@ mod tests {
             is_dapp: deployments > 0,
             transfer_count: transfers,
             deployment_count: deployments,
+            transfers: vec![],
         }
     }
 
@@ -1354,6 +1473,7 @@ mod tests {
             is_dapp,
             transfer_count: if is_p2p { 2 } else { 0 },
             deployment_count: if is_dapp { 1 } else { 0 },
+            transfers: vec![],
             date: date.into(),
             team_txs: vec![],
         }
@@ -1423,9 +1543,9 @@ mod tests {
     #[test]
     fn trim_utility_blocks_drops_everything_below_the_window_edge() {
         let mut blocks = vec![
-            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
-            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
-            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1 },
+            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
+            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
+            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![] },
         ];
         trim_utility_blocks(&mut blocks, 200);
         // Boundary is inclusive, matching trim_team_txs: a block exactly at the
@@ -1439,10 +1559,10 @@ mod tests {
         // total -- overlapping "any P2P" / "any Dapp" counts would not add up
         // and would read as a bug on screen.
         let blocks = vec![
-            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3, deployment_count: 0 },
-            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
-            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1 },
-            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2, deployment_count: 1 },
+            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3, deployment_count: 0, transfers: vec![] },
+            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
+            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![] },
+            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2, deployment_count: 1, transfers: vec![] },
         ];
         let p2p_only = blocks.iter().filter(|b| b.is_p2p && !b.is_dapp).count();
         let dapp_only = blocks.iter().filter(|b| !b.is_p2p && b.is_dapp).count();
