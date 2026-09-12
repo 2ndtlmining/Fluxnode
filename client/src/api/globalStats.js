@@ -31,6 +31,7 @@ import { categorizeRunningApps } from 'runningAppsCategorized';
 import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
 import { aggregateDonations } from 'donor/donationTotals';
+import { richListRank } from 'wallet/richList';
 import {
   fetch_node_benchmarks,
   fetch_node_resources,
@@ -103,6 +104,8 @@ export function create_global_store() {
     bench_latest_version: fluxos_version_desc(0, 0, 0),
     current_block_height: 0,
     in_rich_list: false,
+    // 1-based position on the rich list, or null when unlisted (#266).
+    rich_list_rank: null,
     total_donations: 0,
     arcane_os: {
       total_nodes: 0,
@@ -611,7 +614,16 @@ export async function fetch_global_stats(walletAddress = null) {
     try {
       const json = await explorerFetchJson('/statistics/richest-addresses-list');
       if (Array.isArray(json)) {
-        store.in_rich_list = json.some((wAddress) => wAddress.address === walletAddress);
+        /*
+         * The endpoint returns the list IN ORDER, and this used to throw the
+         * position away with `.some()` -- so a wallet at rank 1,000 (26,974
+         * FLUX) got exactly the same "whale" treatment as rank 1 (160 million).
+         * Capturing the rank is the whole fix; `in_rich_list` is kept so the
+         * existing rich_list achievement is untouched (#266).
+         */
+        const rank = richListRank(json, walletAddress);
+        store.rich_list_rank = rank;
+        store.in_rich_list = rank !== null;
       }
     } catch (error) {
       console.log('error', error);

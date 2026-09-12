@@ -11,6 +11,7 @@ import { AppToaster } from 'components/AppToaster';
 import { HomeOverview } from 'home/HomeOverview';
 import { DonorBadge } from 'donor/DonorBadge';
 import { WalletDonationChip } from 'donor/WalletDonationChip';
+import { RichListChip } from 'wallet/RichListChip';
 import { runDonorAutoDetect } from 'donor/runDonorAutoDetect';
 import { CHECK_STATUS } from 'donor/donorWalletCheck';
 import {
@@ -497,6 +498,11 @@ class Home extends React.Component {
             failed={this.state.donationsCheckFailed}
             donationAddress={window.gContent?.ADDRESS_FLUX}
           />
+          {/*
+            #266: rich-list standing, banded. Was previously not shown here at
+            all -- membership only fed an achievement, and even that was binary.
+          */}
+          <RichListChip rank={this.state.gstore?.rich_list_rank} privacyMode={this.state.privacyMode} />
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>

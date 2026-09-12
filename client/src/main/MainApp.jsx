@@ -54,6 +54,7 @@ import { LayoutContext } from 'contexts/LayoutContext';
 import { blurAllInputs } from 'utils';
 import { DonorBadge } from 'donor/DonorBadge';
 import { WalletDonationChip } from 'donor/WalletDonationChip';
+import { RichListChip } from 'wallet/RichListChip';
 //import { setGAEvent } from 'g-analytic';
 
 const WALLET_INPUT_ID = '_WALLET_INPUT_';
@@ -531,6 +532,11 @@ class MainApp extends React.Component {
             failed={this.state.donationsCheckFailed}
             donationAddress={window.gContent?.ADDRESS_FLUX}
           />
+          {/*
+            #266: rich-list standing, banded. Was previously not shown here at
+            all -- membership only fed an achievement, and even that was binary.
+          */}
+          <RichListChip rank={this.state.gstore?.rich_list_rank} privacyMode={privacyMode} />
         </div>
 
         <a href={'https://explorer.runonflux.io/address/' + this.state.activeAddress}>
