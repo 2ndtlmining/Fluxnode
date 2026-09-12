@@ -945,7 +945,8 @@
   gap: 10px;
   /* Donor and transaction get the room; the three numeric columns are fixed
      so they line up as columns rather than drifting with content width. */
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 92px 86px 92px;
+  /* #322 shortened both identifiers, so these no longer need to flex wide. */
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.7fr) 92px 92px 100px;
   padding: 5px 4px;
   font-size: 0.76rem;
   border-bottom: 1px solid rgba(128, 128, 128, 0.07);
@@ -1012,13 +1013,15 @@
   color: var(--text-primary);
 }
 
+/*
+ * No longer a link (#322). Styled as the quiet reference it now is rather than
+ * as something to click -- an accent-green underlined string that does nothing
+ * on click is worse than plain text.
+ */
 .hov-donations-tx {
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
-  color: var(--accent-green);
-  text-decoration: none;
-
-  &:hover { text-decoration: underline; }
+  color: var(--text-secondary);
 }
 
 .hov-donations-amount { color: var(--text-primary); font-weight: 600; }
@@ -1050,7 +1053,7 @@
   /* The block height is the first thing to go: it is the least useful column
      on a phone and the only one nobody scans by eye. */
   .hov-donations-row {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 80px 80px;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.8fr) 80px 88px;
   }
 
   .hov-donations-block { display: none; }

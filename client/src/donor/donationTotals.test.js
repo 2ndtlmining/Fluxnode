@@ -141,7 +141,7 @@ describe('relativeAge', () => {
 /*
  * Issue #315 -- the same transactions, listed individually rather than summed.
  */
-import { buildDonationRows, shortTxid, explorerTxUrl } from './donationTotals';
+import { buildDonationRows, shortId } from './donationTotals';
 
 const PROJECT_WALLET = 't1gesjNJGfzU8shfMZj6DVDatRKA3LQj8Nh'; // EXCLUDED_FROM_DONATION_TOTALS
 
@@ -249,29 +249,30 @@ describe('buildDonationRows', () => {
   });
 });
 
-describe('shortTxid', () => {
-  it('keeps both ends so a reader can match it against the explorer', () => {
-    expect(shortTxid('a694d0a592bab79798767c11619a943bd5d28c4667c2c1734cea9f6e199812da'))
-      .toBe('a694d0..9812da');
-  });
-
-  it('leaves an already-short id alone rather than padding it', () => {
-    expect(shortTxid('abc')).toBe('abc');
-  });
-
-  it('tolerates a missing id', () => {
-    expect(shortTxid(null)).toBe('');
-  });
-});
-
-describe('explorerTxUrl', () => {
+describe('shortId', () => {
   /*
-   * The explorer is a HASH-routed SPA. Measured 2026-09-13:
-   *   https://explorer.runonflux.io/tx/<txid>    -> 404
-   *   https://explorer.runonflux.io/#/tx/<txid>  -> 200
-   * The obvious-looking path is the broken one, so it is pinned here.
+   * Issue #322. Home is the front page: a full donor address or transaction id
+   * printed there publishes a directory of who supports the project and what
+   * they sent. On-chain-and-public is not the same as published-on-the-landing-
+   * page, and a donor did not opt into the second by doing the first.
    */
-  it('uses the hash route, because the plain path 404s', () => {
-    expect(explorerTxUrl('abc123')).toBe('https://explorer.runonflux.io/#/tx/abc123');
+  it('shortens a donor wallet to 3 and 3', () => {
+    expect(shortId('t1RPtTaBcDeFgHiJkLmNoPqRsTuVwXyZhQ4Li9', 3, 3)).toBe('t1R..Li9');
+  });
+
+  it('shortens a transaction id to 4 and 4', () => {
+    expect(shortId('d71957251972737404bc8b89e70e8bf94a188865257cecae877cb00b01193636', 4, 4))
+      .toBe('d719..3636');
+  });
+
+  it('leaves a value alone when shortening would not actually shorten it', () => {
+    // No point rendering "abcd..wxyz" for a 10-character string.
+    expect(shortId('abcdefgh', 4, 4)).toBe('abcdefgh');
+  });
+
+  it('tolerates a missing or non-string value', () => {
+    expect(shortId(null, 3, 3)).toBe('');
+    expect(shortId(undefined, 4, 4)).toBe('');
+    expect(shortId(12345, 4, 4)).toBe('');
   });
 });
