@@ -33,13 +33,17 @@ function emptyBucket(extra = {}) {
     ram: 0,
     ssd: 0,
     capNodes: 0,
+    usedCores: 0,
+    usedRam: 0,
+    usedSsd: 0,
+    utilNodes: 0,
     appInstances: 0,
     appsByCategory: {},
     ...extra
   };
 }
 
-function addNode(bucket, node, cap, apps, categoryOf) {
+function addNode(bucket, node, cap, apps, categoryOf, util) {
   bucket.nodes += 1;
 
   const tier = (node.tier || '').toUpperCase();
@@ -55,6 +59,31 @@ function addNode(bucket, node, cap, apps, categoryOf) {
     bucket.ram += cap.ram || 0;
     bucket.ssd += cap.ssd || 0;
     bucket.capNodes += 1;
+
+    /*
+     * Utilisation is summed ONLY for a node that also reported capacity
+     * (issue #287), and that nesting is the whole point rather than an
+     * accident of where the lines sit.
+     *
+     * Capacity and utilisation come from two different feeds with two
+     * different coverage rates -- measured live against the node list, the
+     * benchmark feed joins 97.7% and the resource feed ~99.7%. A node present
+     * in the second and absent from the first would contribute usage against a
+     * denominator that never included its capacity, and a small country with a
+     * couple of such nodes would render as over 100% utilised. Nesting makes
+     * that arithmetically impossible instead of merely unlikely.
+     *
+     * The cost is understating usage for the ~2% of nodes with usage but no
+     * benchmark. That is the safe direction to be wrong in for a panel whose
+     * job is to show whether a region still has room, and utilNodes records the
+     * coverage so the card can qualify the figure.
+     */
+    if (util) {
+      bucket.usedCores += util.cores || 0;
+      bucket.usedRam += util.ram || 0;
+      bucket.usedSsd += util.ssd || 0;
+      bucket.utilNodes += 1;
+    }
   }
 
   for (const appName of apps || []) {
@@ -80,7 +109,7 @@ function seal(bucket) {
  * audit's D2 domain exists to catch. Making the caller supply the categoriser
  * forces that choice to be explicit at the call site instead of buried here.
  */
-export function aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, categoryOf } = {}) {
+export function aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, utilByNode, categoryOf } = {}) {
   const toCategory = typeof categoryOf === 'function' ? categoryOf : () => 'other';
   const network = emptyBucket();
   const continents = {};
@@ -90,12 +119,13 @@ export function aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, cate
     const geo = (geoByHost || {})[hostOf(node?.ip)] || null;
     const cap = (capByNode || {})[node?.ip] || null;
     const apps = (appsByNode || {})[node?.ip] || null;
+    const util = (utilByNode || {})[node?.ip] || null;
 
-    addNode(network, node, cap, apps, toCategory);
+    addNode(network, node, cap, apps, toCategory, util);
 
     const continent = geo?.continent || UNLOCATED;
     if (!continents[continent]) continents[continent] = emptyBucket({ continent });
-    addNode(continents[continent], node, cap, apps, toCategory);
+    addNode(continents[continent], node, cap, apps, toCategory, util);
 
     // A node with no geolocation has no country either. It still counts in the
     // Unlocated continent bucket above, so the totals reconcile.
@@ -104,7 +134,7 @@ export function aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, cate
     if (!countries[code]) {
       countries[code] = emptyBucket({ countryCode: code, country: geo.country || code, continent });
     }
-    addNode(countries[code], node, cap, apps, toCategory);
+    addNode(countries[code], node, cap, apps, toCategory, util);
   }
 
   seal(network);

@@ -7,6 +7,7 @@ import {
   fetch_node_geolocation,
   fetch_node_benchmarks,
   fetch_node_running_apps,
+  fetch_node_resources,
   fetch_flux_nodes
 } from 'networkNodes';
 import { aggregateRegions, selectRegionStats, countriesIn } from 'analytics/regionStats';
@@ -16,7 +17,6 @@ import { buildSpecIndex } from 'appSpecs';
 import { isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { TotalNetworkCard, NetworkResourcesCard, HostedApplicationsCard } from './regionCards';
 import { fetch_global_performance_rankings } from 'apidata';
-import { rollupByContinent } from 'analytics/continentDistribution';
 import { WorldMap } from 'analytics/WorldMap';
 import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
@@ -26,17 +26,14 @@ function fmtNum(n, decimals = 0) {
   return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
-function pct(n, total) {
-  return total > 0 ? ((n / total) * 100).toFixed(0) : '0';
-}
-
 /*
- * Same raw geolocation array rollupByContinent consumes, grouped by country
- * instead of continent. Deriving both panels from one fetch_node_geolocation()
- * call — rather than WorldMap reading apidata.js's fetch_country_node_counts,
+ * The raw geolocation array grouped by country, for the map.
+ *
+ * Deriving this from the same fetch_node_geolocation() call the rest of the tab
+ * uses — rather than WorldMap reading apidata.js's fetch_country_node_counts,
  * which can serve a cached, benchmark-derived count on one of its paths
- * (apidata.js:1407-1428) — keeps the map and the continent panel unable to
- * silently disagree with each other. Flagged in the final branch review.
+ * (apidata.js:1407-1428) — keeps the map unable to silently disagree with the
+ * selector and the cards beside it. Flagged in the final branch review.
  */
 function countByCountry(geoEntries) {
   const perCountry = {};
@@ -140,41 +137,6 @@ function TopDogsPanel({ globalRankings }) {
   );
 }
 
-function ContinentBreakdown({ continents, networkTotal }) {
-  const rows = continents || [];
-  const maxVal = rows[0]?.nodeCount || 1;
-
-  return (
-    <div className="hov-panel nt-continent-panel">
-      <div className="hov-header">
-        <span className="hov-header-title">CONTINENT DISTRIBUTION</span>
-        <span className="hov-header-badge">{rows.length}</span>
-      </div>
-      {rows.length > 0 && (
-        <div className="nt-continent-subtitle">
-          {fmtNum(networkTotal)} geolocated nodes across {rows.length} continent{rows.length === 1 ? '' : 's'}
-        </div>
-      )}
-      <div className="hov-ranked-list">
-        {rows.length === 0 ? (
-          <div className="hov-empty">No data available</div>
-        ) : (
-          rows.map(({ continent, nodeCount }, i) => (
-            <div key={continent} className="hov-ranked-row">
-              <span className={`hov-rank${i === 0 ? ' hov-rank--gold' : i === 1 ? ' hov-rank--silver' : i === 2 ? ' hov-rank--bronze' : ''}`}>#{i + 1}</span>
-              <span className="hov-ranked-name">{continent}</span>
-              <div className="hov-ranked-bar-wrap">
-                <div className="hov-ranked-bar-fill" style={{ width: `${(nodeCount / maxVal) * 100}%` }} />
-              </div>
-              <span className="hov-badge">{fmtNum(nodeCount)} ({pct(nodeCount, networkTotal)}%)</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 /*
  * Region selector. Continent first, then the countries within it (issue #254).
  *
@@ -235,6 +197,20 @@ function ScopeSelector({ agg, scope, onChange }) {
                 className={`nt-chip${scope.country === c.countryCode ? ' nt-chip--active' : ''}`}
                 onClick={() => onChange({ level: 'country', continent: scope.continent, country: c.countryCode })}
               >
+                {/*
+                  #287. Only countries get a flag -- continents have none, so
+                  the continent row above stays text-only rather than reserving
+                  an empty slot to keep the two lists visually identical.
+                  aria-hidden because the country name follows it immediately;
+                  a screen reader announcing "Germany Germany" is worse than no
+                  flag at all.
+                */}
+                <ReactCountryFlag
+                  countryCode={c.countryCode}
+                  svg
+                  className="nt-chip-flag"
+                  aria-hidden="true"
+                />
                 {c.country}
                 <span className="nt-chip-count">{c.nodes.toLocaleString()}</span>
               </button>
@@ -248,7 +224,6 @@ function ScopeSelector({ agg, scope, onChange }) {
 
 export function NetworkTab() {
   const [countryCounts, setCountryCounts] = useState([]);
-  const [continentData, setContinentData] = useState({ continents: [], networkTotal: 0 });
   const [globalRankings, setGlobalRankings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [agg, setAgg] = useState(null);
@@ -265,7 +240,6 @@ export function NetworkTab() {
       const geoEntries = await fetch_node_geolocation();
       if (cancelled) return;
       setCountryCounts(countByCountry(geoEntries));
-      setContinentData(rollupByContinent(geoEntries));
       setLoading(false);
     })().catch(() => {
       // fetch_node_geolocation() already swallows its own errors and
@@ -287,11 +261,14 @@ export function NetworkTab() {
      * fetched once for this page even though rankings above wants them too.
      */
     (async () => {
-      const [nodes, geoEntries, benchmarks, runningApps, rawSpecs] = await Promise.all([
+      const [nodes, geoEntries, benchmarks, runningApps, resources, rawSpecs] = await Promise.all([
         fetch_flux_nodes(),
         fetch_node_geolocation(),
         fetch_node_benchmarks(),
         fetch_node_running_apps(),
+        // Shared with the home page's resources panel, so this is usually
+        // already in flight rather than a sixth request.
+        fetch_node_resources(),
         // Cached for 5 minutes in sessionStorage and already warm from the Apps
         // tab; needed so these categories match the ones shown there.
         fetch_global_app_specs_raw()
@@ -311,6 +288,24 @@ export function NetworkTab() {
         const bench = entry?.benchmark?.bench;
         if (bench?.ipaddress) {
           capByNode[bench.ipaddress] = { cores: bench.cores, ram: bench.ram, ssd: bench.ssd };
+        }
+      }
+
+      /*
+       * App-reserved utilisation, keyed on the same exact ip:port as capacity
+       * (issue #287). Units are normalised to capacity's here so the card can
+       * divide them directly: appsRamLocked arrives in MB against a benchmark
+       * `ram` in GB, while appsHddLocked is already GB.
+       */
+      const utilByNode = {};
+      for (const entry of resources || []) {
+        const res = entry?.apps?.resources;
+        if (entry?.ip && res) {
+          utilByNode[entry.ip] = {
+            cores: res.appsCpusLocked || 0,
+            ram: res.appsRamLocked != null ? res.appsRamLocked / 1024 : 0,
+            ssd: res.appsHddLocked || 0
+          };
         }
       }
 
@@ -340,7 +335,7 @@ export function NetworkTab() {
         return isOpaqueRuntimeImage(spec?.repotag) ? 'other' : spec?.category || 'other';
       };
 
-      setAgg(aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, categoryOf }));
+      setAgg(aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, utilByNode, categoryOf }));
     })().catch(() => {});
 
     return () => { cancelled = true; };
@@ -414,11 +409,6 @@ export function NetworkTab() {
         </div>
       </div>
 
-      <div className="network-tab-continent-row">
-        <PanelGate panelKey="continentBreakdown" feature="Continent Breakdown" preview="blur">
-          <ContinentBreakdown continents={continentData.continents} networkTotal={continentData.networkTotal} />
-        </PanelGate>
-      </div>
       <PanelGate panelKey="topDogs" feature="Top Dogs">
         <TopDogsPanel globalRankings={globalRankings} />
       </PanelGate>
