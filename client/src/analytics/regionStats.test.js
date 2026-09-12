@@ -37,11 +37,25 @@ const APPS_BY_NODE = {
   '2.2.2.2:16137': ['FoldingAtRunOnFlux23'],
 };
 
+/*
+ * App-reserved utilisation, keyed on ip:port exactly like CAP_BY_NODE.
+ * Deliberately NOT the same key set: 2.2.2.2 has capacity but no utilisation
+ * reading, and 3.3.3.3 has utilisation but no capacity. Both gaps are real --
+ * measured live, the benchmark feed joins 97.7% of the node list and the
+ * resource feed ~99.7% -- and they pull the percentage in opposite directions.
+ */
+const UTIL_BY_NODE = {
+  '1.1.1.1:16137': { cores: 2, ram: 4, ssd: 110 },
+  '1.1.1.1:16147': { cores: 4, ram: 16, ssd: 250 },
+  '3.3.3.3:16137': { cores: 99, ram: 99, ssd: 99 }, // no capacity reading: must be ignored
+};
+
 // Stands in for the spec-index lookup the real caller supplies.
 const CATEGORY_OF = (name) => (/folding/i.test(name) ? 'computing' : 'other');
 
 const AGG = () => aggregateRegions({
-  nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE, appsByNode: APPS_BY_NODE, categoryOf: CATEGORY_OF
+  nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE, appsByNode: APPS_BY_NODE,
+  utilByNode: UTIL_BY_NODE, categoryOf: CATEGORY_OF
 });
 
 describe('aggregateRegions', () => {
@@ -110,6 +124,64 @@ describe('aggregateRegions', () => {
     expect(n.nodes).toBe(5);
     expect(n.tiers).toEqual({ CUMULUS: 3, NIMBUS: 1, STRATUS: 1 });
     expect(n.wallets).toBe(4);
+  });
+
+  /*
+   * Issue #287: the card showed capacity only, so it could not answer the
+   * question it exists for -- is this region saturated, or does it have room?
+   */
+  it('sums app-reserved utilisation per region', () => {
+    const de = AGG().countries.DE;
+    expect(de.usedCores).toBe(6);    // 2 + 4 on the two nodes at 1.1.1.1
+    expect(de.usedRam).toBe(20);     // 4 + 16
+    expect(de.usedSsd).toBe(360);    // 110 + 250
+  });
+
+  /*
+   * The guard against a percentage over 100%. Capacity and utilisation come
+   * from two different feeds with two different coverage rates, so a node
+   * present in one and absent from the other would let utilisation be summed
+   * against a denominator that never included it.
+   */
+  it('ignores utilisation for a node that reported no capacity', () => {
+    // 3.3.3.3 has a 99/99/99 utilisation reading and no benchmark.
+    const us = AGG().countries.US;
+    expect(us.cores).toBe(0);
+    expect(us.usedCores).toBe(0);
+    expect(us.utilNodes).toBe(0);
+  });
+
+  it('never reports more utilisation than capacity for a region', () => {
+    const agg = AGG();
+    for (const bucket of [agg.network, ...Object.values(agg.continents), ...Object.values(agg.countries)]) {
+      expect(bucket.usedCores).toBeLessThanOrEqual(bucket.cores);
+      expect(bucket.usedRam).toBeLessThanOrEqual(bucket.ram);
+      expect(bucket.usedSsd).toBeLessThanOrEqual(bucket.ssd);
+    }
+  });
+
+  it('counts how many nodes contributed a utilisation reading, so the figure can be qualified', () => {
+    const agg = AGG();
+    expect(agg.countries.DE.utilNodes).toBe(2);
+    expect(agg.countries.FR.utilNodes).toBe(0); // has capacity, no utilisation reading
+    expect(agg.countries.FR.cores).toBe(8);     // capacity still counted
+  });
+
+  it('leaves capacity totals untouched when no utilisation data is supplied at all', () => {
+    const withUtil = AGG();
+    const without = aggregateRegions({
+      nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE,
+      appsByNode: APPS_BY_NODE, categoryOf: CATEGORY_OF
+    });
+    expect(without.countries.DE.cores).toBe(withUtil.countries.DE.cores);
+    expect(without.countries.DE.usedCores).toBe(0);
+    expect(without.countries.DE.utilNodes).toBe(0);
+  });
+
+  it('reconciles: continent utilisation sums to the network total', () => {
+    const agg = AGG();
+    const sum = Object.values(agg.continents).reduce((a, b) => a + b.usedCores, 0);
+    expect(sum).toBe(agg.network.usedCores);
   });
 
   it('survives empty inputs rather than throwing', () => {

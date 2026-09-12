@@ -540,3 +540,57 @@
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
+
+// ── Country flags in the scope selector (issue #287) ─────────────────────────
+.nt-chip-flag {
+  margin-right: 6px;
+  border-radius: 2px;
+  // ReactCountryFlag sizes from font-size by default, which makes the flag
+  // track the chip's text and stay aligned with it.
+  vertical-align: -1px;
+}
+
+// ── Resource utilisation rows (issue #287) ───────────────────────────────────
+// Replaces the flat capacity list. A region that is 90% committed and one that
+// is 10% committed were previously the same row of numbers.
+
+.nt-util-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.nt-util-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nt-util-track {
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.16);
+  overflow: hidden;
+}
+
+.nt-util-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--transition-base);
+}
+
+.nt-util-actuals {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-util-fill {
+    transition: none;
+  }
+}

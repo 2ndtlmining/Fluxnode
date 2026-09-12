@@ -51,19 +51,57 @@ export function TotalNetworkCard({ stats, label }) {
   );
 }
 
-export function NetworkResourcesCard({ stats, label }) {
-  const rows = [
-    { key: 'cores', label: 'CPU cores', value: fmtNum(stats?.cores) },
-    { key: 'ram', label: 'RAM', value: fmtStorage(stats?.ram) },
-    { key: 'ssd', label: 'SSD', value: fmtStorage(stats?.ssd) }
-  ];
+/*
+ * One resource, as capacity AND what is actually reserved on it (issue #287).
+ *
+ * The bar is the point of the card: a region that is 90% committed and a region
+ * that is 10% committed are the same row of numbers otherwise, and telling them
+ * apart is the whole reason to drill into a country.
+ */
+function UtilisationRow({ label, used, total, format, color }) {
+  const pct = total > 0 ? (used / total) * 100 : 0;
+  // Clamped only for the BAR's width. The printed percentage stays truthful --
+  // if reservations ever exceed measured capacity, hiding it would be the bug.
+  const barPct = Math.max(0, Math.min(100, pct));
 
+  return (
+    <div className="nt-util-row">
+      <div className="nt-util-head">
+        <span className="hov-kv-label">{label}</span>
+        <span className="hov-kv-value">
+          {total > 0 ? `${pct.toFixed(1)}%` : '—'}
+        </span>
+      </div>
+      <div className="nt-util-track">
+        <div className="nt-util-fill" style={{ width: `${barPct}%`, background: color }} />
+      </div>
+      <div className="nt-util-actuals">
+        {total > 0 ? `${format(used)} of ${format(total)}` : 'not measured'}
+      </div>
+    </div>
+  );
+}
+
+export function NetworkResourcesCard({ stats, label }) {
   // Capacity comes from the benchmark feed, which not every node reports.
   // Saying so is the difference between "this region is small" and "we measured
   // less of it".
   const measured = stats?.capNodes || 0;
   const total = stats?.nodes || 0;
   const shortfall = total - measured;
+
+  // Utilisation is only ever summed for nodes that also reported capacity (see
+  // regionStats.addNode), so this can never exceed `measured` -- but it can be
+  // lower, and a percentage computed over a smaller set than it appears to
+  // cover is worth saying out loud.
+  const utilised = stats?.utilNodes || 0;
+  const utilShortfall = measured - utilised;
+
+  const rows = [
+    { key: 'cores', label: 'CPU cores', used: stats?.usedCores, total: stats?.cores, format: fmtNum, color: '#6366f1' },
+    { key: 'ram', label: 'RAM', used: stats?.usedRam, total: stats?.ram, format: fmtStorage, color: '#3b82f6' },
+    { key: 'ssd', label: 'SSD', used: stats?.usedSsd, total: stats?.ssd, format: fmtStorage, color: '#2686d0' }
+  ];
 
   return (
     <div className="hov-panel nt-card">
@@ -72,18 +110,22 @@ export function NetworkResourcesCard({ stats, label }) {
         <span className="hov-header-badge">{fmtNum(measured)}</span>
       </div>
       <div className="nt-card-scope">{label}</div>
-      <div className="hov-kv-list">
+      <div className="nt-util-list">
         {rows.map((r) => (
-          <div key={r.key} className="hov-kv-row">
-            <span className="hov-kv-label">{r.label}</span>
-            <span className="hov-kv-value">{r.value}</span>
-          </div>
+          <UtilisationRow
+            key={r.key}
+            label={r.label}
+            used={r.used || 0}
+            total={r.total || 0}
+            format={r.format}
+            color={r.color}
+          />
         ))}
       </div>
       <div className="nt-card-foot">
         {total === 0
           ? 'No nodes in this region'
-          : `measured across ${fmtNum(measured)} of ${fmtNum(total)} nodes${shortfall > 0 ? ` · ${fmtNum(shortfall)} not benchmarked` : ''}`}
+          : `measured across ${fmtNum(measured)} of ${fmtNum(total)} nodes${shortfall > 0 ? ` · ${fmtNum(shortfall)} not benchmarked` : ''}${utilShortfall > 0 ? ` · usage from ${fmtNum(utilised)}` : ''}`}
       </div>
     </div>
   );

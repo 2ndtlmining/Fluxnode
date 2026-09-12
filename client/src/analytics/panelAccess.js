@@ -24,7 +24,9 @@ export const PANEL_ACCESS = {
   topAppOwners: 'donor',
   // Network tab
   worldMap: 'donor',
-  continentBreakdown: 'donor',
+  // continentBreakdown removed with the CONTINENT DISTRIBUTION panel (#287):
+  // the scope selector already carries every continent's node count, so the
+  // panel restated the selector and cost a whole row to do it.
   // Donor tab (whole tab, one unit)
   donorTab: 'donor',
   // Chain Activity tab (whole tab, one unit)

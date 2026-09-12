@@ -34,7 +34,7 @@ describe('getPanelAccess', () => {
   it('every currently-rendered Analytics panel has an explicit entry', () => {
     const required = [
       'appsTeamSponsoredStat', 'appEcosystem', 'topHostedApps',
-      'topNodeOperators', 'topAppOwners', 'worldMap', 'continentBreakdown',
+      'topNodeOperators', 'topAppOwners', 'worldMap',
       'donorTab', 'chainActivity',
     ];
     for (const key of required) {
