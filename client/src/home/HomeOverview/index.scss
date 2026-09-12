@@ -671,13 +671,58 @@
     color: var(--text-secondary, rgba(128, 128, 128, 0.95));
   }
 
+  // A button since #294 -- it copies the address rather than asking the reader
+  // to select six characters of monospace by hand.
   .hov-support-address {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 0.72rem;
     padding: 2px 8px;
+    border: 0;
     border-radius: var(--radius-sm);
     background: var(--surface-inset);
     color: var(--text-secondary, inherit);
-    cursor: default;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    code {
+      font-size: inherit;
+      color: inherit;
+    }
+
+    &:hover:not(:disabled) {
+      color: var(--text-primary, inherit);
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  // Green for success, amber for a clipboard the browser refused -- the second
+  // is a real outcome over plain http and must not look like the first.
+  .hov-support-address--copied {
+    color: #0f8a5f;
+    background: rgba(15, 138, 95, 0.12);
+  }
+
+  .hov-support-address--failed {
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.12);
+  }
+
+  @include rule-mode-dark() {
+    .hov-support-address--copied {
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.14);
+    }
+
+    .hov-support-address--failed {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.14);
+    }
   }
 
   @media (max-width: 720px) {

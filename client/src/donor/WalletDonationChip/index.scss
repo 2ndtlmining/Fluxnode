@@ -14,6 +14,11 @@
   font-weight: 600;
   white-space: nowrap;
   cursor: default;
+  // The ask state is a <button> now (#294); strip the UA chrome so both chips
+  // still render as one shape.
+  border: 0;
+  font-family: inherit;
+  line-height: 1.5;
 }
 
 .wdc--supporter {
@@ -31,6 +36,8 @@
   color: rgba(90, 96, 106, 0.95);
   background: rgba(128, 128, 128, 0.1);
   font-weight: 500;
+  // It copies on click, so it should look like something you can click.
+  cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 
   &:hover {
@@ -46,5 +53,44 @@
       color: #ff8fb1;
       background: rgba(255, 143, 177, 0.12);
     }
+  }
+}
+
+/* The clipboard glyph sits a shade back from the label -- present enough to
+   say "this copies", quiet enough not to compete with the wording. */
+.wdc-copy-icon {
+  opacity: 0.55;
+}
+
+/* Confirmation. Green rather than the pink hover, so "it worked" cannot be
+   mistaken for "you are hovering". */
+.wdc--copied,
+.wdc--ask.wdc--copied:hover {
+  color: #0f8a5f;
+  background: rgba(15, 138, 95, 0.12);
+
+  .app-mode-dark & {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.14);
+  }
+}
+
+/* A blocked clipboard is a real outcome over plain http. Say so rather than
+   showing the success state -- the tooltip carries the full address to copy by
+   hand. */
+.wdc--failed,
+.wdc--ask.wdc--failed:hover {
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.12);
+
+  .app-mode-dark & {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wdc--ask {
+    transition: none;
   }
 }
