@@ -248,7 +248,17 @@ function RewardImpactPanel({ nodes, gstore }) {
   );
 }
 
-function PayoutCard({ nextNode, lastPaidNode }) {
+/*
+ * The three time-based facts on this tab, in one band (issue #288).
+ *
+ * The two payout stats had a full-width panel to themselves and the reward
+ * countdown had another below it, so the tab opened with two mostly-empty rows
+ * -- each stat was given half a 2,100px panel to hold about 300px of text.
+ * Putting the countdown in alongside them fills the row with the thing that
+ * belongs there anyway: when you were last paid, when you are next paid, and
+ * when the reward itself changes.
+ */
+function PayoutCard({ nextNode, lastPaidNode, currentBlock }) {
   return (
     <div className="hov-panel dt-payout-card">
       <div className="dt-payout-stat">
@@ -262,6 +272,12 @@ function PayoutCard({ nextNode, lastPaidNode }) {
         <span className="dt-payout-value">{nextNode ? nextNode.next_reward : '—'}</span>
         {nextNode && <span className="dt-payout-caption">{nextNode.ip_display}</span>}
       </div>
+      {/*
+        RewardCountdown removes itself when no reduction is scheduled, so the
+        divider is rendered by the clock's own wrapper rather than here -- an
+        absent clock must not leave a dangling rule behind it.
+      */}
+      <RewardCountdown currentBlock={currentBlock} compact />
     </div>
   );
 }
@@ -494,8 +510,11 @@ export function DonorTab() {
         <span className="dt-tab-hero-value">{nextNode ? nextNode.next_reward : '—'}</span>
         <span className="dt-tab-hero-label">Next payout</span>
       </div>
-      <PayoutCard nextNode={nextNode} lastPaidNode={lastPaidNode} />
-      <RewardCountdown currentBlock={gstore?.current_block_height} />
+      <PayoutCard
+        nextNode={nextNode}
+        lastPaidNode={lastPaidNode}
+        currentBlock={gstore?.current_block_height}
+      />
       <div className="donor-tab-panel-grid">
         <DonorNodesList nodes={nodes} />
         <AppsByCategoryPanel categories={appCategories.categories} totalApps={appCategories.totalApps} />

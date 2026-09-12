@@ -6,10 +6,61 @@
   gap: 20px;
 }
 
+/*
+ * Three columns at most (issue #288).
+ *
+ * This was `repeat(auto-fit, minmax(320px, 1fr))`, which sizes tracks to the
+ * CONTAINER rather than to the content: on a 2125px viewport it laid out six
+ * 340px tracks. Only three panels take a single track each -- the other two
+ * span the full row -- so half the row was permanently empty, and the three
+ * cards stayed narrow while there was 1,050px of nothing beside them.
+ *
+ * Explicit breakpoints instead, matching apps-tab-panel-grid: the count is
+ * driven by how many panels there actually are, so they always fill the row.
+ */
 .donor-tab-panel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/*
+ * The reward countdown, sized for a place it shares (issue #288).
+ *
+ * `compact` shrinks the digits; this pulls in the spacing PayoutTimer's
+ * stylesheet sets for a panel of its own, and caps the width so the four
+ * numbers read as one clock instead of being flung into the corners by
+ * space-between across a 2000px row.
+ */
+.donor-tab > .rwc-timer {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+
+  .timer-header {
+    padding: 10px 14px 2px;
+  }
+
+  .timer-number {
+    margin-top: 4px;
+  }
+
+  .timer-info {
+    margin-top: 2px;
+    margin-bottom: 8px;
+  }
+
+  .v-rule {
+    margin: 8px 5px;
+  }
 }
 
 .hov-panel {
@@ -52,16 +103,91 @@
   background: linear-gradient(90deg, rgba(14, 162, 113, 0.04) 0%, transparent 60%);
 }
 
+/*
+ * Last payout, next payout, and the reward countdown, in one band (#288).
+ *
+ * Previously two stats with `flex: 1` in a panel of their own -- each given
+ * half a 2,100px row to hold about 300px of text -- with the countdown in a
+ * second full-width row below. Two mostly-empty bands opened the tab.
+ *
+ * The stats now size to their content and the clock takes the remaining space,
+ * so the row fills out instead of stretching apart as the viewport grows.
+ */
 .dt-payout-card {
   display: flex;
   align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .dt-payout-stat {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/*
+ * The clock sits inside the panel now, so it drops its own border and takes
+ * the space the two stats do not need. The leading rule is on the clock rather
+ * than a sibling divider element: RewardCountdown removes itself entirely when
+ * no reduction is scheduled, and a separate divider would be left behind
+ * pointing at nothing.
+ */
+.dt-payout-card > .rwc-timer {
+  flex: 1 1 320px;
+  width: auto;
+  min-width: 0;
+  max-width: 560px;
+  margin: 0 0 0 auto;
+  border: none;
+  border-left: 1px solid var(--border-secondary);
+  border-radius: 0;
+  padding-left: 20px;
+
+  .timer-header {
+    padding: 0 0 2px;
+  }
+
+  .timer-number {
+    margin-top: 2px;
+  }
+
+  .timer-info {
+    margin-top: 2px;
+    margin-bottom: 0;
+  }
+
+  .v-rule {
+    margin: 6px 5px;
+  }
+
+  .rwc-caption {
+    padding-top: 4px;
+  }
+}
+
+/*
+ * Stacked, every vertical rule in this band is stranded: the stats sit above
+ * one another rather than side by side, so the divider between them becomes a
+ * short line pointing nowhere, and the clock's left rule the same. Each stat
+ * carries its own label, so dropping the divider loses nothing.
+ */
+@media (max-width: 900px) {
+  .dt-payout-divider {
+    display: none;
+  }
+
+  .dt-payout-card > .rwc-timer {
+    flex-basis: 100%;
+    max-width: none;
+    margin-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--border-secondary);
+    padding-left: 0;
+    padding-top: 12px;
+  }
 }
 
 .dt-payout-value {
