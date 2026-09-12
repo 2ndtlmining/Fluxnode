@@ -7,9 +7,10 @@
 node_modules/
 client/build/
 
-# Claude Code local files
+# Claude Code local files. CLAUDE.md itself is TRACKED (issue #272): it is
+# shared project documentation, and while it was ignored its corrections lived
+# on one machine and were invisible to everyone else.
 .claude/
-CLAUDE.md
 
 
 # Git worktrees (superpowers:using-git-worktrees scratch space)
