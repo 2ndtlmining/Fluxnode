@@ -125,6 +125,28 @@ export function scanProgressPct({ lastScannedHeight, scanStartHeight, scanTarget
   return Math.round((done / span) * 100);
 }
 
+/*
+ * How often the tab re-reads sync status, and whether it should bother
+ * (issue #280).
+ *
+ * The banner used to be a one-shot snapshot taken at mount, so it went on
+ * saying "Sync is running -- a first-time backfill can take several minutes"
+ * while the backend had already moved to `stalled`. Measured on a production
+ * container: the API reported `last_outcome: "stalled"` with a frozen
+ * `last_scanned_height` while the banner still showed the reassuring --info
+ * tone, ten minutes in.
+ *
+ * 'caught_up' is the one terminal state: the scanner is level with the tip and
+ * the copy will not change again, so polling past it is pure waste. Every other
+ * status -- including 'stalled' -- stays live, because a stall can recover and
+ * the user should see that without reloading the page.
+ */
+export const SYNC_POLL_INTERVAL_MS = 30_000; // one block target
+
+export function shouldPollSync(syncStatus) {
+  return syncStatus !== 'caught_up';
+}
+
 // "Xm ago"/"Xh ago"/"Xd ago" for the sync-status banner. A local helper
 // rather than reusing live/timeFormat.js's relativeTime: that one only
 // covers seconds/minutes (block timestamps are always within a couple
