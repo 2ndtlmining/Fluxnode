@@ -1,8 +1,10 @@
-import React, { useContext, useState, useCallback } from 'react';
+import React, { useContext } from 'react';
 import './index.scss';
 
 import { IconContext } from 'react-icons';
 import { Tooltip2 } from '@blueprintjs/popover2';
+import { useCopyAddress } from 'donor/useCopyAddress';
+import { truncateAddress } from 'donor/clipboard';
 import { LayoutContext } from 'contexts/LayoutContext';
 
 import { IoLogoTwitter, IoMailUnread, IoLogoYoutube } from 'react-icons/io5';
@@ -34,45 +36,17 @@ const SOCIAL_LINKS = [
   }
 ];
 
-/** "t1abcdef...uvwxyz" — keeps a donation address recognisable without eating a whole row. */
-function truncateAddress(address) {
-  if (!address || address.length <= 20) return address;
-  return `${address.slice(0, 8)}…${address.slice(-6)}`;
-}
-
 export function DonateChip({ label, address }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = useCallback(async () => {
-    if (!address) return;
-    try {
-      // navigator.clipboard is unavailable over plain http, which some node
-      // operators use to reach the site — fall back rather than doing nothing.
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(address);
-      } else {
-        const el = document.createElement('textarea');
-        el.value = address;
-        el.setAttribute('readonly', '');
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-      }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* clipboard blocked — the full address is in the tooltip */
-    }
-  }, [address]);
+  // Was an inline clipboard implementation here; it is now shared with the node
+  // page's donation chip and Home's support panel (#294), which previously had
+  // no way to copy at all.
+  const { copied, failed, copy } = useCopyAddress(address);
 
   if (!address) return null;
 
   return (
     <Tooltip2
-      content={copied ? 'Copied to clipboard' : address}
+      content={failed ? `Copy blocked by the browser — ${address}` : copied ? 'Copied to clipboard' : address}
       placement="top"
       hoverOpenDelay={150}
       popoverClassName="footer-addr-tooltip"

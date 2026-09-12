@@ -5,6 +5,8 @@ import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { relativeAge } from 'donor/donationTotals';
 import { FaHeart } from 'react-icons/fa';
+import { BsCheckLg, BsClipboard } from 'react-icons/bs';
+import { useCopyAddress } from 'donor/useCopyAddress';
 
 import { useNavigate } from 'react-router-dom';
 import { RewardCountdown } from 'rewards/RewardCountdown';
@@ -59,6 +61,43 @@ function PanelHeader({ title, badge, badgeClassName, badgeContent, right }) {
  * The donation address is part of the panel rather than a link elsewhere: a
  * reader persuaded by the numbers should not then have to go looking.
  */
+/*
+ * The donation address, as one click rather than something to select by hand
+ * (issue #294). Same clipboard path as the footer chip and the node page's
+ * donation chip, including the plain-http fallback -- see donor/clipboard.js
+ * for why that matters to this audience specifically.
+ */
+function SupportCta({ address, shortAddress, standalone = false }) {
+  const { copied, failed, copy } = useCopyAddress(address);
+
+  const tooltip = copied
+    ? 'Donation address copied'
+    : failed
+      ? `Copy blocked by the browser — ${address}`
+      : address
+        ? `Click to copy ${address}`
+        : 'Donation address unavailable';
+
+  return (
+    <div className={`hov-support-cta${standalone ? ' hov-support-cta--standalone' : ''}`}>
+      <FaHeart size={11} className="hov-support-cta-icon" aria-hidden="true" />
+      <span className="hov-support-cta-text">Keep FluxNode running</span>
+      <Tooltip2 content={tooltip} placement="top" hoverOpenDelay={120}>
+        <button
+          type="button"
+          className={`hov-support-address${copied ? ' hov-support-address--copied' : ''}${failed ? ' hov-support-address--failed' : ''}`}
+          onClick={copy}
+          disabled={!address}
+          aria-label="Copy the FluxNode donation address"
+        >
+          <code>{shortAddress}</code>
+          {copied ? <BsCheckLg size={10} aria-hidden="true" /> : <BsClipboard size={10} aria-hidden="true" />}
+        </button>
+      </Tooltip2>
+    </div>
+  );
+}
+
 function CommunitySupportPanel({ donations, donationsSettled, donationsFailed }) {
   if (!donationsSettled) {
     return (
@@ -117,13 +156,7 @@ function CommunitySupportPanel({ donations, donationsSettled, donationsFailed })
             )}
             </div>
 
-            <div className="hov-support-cta">
-              <FaHeart size={11} className="hov-support-cta-icon" aria-hidden="true" />
-              <span className="hov-support-cta-text">Keep FluxNode running</span>
-              <Tooltip2 content={address || 'Donation address unavailable'} placement="top" hoverOpenDelay={120}>
-                <code className="hov-support-address">{shortAddress}</code>
-              </Tooltip2>
-            </div>
+            <SupportCta address={address} shortAddress={shortAddress} />
           </div>
         </>
       )}
@@ -131,13 +164,7 @@ function CommunitySupportPanel({ donations, donationsSettled, donationsFailed })
       {/* With no donations there is no band to hang the address off, so it
           gets its own row rather than disappearing. */}
       {donationCount === 0 && (
-        <div className="hov-support-cta hov-support-cta--standalone">
-          <FaHeart size={11} className="hov-support-cta-icon" aria-hidden="true" />
-          <span className="hov-support-cta-text">Keep FluxNode running</span>
-          <Tooltip2 content={address || 'Donation address unavailable'} placement="top" hoverOpenDelay={120}>
-            <code className="hov-support-address">{shortAddress}</code>
-          </Tooltip2>
-        </div>
+        <SupportCta address={address} shortAddress={shortAddress} standalone />
       )}
     </div>
   );
