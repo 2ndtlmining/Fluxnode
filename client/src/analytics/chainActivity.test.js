@@ -1,6 +1,5 @@
 import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel,
-  blocksRemainingInScan
-} from './chainActivity';
+  blocksRemainingInScan, shouldPollSync } from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -358,5 +357,32 @@ describe('blocksRemainingInScan', () => {
   it('is zero when there is no range yet', () => {
     // run_scan_cycle writes InProgress BEFORE it knows the range.
     expect(blocksRemainingInScan({ lastScannedHeight: 0, scanStartHeight: 0, scanTargetHeight: 0 })).toBe(0);
+  });
+});
+
+/*
+ * Issue #280: the banner was a one-shot snapshot, so it kept saying "Sync is
+ * running" long after the backend had moved to "stalled". Re-polling needs a
+ * rule for when to stop, and that rule is the part worth testing -- the effect
+ * around it is wiring.
+ */
+describe('shouldPollSync', () => {
+  test('keeps polling while a scan is running', () => {
+    expect(shouldPollSync('in_progress')).toBe(true);
+  });
+
+  test('keeps polling when the scan has stalled, so recovery is noticed', () => {
+    expect(shouldPollSync('stalled')).toBe(true);
+  });
+
+  test.each(['never_run', 'unreachable', 'api_unreachable', null, undefined])(
+    'keeps polling for the unsettled status %p',
+    (status) => {
+      expect(shouldPollSync(status)).toBe(true);
+    }
+  );
+
+  test('stops once the scanner has caught up, because nothing further changes', () => {
+    expect(shouldPollSync('caught_up')).toBe(false);
   });
 });

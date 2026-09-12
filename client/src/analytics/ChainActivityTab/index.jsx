@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel, shouldPollSync, SYNC_POLL_INTERVAL_MS } from 'analytics/chainActivity';
 import { shouldFetchDrilldown, stateAfterCancel } from './drilldownState';
 import './index.scss';
 
@@ -330,21 +330,49 @@ export function ChainActivityTab({ theme = 'dark' }) {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const toggleDrilldown = () => setDrilldownOpen((v) => !v);
 
+  /*
+   * Mirrors the latest sync status for the interval below to read (issue #280).
+   *
+   * A ref rather than state, with the effect kept on [] deps. Reading reactive
+   * state from a polling effect is exactly what caused the ~290,000-request
+   * runaway in the drilldown effect -- status changed, the effect re-ran, its
+   * cleanup reset status, and round it went. The shape that fixed that one is
+   * the shape used here: nothing reactive in the dependency array.
+   */
+  const syncStatusRef = useRef(null);
+
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    const load = async () => {
       const result = await fetch_chain_activity();
       if (cancelled) return;
+      syncStatusRef.current = result.syncStatus;
       setData(result);
       setLoading(false);
-    })().catch(() => {
+    };
+
+    load().catch(() => {
       // fetch_chain_activity() already fails soft to empty defaults — this is
       // defensive only, matching NetworkTab's own equivalent comment.
       if (!cancelled) setLoading(false);
     });
 
-    return () => { cancelled = true; };
+    /*
+     * Without this the banner asserts its mount-time status for as long as the
+     * tab stays open -- which is worst in the case it exists for, since it asks
+     * the user to wait out a backfill and then never reports the outcome.
+     * Stops for good once the scanner is caught up.
+     */
+    const id = setInterval(() => {
+      if (!shouldPollSync(syncStatusRef.current)) {
+        clearInterval(id);
+        return;
+      }
+      load().catch(() => {});
+    }, SYNC_POLL_INTERVAL_MS);
+
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   if (loading) {
