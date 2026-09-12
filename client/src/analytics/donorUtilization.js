@@ -78,7 +78,21 @@ export function aggregateDonorUtilization(donorAddresses, benchmarks, resources)
   };
 }
 
-export async function fetch_donor_utilization(donorAddresses) {
+/*
+ * The raw feeds behind the aggregation above.
+ *
+ * The Donor tab re-aggregates when a node is selected (issue #299), so it needs
+ * the inputs rather than one pre-summed answer — filtering the RESULT is not
+ * possible, since a percentage of a subset cannot be recovered from a
+ * percentage of the whole. Both fetches are the module-level shared ones, so
+ * asking for the source costs nothing on top of fetch_donor_utilization.
+ */
+export async function fetch_donor_utilization_source() {
   const [benchmarks, resources] = await Promise.all([fetch_node_benchmarks(), fetch_node_resources()]);
+  return { benchmarks, resources };
+}
+
+export async function fetch_donor_utilization(donorAddresses) {
+  const { benchmarks, resources } = await fetch_donor_utilization_source();
   return aggregateDonorUtilization(donorAddresses, benchmarks, resources);
 }
