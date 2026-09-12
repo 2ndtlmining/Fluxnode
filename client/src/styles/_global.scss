@@ -81,10 +81,22 @@ code {
 }
 
 #root {
-    min-width: 100vw;
+    // 100vh on iOS Safari is the LARGE viewport -- the height the page would
+    // have if the URL bar were hidden. With the bar actually on screen the
+    // real area is ~60-110px shorter, so the bottom of #root (and therefore
+    // .App's bottom edge, where the sticky footer lives) sat below the fold
+    // with body and #root both overflow: hidden -- unreachable by scrolling.
+    // That is issue #246's symptom arriving by a second route, iOS-only.
+    // dvh tracks the DYNAMIC viewport instead; the vh line stays as the
+    // fallback for anything that doesn't understand dvh (issue #276).
     min-height: 100vh;
-    width: 100vw;
+    min-height: 100dvh;
     height: 100vh;
+    height: 100dvh;
+    // 100vw includes the scrollbar gutter, which forced a few px of
+    // horizontal overflow on desktop. 100% is the width we actually want.
+    min-width: 100%;
+    width: 100%;
     overflow: hidden;
 }
 

@@ -215,6 +215,10 @@
     }
     .chrome-tabs {
         margin-bottom: 6px;
+        // The tab strip is a fixed-width flex row. Let it scroll within the
+        // header rather than widen the whole page (issue #275).
+        max-width: 100%;
+        overflow-x: auto;
     }
 }
 

@@ -4,7 +4,11 @@
     padding: 20px;
 
     height: 100%;
-    min-width: 410px;
+    // Was a flat `min-width: 410px`, which is wider than every phone viewport
+    // and so bled ~40px off the right edge (issue #275). min() keeps the 410px
+    // floor wherever there is room for it and yields to the container when
+    // there isn't.
+    min-width: min(410px, 100%);
     border-radius: 8px;
 }
 
