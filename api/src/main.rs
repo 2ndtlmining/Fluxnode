@@ -314,17 +314,35 @@ pub mod api_v1 {
             // blocks" progress instead of just knowing a scan is running.
             scan_start_height: i64,
             scan_target_height: i64,
+            /*
+             * The busiest retained block of the last 24 hours (issue #286),
+             * ranked on transfers + deployments.
+             *
+             * None until a scan has produced a checkpoint and at least one
+             * utility block inside the window -- a cold start has neither, and
+             * the rail must show nothing rather than a placeholder.
+             */
+            busiest_block_24h: Option<services::chain_activity::UtilityBlockRecord>,
         }
 
         // Synchronous read of whatever the background scanner has already
         // persisted — never triggers a scan on the request path.
         pub async fn handler() -> impl IntoResponse {
             let scan_status = services::chain_activity::load_scan_status();
+            let checkpoint_height = services::chain_activity::load_checkpoint().last_scanned_height;
+            let utility_blocks = services::chain_activity::load_utility_blocks();
+            let busiest = services::chain_activity::busiest_block_in_window(
+                &utility_blocks,
+                checkpoint_height,
+                services::chain_activity::BLOCKS_PER_DAY,
+            )
+            .cloned();
             let body = ChainActivityResultBody {
                 success: true,
                 daily: services::chain_activity::load_daily_rollup(),
                 team_txs: services::chain_activity::load_team_txs(),
-                last_scanned_height: services::chain_activity::load_checkpoint().last_scanned_height,
+                last_scanned_height: checkpoint_height,
+                busiest_block_24h: busiest,
                 last_attempt_at: scan_status.last_attempt_at,
                 last_success_at: scan_status.last_success_at,
                 scan_start_height: scan_status.scan_start_height,
