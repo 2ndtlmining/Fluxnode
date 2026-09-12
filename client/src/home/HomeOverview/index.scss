@@ -888,3 +888,170 @@
     }
   }
 }
+
+/* ── The donations themselves (issue #315) ───────────────────────────────── */
+
+.hov-donations {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.hov-donations-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.hov-donations-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hov-donations-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.14);
+  color: var(--text-secondary);
+}
+
+.hov-donations-search {
+  flex: 0 1 220px;
+  min-width: 0;
+  font-size: 0.76rem;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-primary);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+
+  &::placeholder { color: var(--text-tertiary); }
+  &:focus { outline: none; border-color: var(--accent-green); }
+}
+
+.hov-donations-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  /* Donor and transaction get the room; the three numeric columns are fixed
+     so they line up as columns rather than drifting with content width. */
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 92px 86px 92px;
+  padding: 5px 4px;
+  font-size: 0.76rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.07);
+
+  &:last-child { border-bottom: none; }
+}
+
+.hov-donations-row--header {
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding-bottom: 5px;
+  /* Matches .hov-donations-list's scrollbar gutter (4px row padding + 10px),
+     or the header columns sit 10px left of the rows they label. */
+  padding-right: 14px;
+
+  button,
+  span {
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  button {
+    cursor: pointer;
+    text-align: left;
+
+    &:hover { color: var(--text-secondary); }
+  }
+
+  .hov-num { text-align: right; }
+}
+
+.hov-donations-list {
+  max-height: 260px;
+  overflow-y: auto;
+  /* Same reason as #318: right-aligned numbers under a scrollbar. */
+  padding-right: 10px;
+}
+
+.hov-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hov-donations-donor,
+.hov-donations-tx {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hov-donations-donor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.hov-donations-tx {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--accent-green);
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+.hov-donations-amount { color: var(--text-primary); font-weight: 600; }
+.hov-donations-block,
+.hov-donations-age { color: var(--text-tertiary); }
+
+/*
+ * A project-owned transfer. Visibly set apart rather than hidden: it is real
+ * money that arrived, so the list must show it, but it is not community
+ * backing and must never read as though it were.
+ */
+.hov-donations-row--project {
+  opacity: 0.72;
+}
+
+.hov-donations-tag {
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--accent-amber, #e09205);
+  color: var(--accent-amber, #e09205);
+}
+
+@media (max-width: 700px) {
+  /* The block height is the first thing to go: it is the least useful column
+     on a phone and the only one nobody scans by eye. */
+  .hov-donations-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 80px 80px;
+  }
+
+  .hov-donations-block { display: none; }
+}

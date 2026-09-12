@@ -82,6 +82,7 @@ class Home extends React.Component {
 
       countryCounts: [],
       donations: null,
+      donationRows: [],
       donationsSettled: false,
       donationsFailed: false,
     };
@@ -256,8 +257,8 @@ class Home extends React.Component {
     // #258: community donation totals. Network-wide, so it belongs here with
     // the other panels that describe the network rather than the wallet.
     fetch_donation_totals()
-      .then(({ ok, totals }) =>
-        this.setState({ donations: totals, donationsSettled: true, donationsFailed: !ok })
+      .then(({ ok, totals, rows }) =>
+        this.setState({ donations: totals, donationRows: rows || [], donationsSettled: true, donationsFailed: !ok })
       )
       .catch(() => this.setState({ donationsSettled: true, donationsFailed: true }));
   }
@@ -674,6 +675,7 @@ class Home extends React.Component {
                 gstore={this.state.gstore}
                 countryCounts={this.state.countryCounts}
                 donations={this.state.donations}
+                donationRows={this.state.donationRows}
                 donationsSettled={this.state.donationsSettled}
                 donationsFailed={this.state.donationsFailed}
               />
