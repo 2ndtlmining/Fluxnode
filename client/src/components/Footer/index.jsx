@@ -11,6 +11,7 @@ import { BsGithub, BsBugFill, BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { URL_YOUTUBE, URL_TWITTER, URL_GITHUB, EMAIL, ADDRESS_FLUX } from 'content/index';
 
 import { IS_TEST_BUILD, IS_DEV, APP_VERSION } from 'app-buildinfo';
+import { useHostInfo } from './useHostInfo';
 
 function _RenderAppVersion() {
   let suffix = '';
@@ -91,6 +92,7 @@ export function DonateChip({ label, address }) {
 }
 
 export function Footer() {
+  const hostSegments = useHostInfo();
   const { lastUpdated, arcaneHumanVersion } = useContext(LayoutContext);
 
   return (
@@ -116,6 +118,17 @@ export function Footer() {
               <span className="hl-app-version">FluxNode {_RenderAppVersion()}</span>
               {arcaneHumanVersion && <span className="footer-meta__sep">·</span>}
               {arcaneHumanVersion && <span>{arcaneHumanVersion}</span>}
+              {/*
+                #145: where this instance is running and how long it has been
+                up. Empty unless the Rust API is deployed, in which case the
+                footer is unchanged.
+              */}
+              {hostSegments.map((segment) => (
+                <React.Fragment key={segment}>
+                  <span className="footer-meta__sep">·</span>
+                  <span className="footer-meta__host">{segment}</span>
+                </React.Fragment>
+              ))}
               {lastUpdated && <span className="footer-meta__sep">·</span>}
               {lastUpdated && (
                 <span className="footer-meta__updated">

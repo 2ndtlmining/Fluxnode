@@ -30,6 +30,9 @@ async fn main() {
     // cold start and a replica that's been rescheduled to a fresh node with
     // no local data) and then hourly. run_scan_cycle() itself no-ops quickly
     // if already caught up to the tip.
+    // Starts the process-uptime clock at boot rather than at first request (#145).
+    services::host_info::mark_started();
+
     tokio::spawn(async {
         loop {
             services::chain_activity::run_scan_cycle().await;
@@ -93,6 +96,7 @@ pub mod api_v1 {
             )
             .route("/chain-activity", get(self::chain_activity::handler))
             .route("/chain-activity/blocks", get(self::chain_activity_blocks::handler))
+            .route("/header", get(self::header::handler))
     }
 
     async fn root() -> String {
@@ -135,6 +139,21 @@ pub mod api_v1 {
                 Err(err) => DemoResultBody::make_err(err.to_string()),
             };
             (StatusCode::OK, Json(result))
+        }
+    }
+
+    /*
+     * Facts about the machine serving this site, for the footer (issue #145).
+     *
+     * Always 200 with success:true -- every individual field is optional and
+     * already degrades to null on its own, so there is no failure mode worth
+     * reporting as an error. The client omits whatever is missing.
+     */
+    pub mod header {
+        use super::*;
+
+        pub async fn handler() -> impl IntoResponse {
+            Json(services::host_info::collect().await)
         }
     }
 
