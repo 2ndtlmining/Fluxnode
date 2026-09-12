@@ -15,18 +15,43 @@
  * Session 2 moves the actual components from /home — present now so this
  * config's shape doesn't change again then.
  */
+/*
+ * Analytics is a donor feature in full (#298), so every entry here is 'donor'
+ * and the 'public' branch below is dead for this page by design -- it stays
+ * because getPanelAccess is generic and a future surface may want it.
+ *
+ * Three of these had NO entry and no PanelGate at all until #298:
+ * totalNetwork, networkResources and hostedApplications rendered for everyone
+ * beside a locked world map, so a visitor could drill into any country's node
+ * counts, resource utilisation and hosted apps without donating. They were not
+ * public by decision; they were outside the mechanism, which is exactly what
+ * the "no silent default" rule below exists to prevent.
+ *
+ * topDogs, expiringToday, deployedToday and workhorse were previously 'public'
+ * on explicit direction when they moved over from /home. That direction was
+ * reversed: Analytics is donor-gated as a section.
+ */
 export const PANEL_ACCESS = {
   // Apps tab
+  appsKpis: 'donor',
   appsTeamSponsoredStat: 'donor',
   appEcosystem: 'donor',
   topHostedApps: 'donor',
   topNodeOperators: 'donor',
   topAppOwners: 'donor',
+  expiringToday: 'donor',
+  deployedToday: 'donor',
+  workhorse: 'donor',
   // Network tab
+  networkStatus: 'donor',
   worldMap: 'donor',
-  // continentBreakdown removed with the CONTINENT DISTRIBUTION panel (#287):
-  // the scope selector already carries every continent's node count, so the
-  // panel restated the selector and cost a whole row to do it.
+  totalNetwork: 'donor',
+  networkResources: 'donor',
+  hostedApplications: 'donor',
+  // The scope selector drives the three cards and the map. A usable control
+  // over content you cannot see is worse than either gating or showing both.
+  networkScope: 'donor',
+  topDogs: 'donor',
   // Donor tab (whole tab, one unit)
   donorTab: 'donor',
   // Chain Activity tab (whole tab, one unit)
@@ -39,11 +64,6 @@ export const PANEL_ACCESS = {
   // data-exposure one. See PanelGate's own note on that distinction.
   nodesAchievements: 'donor',
   nodesApps: 'donor',
-  // Moving from /home in Session 2 — public per explicit user direction
-  topDogs: 'public',
-  expiringToday: 'public',
-  deployedToday: 'public',
-  workhorse: 'public',
 };
 
 export function getPanelAccess(panelKey, isUnlocked) {

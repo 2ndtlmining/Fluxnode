@@ -21,6 +21,8 @@ import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } fr
 import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
 import { WorldMap } from 'analytics/WorldMap';
 import { PanelGate } from 'analytics/PanelGate';
+import { getPanelAccess } from 'analytics/panelAccess';
+import { useDonorStatus } from 'contexts/DonorContext';
 import './index.scss';
 
 function fmtNum(n, decimals = 0) {
@@ -304,6 +306,7 @@ function ScopeSelector({ agg, scope, onChange }) {
 export function NetworkTab() {
   const [countryCounts, setCountryCounts] = useState([]);
   const [globalRankings, setGlobalRankings] = useState(null);
+  const { isUnlocked } = useDonorStatus();
   const [gstore, setGstore] = useState(null);
   const [gpuPrices, setGpuPrices] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -472,9 +475,27 @@ export function NetworkTab() {
         <span className="network-tab-hero-label">Total nodes</span>
       </div>
 
-      <NetworkStatusStrip gstore={gstore} gpuPrices={gpuPrices} />
+      {/*
+        Gated since #298. NOTE: #284 moved these chain facts here FROM Home, so
+        gating them takes FLUX price, block height, locked supply, the three
+        version numbers and the GPU counts out of public view entirely -- the
+        node page still shows price and node counts, nothing else does. Worth a
+        second look if any of them should stay public somewhere.
+      */}
+      <PanelGate panelKey="networkStatus" feature="Network status" preview="blur">
+        <NetworkStatusStrip gstore={gstore} gpuPrices={gpuPrices} />
+      </PanelGate>
 
-      {agg && <ScopeSelector agg={agg} scope={scope} onChange={setScope} />}
+      {/*
+        Hidden rather than blurred when locked (#298). The selector is a
+        control, not a panel: blurring it would leave something that looks
+        clickable driving three panels the reader cannot see, and wrapping a
+        chip row in an unlock card reads as a broken panel. Nothing to control,
+        so nothing to show.
+      */}
+      {agg && getPanelAccess('networkScope', isUnlocked) && (
+        <ScopeSelector agg={agg} scope={scope} onChange={setScope} />
+      )}
 
       {/*
         * Map and cards side by side. The map used to be full width and very
@@ -501,9 +522,22 @@ export function NetworkTab() {
         <div className="network-tab-cards">
           {stats ? (
             <>
-              <TotalNetworkCard stats={stats} label={scopeLabel} />
-              <NetworkResourcesCard stats={stats} label={scopeLabel} />
-              <HostedApplicationsCard stats={stats} label={scopeLabel} />
+              {/*
+                Gated since #298. These three rendered for everyone beside a
+                locked world map, so a visitor could drill into any country's
+                node counts, resources and hosted apps without donating.
+                preview="blur" to match the map they sit next to -- a visitor
+                should still see the shape of what is behind the wall.
+              */}
+              <PanelGate panelKey="totalNetwork" feature="Total Network" preview="blur">
+                <TotalNetworkCard stats={stats} label={scopeLabel} />
+              </PanelGate>
+              <PanelGate panelKey="networkResources" feature="Network Resources" preview="blur">
+                <NetworkResourcesCard stats={stats} label={scopeLabel} />
+              </PanelGate>
+              <PanelGate panelKey="hostedApplications" feature="Hosted Applications" preview="blur">
+                <HostedApplicationsCard stats={stats} label={scopeLabel} />
+              </PanelGate>
             </>
           ) : (
             <div className="hov-panel hov-panel-center nt-card">
