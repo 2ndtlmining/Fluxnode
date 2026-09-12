@@ -18,6 +18,12 @@ import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } fr
 import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
 import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
+import { useNavigate } from 'react-router-dom';
+import { RewardCountdown } from 'rewards/RewardCountdown';
+import { hasScheduledReduction } from 'rewards/rewardReduction';
+import { CC_BLOCK_REWARD, CC_NEXT_BLOCK_REWARD } from 'content/index';
+import { formatDonorCost, donorHighlights } from 'donor/donorPitch';
+import { useDonorStatus } from 'contexts/DonorContext';
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
 
@@ -560,6 +566,88 @@ function CommunitySupportPanel({ donations, donationsSettled, donationsFailed })
   );
 }
 
+/*
+ * The next block-reward reduction, as a full-width band above the panels
+ * (issue #242).
+ *
+ * Reuses rewards/RewardCountdown rather than building a second clock -- the
+ * same component the Analytics donor tab renders. It sits at the top because
+ * it is a network-wide deadline that changes every operator's earnings, and
+ * it removes itself once no reduction is scheduled.
+ *
+ * The band states the two reward figures and deliberately does NOT restate
+ * them as a percentage. 14 -> 12.6 is both a 10% cut and 11.1% higher than
+ * the new figure depending on which way you read it; rewards/rewardReduction
+ * has a long note on that confusion, and Analytics' REWARD REDUCTION IMPACT
+ * panel is where the derived numbers belong.
+ */
+function RewardReductionBand({ gstore }) {
+  const currentBlock = gstore?.current_block_height || 0;
+  if (!hasScheduledReduction(currentBlock)) return null;
+
+  return (
+    <div className="hov-panel hov-panel--reward-band">
+      <RewardCountdown currentBlock={currentBlock} compact />
+      <div className="hov-reward-delta">
+        Block reward falls from <strong>{CC_BLOCK_REWARD}</strong> to{' '}
+        <strong>{CC_NEXT_BLOCK_REWARD} FLUX</strong> per block
+      </div>
+    </div>
+  );
+}
+
+/*
+ * What donating unlocks, with the real cost (issue #242).
+ *
+ * Informational rather than promotional, per the user's explicit direction --
+ * it sits on a public page that is otherwise all data, and reads as "here is
+ * what else exists" rather than a sales pitch.
+ *
+ * Each row shows the SIZE of what is behind the gate without showing the
+ * thing itself, using figures Home has already loaded (donor/donorPitch has
+ * the reasoning). The cost is converted at the live FLUX price rather than
+ * hardcoded, which is the only honest way to state it when FLUX moves.
+ *
+ * Renders nothing for someone who has already unlocked -- there is nothing
+ * left to tell them.
+ */
+function DonorPitchPanel({ gstore, countryCounts }) {
+  const donor = useDonorStatus();
+  const navigate = useNavigate();
+
+  if (donor?.isUnlocked) return null;
+
+  const cost = formatDonorCost(gstore?.flux_price_usd);
+  const highlights = donorHighlights({ gstore, countryCounts });
+
+  return (
+    <div className="hov-panel hov-panel--pitch">
+      <PanelHeader
+        title="WHAT SUPPORTERS UNLOCK"
+        badgeContent={<span className="hov-header-badge hov-pitch-cost-badge">{cost}</span>}
+      />
+
+      <div className="hov-pitch-list">
+        {highlights.map(({ key, title, teaser }) => (
+          <div key={key} className="hov-pitch-row">
+            <span className="hov-pitch-title">{title}</span>
+            <span className="hov-pitch-teaser">{teaser}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="hov-pitch-foot">
+        <span className="hov-pitch-terms">
+          We look for <strong>{cost}</strong> sent to the donation address within the last year.
+        </span>
+        <button type="button" className="hov-pitch-demo" onClick={() => navigate('/demo')}>
+          See it on the demo wallet
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function HomeOverview({
@@ -574,6 +662,7 @@ export function HomeOverview({
 }) {
   return (
     <div className="home-overview">
+      <RewardReductionBand gstore={gstore} />
       <div className="home-overview-row">
         <NetworkStatsPanel gstore={gstore} gpuPrices={gpuPrices} />
         <NetworkResourcesPanel gstore={gstore} />
@@ -584,6 +673,7 @@ export function HomeOverview({
         donationsSettled={donationsSettled}
         donationsFailed={donationsFailed}
       />
+      <DonorPitchPanel gstore={gstore} countryCounts={countryCounts} />
       <TopHostedApps gstore={gstore} />
       {SHOW_FLUX_AI_PANEL && <FluxAIPanel gpuPrices={gpuPrices} />}
       <GeoDistributionPanel

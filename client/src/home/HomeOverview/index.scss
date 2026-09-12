@@ -655,3 +655,160 @@
     }
   }
 }
+
+// ── Reward reduction band (issue #242) ───────────────────────────────────────
+// Full-width strip above the panel row. Borrows the panel chrome so it reads as
+// part of the same family, but centres its contents rather than laying out a
+// header + body, because the countdown is the whole point of it.
+
+.hov-panel--reward-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+
+  // space-between across a full-width page would fling the four digits into
+  // the corners. The clock reads as a unit at this width.
+  .rwc-timer {
+    margin: 0;
+    width: 100%;
+    max-width: 560px;
+    // It already sits inside .hov-panel's border; a second one around the
+    // clock is chrome for its own sake.
+    border: none;
+  }
+
+  // PayoutTimer's spacing is built for a panel of its own on the node page,
+  // where the clock is the subject. Here it is a band above the real content,
+  // and at its native size it stood 247px tall and pushed everything below the
+  // fold. Scoped to this band so the node page and the Analytics donor tab
+  // keep the original rhythm.
+  .timer-header {
+    padding: 10px 14px 2px;
+  }
+
+  .timer-number {
+    margin-top: 4px;
+  }
+
+  .timer-info {
+    margin-top: 2px;
+    margin-bottom: 8px;
+  }
+
+  .v-rule {
+    margin: 8px 5px;
+  }
+
+  .hov-reward-delta {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-align: center;
+
+    strong {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary, inherit);
+    }
+  }
+}
+
+// ── What supporters unlock (issue #242) ──────────────────────────────────────
+// Informational, not promotional: no accent fills, no oversized CTA. The rows
+// are a two-column list -- what you get on the left, how big it is on the
+// right -- so the eye can scan either column on its own.
+
+.hov-panel--pitch {
+  margin-top: 12px;
+
+  .hov-pitch-cost-badge {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .hov-pitch-list {
+    display: flex;
+    flex-direction: column;
+    padding-top: 4px;
+  }
+
+  .hov-pitch-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 7px 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+    }
+  }
+
+  .hov-pitch-title {
+    font-size: 0.84rem;
+    font-weight: 600;
+  }
+
+  .hov-pitch-teaser {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hov-pitch-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(128, 128, 128, 0.14);
+  }
+
+  .hov-pitch-terms {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+
+    strong {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary, inherit);
+    }
+  }
+
+  // A link that happens to be a button, not a call-to-action slab.
+  .hov-pitch-demo {
+    flex: 0 0 auto;
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+    background: var(--surface-inset);
+    color: var(--text-secondary, inherit);
+    cursor: pointer;
+    transition: border-color var(--transition-base), color var(--transition-base);
+
+    &:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary, inherit);
+    }
+  }
+
+  // Stacking the rows keeps both columns readable instead of crushing the
+  // teaser into two words a line.
+  @media (max-width: 720px) {
+    .hov-pitch-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .hov-pitch-teaser {
+      text-align: left;
+    }
+  }
+}

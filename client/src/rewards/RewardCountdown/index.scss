@@ -1,9 +1,22 @@
 // Countdown to the next block-reward reduction (issue #240).
 //
-// The .timer / .timer-blocks / .timer-block / .v-rule structure is inherited
-// from main/PayoutTimer's stylesheet, which is already global. Only the
-// differences live here: this clock counts down to a cut rather than a payout,
-// so it carries a warning accent instead of the payout styling.
+// The .timer / .timer-blocks / .timer-block / .v-rule structure comes from
+// main/PayoutTimer's stylesheet. That sheet was assumed to be global; it is
+// not. It ships in the route chunk of the only component that imports it
+// (main/MainApp -> PayoutTimer), so on /home -- which never loads that chunk --
+// every one of those rules was missing and the clock rendered as four stacked
+// numbers against the left edge (issue #242).
+//
+// Importing it here makes the dependency explicit and travels with the
+// component wherever it is mounted. The alternative, hoisting the rules into
+// styles/_global.scss, would put `.timer-header .title` (payout pink) into an
+// equal-specificity, source-order fight with `.rwc-title` (amber) -- a cascade
+// risk on the node page for no gain. The duplicated rules are byte-identical,
+// so the node page's cascade is untouched.
+@import 'main/PayoutTimer/index.scss';
+
+// Only the differences live below: this clock counts down to a cut rather than
+// a payout, so it carries a warning accent instead of the payout styling.
 
 .rwc-timer {
   width: 100%;
@@ -13,6 +26,18 @@
     align-items: center;
     gap: 6px;
     color: var(--accent-amber, #f59e0b);
+  }
+
+  // PayoutTimer styles its title payout-pink through a dark-mode rule --
+  // `.app-mode-dark .timer-header .title`, which is (0,3,0) and outranks the
+  // (0,2,0) declaration above. The title carries BOTH classes, so in dark mode
+  // this clock inherited the payout colour and announced a reward cut in the
+  // same pink as a reward arriving. Matching the specificity puts the warning
+  // accent back.
+  @include rule-mode-dark() {
+    .rwc-title {
+      color: var(--accent-amber, #f59e0b);
+    }
   }
 
   // The reduction is bad news for the operator; the digits say so without
