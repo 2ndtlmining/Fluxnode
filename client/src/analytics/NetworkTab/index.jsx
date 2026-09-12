@@ -16,7 +16,9 @@ import { fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
 import { isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { TotalNetworkCard, NetworkResourcesCard, HostedApplicationsCard } from './regionCards';
-import { fetch_global_performance_rankings } from 'apidata';
+import { fetch_global_performance_rankings, fetch_global_stats, fetch_gpu_prices } from 'apidata';
+import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
+import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
 import { WorldMap } from 'analytics/WorldMap';
 import { PanelGate } from 'analytics/PanelGate';
 import './index.scss';
@@ -138,6 +140,83 @@ function TopDogsPanel({ globalRankings }) {
 }
 
 /*
+ * Chain-wide facts, moved here from Home's FLUX NETWORK panel (issue #284).
+ *
+ * Placed ABOVE the scope selector on purpose, and that placement is the whole
+ * idea: everything above the selector is network-wide, everything below it
+ * answers to the selection. FLUX price, block height and daemon versions are
+ * properties of the chain -- "FluxOS version in Germany" is not a question --
+ * so putting them in the scoped card column would have been actively
+ * misleading.
+ *
+ * Locked supply comes with them because it is derived from network-wide tier
+ * counts and collateral, not from anything regional.
+ *
+ * The tier split that sat alongside these on Home is deliberately NOT carried
+ * over: TotalNetworkCard already shows tier counts, and at "Whole network"
+ * scope they are the same numbers.
+ */
+function NetworkStatusStrip({ gstore, gpuPrices }) {
+  if (!gstore) return null;
+
+  const { cumulus = 0, nimbus = 0, stratus = 0 } = gstore.node_count || {};
+  const lockedSupply =
+    cumulus * CC_COLLATERAL_CUMULUS + nimbus * CC_COLLATERAL_NIMBUS + stratus * CC_COLLATERAL_STRATUS;
+
+  const stats = [
+    {
+      key: 'price',
+      label: 'FLUX price',
+      value: gstore.flux_price_usd > 0 ? `$${gstore.flux_price_usd.toFixed(4)}` : '—',
+      accent: true
+    },
+    {
+      key: 'height',
+      label: 'Block height',
+      value: gstore.current_block_height > 0 ? fmtNum(gstore.current_block_height) : '—'
+    },
+    {
+      key: 'locked',
+      label: 'Locked supply',
+      value: lockedSupply > 0 ? `${(lockedSupply / 1e6).toFixed(1)}M FLUX` : '—'
+    },
+    {
+      key: 'fluxos',
+      label: 'FluxOS',
+      value: gstore.fluxos_latest_version?.major > 0 ? fluxos_version_string(gstore.fluxos_latest_version) : '—'
+    },
+    {
+      key: 'bench',
+      label: 'Bench',
+      value: gstore.bench_latest_version?.major > 0 ? fluxos_version_string(gstore.bench_latest_version) : '—'
+    },
+    {
+      key: 'daemon',
+      label: 'Daemon',
+      value: daemon_version_string(gstore.daemon_version) ?? '—'
+    }
+  ];
+
+  if (gpuPrices) {
+    stats.push(
+      { key: 'gpus', label: 'Flux Edge GPUs', value: fmtNum(gpuPrices.totalGPUs), accent: true },
+      { key: 'machines', label: 'FluxAI machines', value: fmtNum(gpuPrices.totalComputers) }
+    );
+  }
+
+  return (
+    <div className="nt-status-strip">
+      {stats.map((s) => (
+        <div key={s.key} className="nt-status-item">
+          <span className={`nt-status-value${s.accent ? ' nt-status-value--accent' : ''}`}>{s.value}</span>
+          <span className="nt-status-label">{s.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/*
  * Region selector. Continent first, then the countries within it (issue #254).
  *
  * Sits ABOVE the map because it drives the map -- the continent list used to be
@@ -225,6 +304,8 @@ function ScopeSelector({ agg, scope, onChange }) {
 export function NetworkTab() {
   const [countryCounts, setCountryCounts] = useState([]);
   const [globalRankings, setGlobalRankings] = useState(null);
+  const [gstore, setGstore] = useState(null);
+  const [gpuPrices, setGpuPrices] = useState(null);
   const [loading, setLoading] = useState(true);
   const [agg, setAgg] = useState(null);
   const [scope, setScope] = useState({ level: 'network' });
@@ -253,6 +334,27 @@ export function NetworkTab() {
       const rankings = await fetch_global_performance_rankings();
       if (cancelled) return;
       setGlobalRankings(rankings);
+    })().catch(() => {});
+
+    /*
+     * Chain-wide facts for the status strip (#284). Independent of the region
+     * aggregation below and of each other, so each failing soft leaves the rest
+     * of the tab intact -- NetworkStatusStrip renders nothing without gstore and
+     * simply omits the GPU rows without gpuPrices, which is how Home behaved.
+     *
+     * Analytics renders only the active tab (renderActiveTabPanelOnly), so this
+     * does not duplicate the Apps tab's own fetch_global_stats call.
+     */
+    (async () => {
+      const store = await fetch_global_stats(null);
+      if (cancelled) return;
+      setGstore(store);
+    })().catch(() => {});
+
+    (async () => {
+      const prices = await fetch_gpu_prices();
+      if (cancelled) return;
+      setGpuPrices(prices);
     })().catch(() => {});
 
     /*
@@ -369,6 +471,8 @@ export function NetworkTab() {
         <span className="network-tab-hero-value">{totalNodes != null ? fmtNum(totalNodes) : '—'}</span>
         <span className="network-tab-hero-label">Total nodes</span>
       </div>
+
+      <NetworkStatusStrip gstore={gstore} gpuPrices={gpuPrices} />
 
       {agg && <ScopeSelector agg={agg} scope={scope} onChange={setScope} />}
 
