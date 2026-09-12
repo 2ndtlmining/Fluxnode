@@ -1,3 +1,5 @@
+import { categorizeDedicatedSiteApp } from './dedicatedSites';
+
 // App category keyword matching — based on live Flux network data audit.
 // Each keyword is checked as a substring of the lowercased app image name.
 // Order matters: first match wins.
@@ -30,6 +32,12 @@ const CATEGORIES = {
       '7daystodie', 'vrising', 'conan-exiles', 'arma-reforger', 'soulmask',
       'abioticfactor', 'windrose', 'unturned', 'garrysmod', 'rust-server',
       'game-server',
+      // RuneScape: Dragonwilds (issue #309). Both spellings: the deployed name
+      // is 'dragonwilds', but an image or a hand-named app may well say
+      // 'runescape'. Note that neither keyword is what fixes the hosted
+      // deployments -- those are encrypted specs, matched by site prefix in
+      // dedicatedSites.js.
+      'dragonwilds', 'runescape',
       // Browser / indie game images seen on-network
       'pokerth', 'lightbike', 'hexgl', 'os13k', 'civclicker', 'level13',
       'prestigetree', 'progressknight', 'tosios', 'dwarfs', 'minesweeper',
@@ -203,8 +211,23 @@ export function categorizeAppSpec(spec) {
 
   const composeList = Array.isArray(spec.compose) ? spec.compose : [];
 
-  // Encrypted enterprise spec: compose is present but empty, details withheld.
-  if (spec.enterprise && composeList.length === 0) return 'enterprise';
+  /*
+   * Encrypted enterprise spec: compose is present but empty, details withheld.
+   *
+   * Before giving up on it, check whether the NAME is one a dedicated hosting
+   * site writes (issue #309). Those sites deploy as `${prefix}${Date.now()}`
+   * and publish their prefixes, so this is reading a documented convention, not
+   * guessing at the encrypted payload. It matters more than it sounds: 103
+   * specs / 219 instances of known games were landing here, four of the five
+   * games with a keyword that this branch meant they never reached.
+   *
+   * Anything whose name tells us nothing still gets the enterprise bucket, and
+   * the bucket keeps its meaning -- "we are not allowed to see this" rather
+   * than "we do not recognise this".
+   */
+  if (spec.enterprise && composeList.length === 0) {
+    return categorizeDedicatedSiteApp(spec.name) || 'enterprise';
+  }
 
   for (const component of composeList) {
     const cat = categorizeApp((component.repotag || '').toLowerCase());
