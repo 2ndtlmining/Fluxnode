@@ -99,6 +99,25 @@ export async function fetch_chain_activity() {
 // Returns 0 rather than NaN/Infinity when there's no real range yet (the
 // InProgress status written before the range is known — see
 // run_scan_cycle's two-step write in chain_activity.rs).
+/*
+ * How many blocks this scan still has to cover (issue #253).
+ *
+ * The banner used to compute `scanTargetHeight - lastScannedHeight` directly.
+ * On a cold start lastScannedHeight is 0 -- nothing has been scanned -- so that
+ * reported the chain TIP, telling the user a first-time backfill was 2.9
+ * MILLION blocks when the scanner's own log said 23,040. "A few minutes" and
+ * "this will never finish" are very different messages.
+ *
+ * Clamping to scanStartHeight is what fixes it: the scan never covers anything
+ * before its own start, whatever the checkpoint says.
+ */
+export function blocksRemainingInScan({ lastScannedHeight, scanStartHeight, scanTargetHeight }) {
+  const span = scanTargetHeight - scanStartHeight;
+  if (span <= 0) return 0;
+  const scannedTo = Math.max(lastScannedHeight || 0, scanStartHeight);
+  return Math.max(0, scanTargetHeight - scannedTo);
+}
+
 export function scanProgressPct({ lastScannedHeight, scanStartHeight, scanTargetHeight }) {
   const span = scanTargetHeight - scanStartHeight;
   if (span <= 0) return 0;

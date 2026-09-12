@@ -1,4 +1,6 @@
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel } from './chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel,
+  blocksRemainingInScan
+} from './chainActivity';
 
 function mockJsonResponse(body) {
   return { ok: true, json: async () => body };
@@ -315,5 +317,46 @@ describe('blockCategoryLabel', () => {
     expect(blockCategoryLabel({ isP2p: false, isDapp: false })).toBe('\u2014');
     expect(blockCategoryLabel(null)).toBe('\u2014');
     expect(blockCategoryLabel(undefined)).toBe('\u2014');
+  });
+});
+
+/*
+ * Issue #253 -- the sync banner told a cold-start user the backfill was 2.9
+ * MILLION blocks when the scanner's own log said 23,040.
+ *
+ * `blocksRemaining` was `scanTargetHeight - lastScannedHeight`, and on a cold
+ * start lastScannedHeight is 0 (nothing scanned yet), so it reported the chain
+ * TIP rather than the span being scanned. The difference matters: 23,040 blocks
+ * is "a few minutes", 2.9 million reads as "this will never finish".
+ */
+describe('blocksRemainingInScan', () => {
+  it('is the span still to scan, not the chain tip, on a cold start', () => {
+    // Exactly the live cold start: nothing scanned, retention window 23,040.
+    expect(
+      blocksRemainingInScan({ lastScannedHeight: 0, scanStartHeight: 2919732, scanTargetHeight: 2942772 })
+    ).toBe(23040);
+  });
+
+  it('counts down as the scan progresses', () => {
+    expect(
+      blocksRemainingInScan({ lastScannedHeight: 2930000, scanStartHeight: 2919732, scanTargetHeight: 2942772 })
+    ).toBe(12772);
+  });
+
+  it('is zero once caught up', () => {
+    expect(
+      blocksRemainingInScan({ lastScannedHeight: 2942772, scanStartHeight: 2919732, scanTargetHeight: 2942772 })
+    ).toBe(0);
+  });
+
+  it('never goes negative if the checkpoint is ahead of the target', () => {
+    expect(
+      blocksRemainingInScan({ lastScannedHeight: 2999999, scanStartHeight: 2919732, scanTargetHeight: 2942772 })
+    ).toBe(0);
+  });
+
+  it('is zero when there is no range yet', () => {
+    // run_scan_cycle writes InProgress BEFORE it knows the range.
+    expect(blocksRemainingInScan({ lastScannedHeight: 0, scanStartHeight: 0, scanTargetHeight: 0 })).toBe(0);
   });
 });
