@@ -92,7 +92,7 @@ describe('copyTextToClipboard', () => {
 
 describe('truncateAddress', () => {
   test('keeps both ends so the address stays recognisable', () => {
-    expect(truncateAddress('t1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt')).toBe('t1aUmu7H…4Bumbt');
+    expect(truncateAddress('t3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr')).toBe('t3YcVbiQ…u9Zjrr');
   });
 
   test('leaves a short address alone rather than mangling it', () => {

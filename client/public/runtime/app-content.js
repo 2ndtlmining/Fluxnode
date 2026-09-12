@@ -9,7 +9,7 @@ window.gContent.URL_GITHUB = 'https://github.com/2ndtlmining/Fluxnode';
 window.gContent.EMAIL = '2ndtlmining@gmail.com';
 
 /* Address for donations (FLUX only) */
-window.gContent.ADDRESS_FLUX = 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt';
+window.gContent.ADDRESS_FLUX = 't3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr';
 
 /*
  * Testing-only bypass for premium features (see client/src/donor/config.js

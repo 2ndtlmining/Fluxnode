@@ -7,7 +7,7 @@ import { aggregateDonations, relativeAge } from './donationTotals';
  * scriptPubKey.addresses, vin carries addr, and a transaction can pay several
  * outputs of which only some go to a donation address.
  */
-const DONATION_ADDR = 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt';
+const DONATION_ADDR = 't3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr';
 const OLD_ADDR = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
 const NOW = 1789000000000; // ms
 const DAY = 24 * 3600;

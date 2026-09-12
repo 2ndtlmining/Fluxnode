@@ -29,7 +29,7 @@ window.gContent = {
   URL_GITHUB: 'https://github.com/2ndtlmining/Fluxnode',
   EMAIL: '2ndtlmining@gmail.com',
 
-  ADDRESS_FLUX: 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt',
+  ADDRESS_FLUX: 't3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr',
 
   REQUIREMENTS: {
     threads: { C: 4, N: 8, S: 16, F: 4 },
