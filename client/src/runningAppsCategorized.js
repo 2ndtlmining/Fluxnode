@@ -100,9 +100,18 @@ export function categorizeRunningApps(aggregate, specIndex) {
     }
   }
 
+  // 20 rather than 10 (issue #273). TOP NODE OPERATORS and TOP APP OWNERS sit
+  // beside this panel at 20, and #248's uniform 665x738 sizing turned the
+  // shorter list into a visible block of empty space that read as missing data.
+  //
+  // Checked against live network data before changing it, because a longer list
+  // is only an improvement if the extra rows say something: the 20th row still
+  // carried 51 instances (mysql 119, blockbook-docker 114, alpine-mongo 66,
+  // minecraft-server 52, rusty-kaspad 51). That tail is real apps, not
+  // single-instance filler.
   const topRunningApps = Object.entries(repoCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+    .slice(0, 20)
     .map(([image, nodeCount]) => ({ image, nodeCount }));
 
   // Count streamr/presearch once per NODE that hosts them (from nodesByIp).

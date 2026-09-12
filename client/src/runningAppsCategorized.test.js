@@ -50,6 +50,36 @@ describe('categorizeRunningApps', () => {
     expect(totalRunningApps).toBe(8); // sum of every nameCounts value, unknownApp included
   });
 
+  /*
+   * The list is capped so the panel has a fixed length. 20 rather than 10
+   * (issue #273): TOP NODE OPERATORS and TOP APP OWNERS sit beside it at 20,
+   * and #248's uniform 665x738 panel made the shorter list read as missing
+   * data. Checked against live network data before changing it -- the 20th
+   * row still carried 51 instances (mysql 119, blockbook 114, minecraft 52,
+   * rusty-kaspad 51), so the tail is real apps, not single-instance filler.
+   */
+  it('caps topRunningApps at 20 rows', () => {
+    const manyNames = {};
+    const manyComponents = {};
+    const manySpecs = {};
+    // 30 distinct repotags, descending popularity, so a cap of 20 is visible.
+    for (let i = 0; i < 30; i++) {
+      const name = `app${i}`;
+      manyNames[name] = 30 - i;
+      manyComponents[`${name}\u0000`] = 30 - i;
+      manySpecs[name] = { repotag: `vendor/image${i}:latest`, category: 'computing' };
+    }
+    const { topRunningApps } = categorizeRunningApps(
+      { nameCounts: manyNames, componentCounts: manyComponents, nodesByIp: {} },
+      manySpecs
+    );
+
+    expect(topRunningApps).toHaveLength(20);
+    // Still ranked, and still the most popular 20 rather than an arbitrary 20.
+    expect(topRunningApps[0].image).toBe('vendor/image0:latest');
+    expect(topRunningApps[19].image).toBe('vendor/image19:latest');
+  });
+
   it('ranks topRunningApps by repotag popularity, most-instances first', () => {
     const { topRunningApps } = categorizeRunningApps(aggregate, specIndex);
     const folding = topRunningApps.find((r) => r.image === 'yurinnick/folding-at-home:latest');

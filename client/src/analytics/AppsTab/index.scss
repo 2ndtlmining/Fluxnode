@@ -595,3 +595,16 @@
   font-size: 0.6em;
   opacity: 0.7;
 }
+
+/* Panels in a grid row stretch to the tallest of them, and TOP NODE OPERATORS
+   at 20 rows sets that height. TopHostedApps' list carries a fixed 380px
+   height chosen for its /home placement, so inside this grid it stopped short
+   and left a block of empty space below itself -- the visible half of issue
+   #273, which raising the row count alone does not fix.
+
+   Scoped to this grid so /home keeps its compact 380px scroller. */
+.apps-tab-panel-grid .hov-panel--top-apps .hov-ranked-list {
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
