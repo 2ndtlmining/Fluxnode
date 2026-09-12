@@ -33,9 +33,11 @@
  * java/bedrock, Rust vanilla/oxide), means a new entry both there and here.
  * fluxview's file is the place to check.
  *
- * Only the games are listed. The non-game sites (Hermes, n8n, WordPress,
- * OpenClaw) have the same problem -- about 20 more specs -- but #309 is about
- * games, and widening the table is a separate call to make.
+ * Every site fluxview lists is here, games and not. The non-game ones were left
+ * out of the first pass and hit the identical branch for the identical reason:
+ * Hermes 11 encrypted specs, n8n 5, WordPress 4. Each is categorised by what the
+ * app IS, not by the fact that it came from a hosting site -- a site prefix is
+ * evidence about the app, not a category in its own right.
  */
 export const DEDICATED_SITE_PREFIXES = {
   palworld: 'gaming',
@@ -57,6 +59,32 @@ export const DEDICATED_SITE_PREFIXES = {
   // which is "DragonWilds" -- there is no "runescape" anywhere in the deployed
   // name, so that is not the string to match on.
   dragonwilds: 'gaming',
+  // OpenClaw is a game (an open-source Captain Claw) even though fluxview files
+  // it under its own subdomain rather than the games hub. No encrypted
+  // deployment exists on-network today; listed so that one is right when it
+  // does, and because this table's job is to mirror fluxview.
+  openclaw: 'gaming',
+  openclawpro: 'gaming',
+
+  /*
+   * The non-game sites. Categorised by what the app is:
+   *
+   *   Hermes    "Hermes Agent, the self-improving AI agent by Nous Research"
+   *             -- straight off the spec's own description, not inferred.
+   *   n8n       "n8n automation server with PostgreSQL on Flux". 'n8n' is
+   *             already a devops keyword, so this only makes the encrypted
+   *             deployments agree with the plain ones.
+   *   WordPress only the 4 ENCRYPTED deployments need this. The other 29 on
+   *             network ship a readable compose and already resolve through
+   *             the 'wp-nginx' keyword -- the enterprise branch is the only
+   *             place this table is consulted, so those are untouched.
+   */
+  hermesagent: 'ai',
+  hermesagentpro: 'ai',
+  n8nstarter: 'devops',
+  n8nstandard: 'devops',
+  n8npro: 'devops',
+  wordpress: 'web',
 };
 
 /*

@@ -1,6 +1,21 @@
 import { DEDICATED_SITE_PREFIXES, categorizeDedicatedSiteApp } from './dedicatedSites';
 
 describe('DEDICATED_SITE_PREFIXES', () => {
+  it('covers every NON-game site fluxview lists, with the category the app is', () => {
+    // Hermes is "the self-improving AI agent by Nous Research" (its own spec
+    // description says so), n8n is an automation server, WordPress is a CMS.
+    // Each encrypted deployment of these hit the enterprise branch exactly as
+    // the games did.
+    expect(DEDICATED_SITE_PREFIXES.hermesagent).toBe('ai');
+    expect(DEDICATED_SITE_PREFIXES.hermesagentpro).toBe('ai');
+    expect(DEDICATED_SITE_PREFIXES.n8nstarter).toBe('devops');
+    expect(DEDICATED_SITE_PREFIXES.n8nstandard).toBe('devops');
+    expect(DEDICATED_SITE_PREFIXES.n8npro).toBe('devops');
+    expect(DEDICATED_SITE_PREFIXES.wordpress).toBe('web');
+    expect(DEDICATED_SITE_PREFIXES.openclaw).toBe('gaming');
+    expect(DEDICATED_SITE_PREFIXES.openclawpro).toBe('gaming');
+  });
+
   it('covers every game RunOnFlux/fluxview lists as a dedicated hosting site', () => {
     for (const prefix of [
       'palworld',
@@ -63,6 +78,19 @@ describe('categorizeDedicatedSiteApp', () => {
   it('matches regardless of casing, unlike fluxview', () => {
     expect(categorizeDedicatedSiteApp('Valheim1787327994881')).toBe('gaming');
     expect(categorizeDedicatedSiteApp('DRAGONWILDS1789155733040')).toBe('gaming');
+  });
+
+  it('categorizes the non-game sites by what the app actually is', () => {
+    expect(categorizeDedicatedSiteApp('hermesagentpro1781078593777')).toBe('ai');
+    expect(categorizeDedicatedSiteApp('n8nstarter1784743517187')).toBe('devops');
+    expect(categorizeDedicatedSiteApp('wordpress1772009796289')).toBe('web');
+  });
+
+  it('does not let a shorter non-game prefix swallow a longer one', () => {
+    // n8nstarter / n8nstandard / n8npro share no prefix with each other, but
+    // hermesagent IS a prefix of hermesagentpro and both must resolve.
+    expect(categorizeDedicatedSiteApp('hermesagent1787341182483')).toBe('ai');
+    expect(categorizeDedicatedSiteApp('openclawpro1787341182483')).toBe('gaming');
   });
 
   it('returns null for an unrelated name, so the caller can fall through', () => {
