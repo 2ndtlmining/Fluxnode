@@ -124,6 +124,29 @@
   opacity: 0.4;
 }
 
+/*
+ * "Hosted in Melbourne, Australia" is the most interesting thing in this row --
+ * it is what makes the app feel like it is running on somebody's actual node --
+ * and it was carrying exactly the same weight as the build timestamp (#285).
+ *
+ * Emphasis is only on the location: doing the same to uptime would flatten the
+ * row again, just louder. The green is --accent-green, the same token the rest
+ * of the app uses for a positive value, rather than a fresh literal.
+ *
+ * No stray separator when the geolocation lookup fails: hostInfoSegments drops
+ * the whole segment, so there is no dot left hanging.
+ */
+.footer-meta__host--location {
+  font-weight: 600;
+  color: var(--accent-green);
+
+  @include rule-mode-dark() {
+    // #0ea271 is a touch dark against the footer's own dark ground; this is the
+    // same hue lifted for contrast rather than a different colour.
+    color: #12cc94;
+  }
+}
+
 .footer-meta__updated {
   white-space: nowrap;
 }
