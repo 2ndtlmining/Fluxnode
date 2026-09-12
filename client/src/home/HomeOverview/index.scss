@@ -187,13 +187,19 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  &--hero {
+  // Chained, not `&--hero` -- see the note in
+  // components/AppEcosystemBreakdown/index.scss (#317). `.hov-header-badge`
+  // lives in seven stylesheets sharing one chunk, so an unchained modifier
+  // ties its own base class and loses to whichever file loads last, leaving
+  // transparent text with no gradient to paint it.
+  &.hov-header-badge--hero {
     font-size: 1.4rem;
     letter-spacing: -0.02em;
     padding: 0 2px;
     background: none;
     border-radius: 0;
     color: var(--text-primary);
+    -webkit-text-fill-color: currentColor;
 
     @include rule-mode-dark() {
       background: linear-gradient(135deg, #60a5fa, #a78bfa);
