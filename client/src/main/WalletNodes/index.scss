@@ -94,6 +94,15 @@
 .cta-button-wrapper {
     display: flex;
     gap: 5px;
+
+    // Holds the IP filter input plus Clear/Reset/Refresh/fullscreen -- ~426px
+    // of controls in a row that could not wrap, which was the last thing
+    // pushing the dashboard wider than a 320px phone (issue #275).
+    // Wrapping takes this row from ~426px to ~239px, which clears the overflow
+    // at 375px and up. A residual 8px remains at 320px; see issue #275.
+    @media (max-width: 480px) {
+        flex-wrap: wrap;
+    }
 }
 
 /* ============================ */

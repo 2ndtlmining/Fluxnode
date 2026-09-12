@@ -8,6 +8,26 @@
 
     padding: 7px 80px;
 
+    // 80px a side is 160px of fixed padding, which left a 215px content box on
+    // a 375px phone. Together with the un-wrappable address below it pinned the
+    // dashboard's content floor at 662px, so every phone scrolled sideways
+    // (issue #275). The wide padding is a desktop look; below the 768px
+    // breakpoint it is just lost space.
+    @media (max-width: 768px) {
+        padding: 7px 16px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    // The full 35-char t-address is a single unbreakable token, so it rendered
+    // 289px wide and pushed the row's right edge past the viewport. Let it
+    // break rather than overflow -- the footer solves the same problem by
+    // eliding.
+    a {
+        overflow-wrap: anywhere;
+        word-break: break-all;
+    }
+
     color: #495057;
     @include rule-mode-dark() {
         color: rgb(181, 175, 166);
