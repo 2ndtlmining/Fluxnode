@@ -53,7 +53,7 @@ window.gContent.CC_COLLATERAL_FRACTUS = 1000;
 /* ========================================== */
 
 // The Flux Block Reward
-window.gContent.CC_BLOCK_REWARD = 12.6;
+window.gContent.CC_BLOCK_REWARD = 14;
 
 /* ========================================== */
 /**
