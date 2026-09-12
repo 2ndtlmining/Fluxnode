@@ -49,7 +49,6 @@ export {
   fillPartialNode,
   fill_health,
   validateAddress,
-  getDemoWallet,
   isWalletDOSState
 } from 'api/walletNodes';
 

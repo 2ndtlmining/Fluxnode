@@ -8,7 +8,6 @@ import { FaHeart } from 'react-icons/fa';
 import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
 
-import { useNavigate } from 'react-router-dom';
 import { RewardCountdown } from 'rewards/RewardCountdown';
 import { hasScheduledReduction } from 'rewards/rewardReduction';
 import { CC_BLOCK_REWARD, CC_NEXT_BLOCK_REWARD } from 'content/index';
@@ -351,7 +350,6 @@ function RewardReductionBand({ gstore }) {
  */
 function DonorPitchPanel({ gstore, countryCounts }) {
   const donor = useDonorStatus();
-  const navigate = useNavigate();
 
   if (donor?.isUnlocked) return null;
 
@@ -378,9 +376,6 @@ function DonorPitchPanel({ gstore, countryCounts }) {
         <span className="hov-pitch-terms">
           We look for <strong>{cost}</strong> sent to the donation address within the last year.
         </span>
-        <button type="button" className="hov-pitch-demo" onClick={() => navigate('/demo')}>
-          See it on the demo wallet
-        </button>
       </div>
     </div>
   );
