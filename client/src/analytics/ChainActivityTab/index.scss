@@ -369,17 +369,118 @@
   gap: 2px;
 }
 
+/*
+ * A real button since #282. It highlighted on hover and did nothing when
+ * clicked, which is how that issue started -- so the hover affordance is now
+ * backed by an actual control rather than removed.
+ */
 .ca-drilldown-row {
   display: grid;
-  grid-template-columns: 90px 1fr 60px 90px;
+  grid-template-columns: 90px 1fr 60px 90px 16px;
   align-items: center;
   gap: 8px;
+  width: 100%;
   font-size: 0.74rem;
+  font-family: inherit;
+  text-align: left;
   padding: 3px 6px;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-secondary);
+  cursor: pointer;
 
-  &:hover { background: var(--surface-inset); }
+  &:hover:not(:disabled) { background: var(--surface-inset); }
+
+  // A block with no transfers has nothing to open; it keeps the row shape but
+  // drops the affordance rather than opening an empty panel.
+  &:disabled {
+    cursor: default;
+    grid-template-columns: 90px 1fr 60px 90px 16px;
+  }
+}
+
+.ca-drilldown-item--open > .ca-drilldown-row {
+  background: var(--surface-inset);
+}
+
+.ca-drilldown-caret {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
+/* ── A block's transactions (issue #282) ─────────────────────────────────── */
+
+.ca-tx-panel {
+  margin: 2px 0 8px 6px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--border-secondary);
+  background: var(--surface-inset);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.ca-tx-panel--note {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.ca-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ca-tx-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 12px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ca-tx-id {
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+}
+
+.ca-tx-addr {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ca-tx-arrow {
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.ca-tx-amount {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.ca-tx-foot {
+  margin-top: 6px;
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
+// Five columns of addresses and amounts do not survive a phone; stack them and
+// let the amount carry the weight.
+@media (max-width: 720px) {
+  .ca-tx-row {
+    grid-template-columns: 1fr auto;
+    gap: 2px 8px;
+  }
+
+  .ca-tx-id,
+  .ca-tx-arrow {
+    display: none;
+  }
 }
 
 .ca-drilldown-height {

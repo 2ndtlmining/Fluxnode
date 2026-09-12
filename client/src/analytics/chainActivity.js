@@ -247,6 +247,17 @@ export async function fetch_chain_activity_blocks(limit = 50) {
             isP2p: !!b.is_p2p,
             isDapp: !!b.is_dapp,
             transferCount: b.transfer_count || 0,
+            // #282: the block's own transfers, capped server-side. transferCount
+            // stays the TRUE total, so the two can legitimately disagree -- see
+            // blockTransfersState below.
+            transfers: Array.isArray(b.transfers)
+              ? b.transfers.map((t) => ({
+                  txid: t.txid,
+                  from: t.from || null,
+                  to: t.to,
+                  amount: typeof t.amount === 'number' ? t.amount : 0,
+                }))
+              : [],
           }))
         : [],
     };
@@ -254,6 +265,32 @@ export async function fetch_chain_activity_blocks(limit = 50) {
     console.log('[ChainActivity] blocks fetch failed:', error?.message || error);
     return empty;
   }
+}
+
+/*
+ * What a block can actually show when opened (issue #282).
+ *
+ * Four states, and the third is the reason this is a function rather than a
+ * `transfers.length` check at the call site:
+ *
+ * - complete    every transfer is stored
+ * - capped      the block had more than the server stores per block; `total`
+ *               is the real number so the UI can say "25 of 40"
+ * - unavailable the block has a transfer COUNT but no stored transfers. This is
+ *               every record written before #282 -- the list was never kept for
+ *               them. Rendering that as "no transactions" would be a flat lie
+ *               about a block that had four. They refill as the scanner moves
+ *               past them.
+ * - empty       the block genuinely had no P2P transfers
+ */
+export function blockTransfersState(block) {
+  const total = block?.transferCount || 0;
+  const shown = Array.isArray(block?.transfers) ? block.transfers.length : 0;
+
+  if (total === 0) return { kind: 'empty', shown: 0, total: 0 };
+  if (shown === 0) return { kind: 'unavailable', shown: 0, total };
+  if (shown < total) return { kind: 'capped', shown, total };
+  return { kind: 'complete', shown, total };
 }
 
 /* "P2P", "Dapp", or "P2P + Dapp" for one block's category badges. */

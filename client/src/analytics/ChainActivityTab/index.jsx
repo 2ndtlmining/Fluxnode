@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
-import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel, shouldPollSync, SYNC_POLL_INTERVAL_MS } from 'analytics/chainActivity';
+import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel, blockTransfersState, shouldPollSync, SYNC_POLL_INTERVAL_MS } from 'analytics/chainActivity';
 import { shouldFetchDrilldown, stateAfterCancel } from './drilldownState';
 import './index.scss';
 
@@ -86,6 +86,92 @@ function SyncStatusBanner({ syncStatus, lastSuccessAt, lastScannedHeight, scanSt
   );
 }
 
+/*
+ * One block in the drill-down, openable to show its transactions (issue #282).
+ *
+ * These rows already highlighted on hover but did nothing when clicked -- they
+ * looked interactive and were not, which is how #282 started. Real buttons now:
+ * keyboard reachable, with aria-expanded, rather than a div with a listener.
+ */
+function BlockRow({ block, open, onToggle }) {
+  const state = blockTransfersState(block);
+  const canOpen = state.kind !== 'empty';
+
+  return (
+    <div className={`ca-drilldown-item${open ? ' ca-drilldown-item--open' : ''}`}>
+      <button
+        type="button"
+        className="ca-drilldown-row"
+        onClick={() => onToggle(open ? null : block.height)}
+        disabled={!canOpen}
+        aria-expanded={canOpen ? open : undefined}
+        aria-label={`Block ${block.height}, ${blockCategoryLabel(block)}`}
+      >
+        <span className="ca-drilldown-height">#{fmtNum(block.height)}</span>
+        <span className={`ca-drilldown-cat${block.isP2p && block.isDapp ? ' ca-drilldown-cat--both' : ''}`}>
+          {blockCategoryLabel(block)}
+        </span>
+        <span className="ca-drilldown-txs">
+          {block.transferCount > 0 ? `${fmtNum(block.transferCount)} tx` : '—'}
+        </span>
+        <span className="ca-drilldown-date">{block.date}</span>
+        {canOpen && <span className="ca-drilldown-caret" aria-hidden="true">{open ? '▴' : '▾'}</span>}
+      </button>
+
+      {open && <BlockTransfers state={state} transfers={block.transfers} />}
+    </div>
+  );
+}
+
+function BlockTransfers({ state, transfers }) {
+  /*
+   * "unavailable" is not "none". A record written before #282 carries a
+   * transfer count but no list, and saying "no transactions" about a block that
+   * had four would be a lie -- so it says what is actually true instead.
+   */
+  if (state.kind === 'unavailable') {
+    return (
+      <div className="ca-tx-panel ca-tx-panel--note">
+        {fmtNum(state.total)} transactions in this block, but they were not recorded &mdash; it was
+        scanned before transaction detail was stored. It refills as the scanner passes it again.
+      </div>
+    );
+  }
+
+  return (
+    <div className="ca-tx-panel">
+      <div className="ca-tx-list">
+        {/*
+          Keyed on txid + index, NOT txid alone. One transaction can pay several
+          addresses, and extract_p2p_transfers emits one entry per output -- so
+          a block legitimately contains repeated txids. Seen live on block
+          2,920,896: two rows sharing d1d5d4a8…, paying different wallets.
+        */}
+        {(transfers || []).map((t, i) => (
+          <div key={`${t.txid}-${i}`} className="ca-tx-row">
+            <code className="ca-tx-id" title={t.txid}>{t.txid.slice(0, 12)}…</code>
+            <span className="ca-tx-addr" title={t.from || 'unknown sender'}>
+              {t.from ? `${t.from.slice(0, 8)}…${t.from.slice(-4)}` : '—'}
+            </span>
+            <span className="ca-tx-arrow" aria-hidden="true">→</span>
+            <span className="ca-tx-addr" title={t.to}>
+              {`${t.to.slice(0, 8)}…${t.to.slice(-4)}`}
+            </span>
+            <span className="ca-tx-amount">
+              {t.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })} FLUX
+            </span>
+          </div>
+        ))}
+      </div>
+      {state.kind === 'capped' && (
+        <div className="ca-tx-foot">
+          showing {fmtNum(state.shown)} of {fmtNum(state.total)} transactions in this block
+        </div>
+      )}
+    </div>
+  );
+}
+
 function fmtNum(n) {
   if (!n && n !== 0) return '—';
   return n.toLocaleString();
@@ -112,6 +198,9 @@ const DRILLDOWN_LIMIT = 50;
  */
 function UtilityDrilldown({ open, expectedTotal }) {
   const [state, setState] = useState({ status: 'idle', data: null });
+  // Which block is expanded, or null. One at a time: the list is long and
+  // several open at once turns it into a wall (#282).
+  const [openHeight, setOpenHeight] = useState(null);
 
   /*
    * Status is mirrored in a ref so it can gate the fetch WITHOUT being an
@@ -209,16 +298,7 @@ function UtilityDrilldown({ open, expectedTotal }) {
 
       <div className="ca-drilldown-list">
         {blocks.map((b) => (
-          <div key={b.height} className="ca-drilldown-row">
-            <span className="ca-drilldown-height">#{fmtNum(b.height)}</span>
-            <span className={`ca-drilldown-cat${b.isP2p && b.isDapp ? ' ca-drilldown-cat--both' : ''}`}>
-              {blockCategoryLabel(b)}
-            </span>
-            <span className="ca-drilldown-txs">
-              {b.transferCount > 0 ? `${fmtNum(b.transferCount)} tx` : '\u2014'}
-            </span>
-            <span className="ca-drilldown-date">{b.date}</span>
-          </div>
+          <BlockRow key={b.height} block={b} open={openHeight === b.height} onToggle={setOpenHeight} />
         ))}
       </div>
 
