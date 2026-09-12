@@ -3,7 +3,7 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
-import { relativeAge } from 'donor/donationTotals';
+import { relativeAge, shortTxid, explorerTxUrl } from 'donor/donationTotals';
 import { FaHeart } from 'react-icons/fa';
 import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
@@ -98,7 +98,134 @@ function SupportCta({ address, shortAddress, standalone = false }) {
   );
 }
 
-function CommunitySupportPanel({ donations, donationsSettled, donationsFailed }) {
+
+/*
+ * The donations themselves, not just the total (issue #315).
+ *
+ * The rows come from the SAME scan the total above is computed from -- see
+ * fetch_donation_totals -- so the list cannot disagree with the headline
+ * figure about what counted, and it costs no extra explorer traffic (which
+ * #314 had just finished making expensive to spend).
+ *
+ * Project-owned transfers are shown and LABELLED rather than hidden. They stay
+ * out of the total, as EXCLUDED_FROM_DONATION_TOTALS has always ensured; but a
+ * list that silently omitted them would not reconcile against the address's
+ * on-chain balance and nothing on screen would say why. Labelling is what lets
+ * the panel be both complete and honest.
+ */
+const SORTS = {
+  block: { label: 'Block', get: (r) => r.blockHeight },
+  amount: { label: 'Amount', get: (r) => r.amount },
+  donor: { label: 'Donor', get: (r) => r.from },
+};
+
+function DonationList({ rows }) {
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState('block');
+  const [ascending, setAscending] = useState(false);
+
+  if (!rows || rows.length === 0) return null;
+
+  /*
+   * Search runs over the WHOLE row set, not the rendered slice -- the list is
+   * capped by scroll height, not by count, so there is no hidden tail for a
+   * match to fall into.
+   */
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? rows.filter(
+        (r) =>
+          r.from.toLowerCase().includes(q) ||
+          String(r.amount).includes(q) ||
+          r.txid.toLowerCase().includes(q)
+      )
+    : rows;
+
+  const get = SORTS[sortKey].get;
+  const sorted = [...filtered].sort((a, b) => {
+    const av = get(a);
+    const bv = get(b);
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return ascending ? cmp : -cmp;
+  });
+
+  const toggleSort = (key) => {
+    if (key === sortKey) {
+      setAscending((prev) => !prev);
+    } else {
+      setSortKey(key);
+      // Block and Amount are most useful highest-first; a donor address is not.
+      setAscending(key === 'donor');
+    }
+  };
+
+  const arrow = (key) => (key === sortKey ? (ascending ? ' ↑' : ' ↓') : '');
+
+  return (
+    <div className="hov-donations">
+      <div className="hov-donations-head">
+        <span className="hov-donations-title">
+          Donations
+          <span className="hov-donations-count">
+            {q ? `${sorted.length} / ${rows.length}` : rows.length}
+          </span>
+        </span>
+        <input
+          className="hov-donations-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search wallet or amount"
+          aria-label="Search donations by wallet or amount"
+        />
+      </div>
+
+      <div className="hov-donations-row hov-donations-row--header">
+        <button type="button" onClick={() => toggleSort('donor')}>Donor{arrow('donor')}</button>
+        <span>Transaction</span>
+        <button type="button" className="hov-num" onClick={() => toggleSort('amount')}>Amount{arrow('amount')}</button>
+        <button type="button" className="hov-num" onClick={() => toggleSort('block')}>Block{arrow('block')}</button>
+        <span className="hov-num">When</span>
+      </div>
+
+      <div className="hov-donations-list">
+        {sorted.length === 0 ? (
+          <div className="hov-empty">No donation matches that search</div>
+        ) : (
+          sorted.map((r) => (
+            <div
+              key={r.txid}
+              className={`hov-donations-row${r.isProjectTransfer ? ' hov-donations-row--project' : ''}`}
+            >
+              <span className="hov-donations-donor" title={r.from}>
+                {shortTxid(r.from)}
+                {r.isProjectTransfer && (
+                  <span className="hov-donations-tag" title="Sent from a project-owned wallet, so it is not counted in the community total above">
+                    project
+                  </span>
+                )}
+              </span>
+              <a
+                className="hov-donations-tx"
+                href={explorerTxUrl(r.txid)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={r.txid}
+              >
+                {shortTxid(r.txid)}
+              </a>
+              <span className="hov-num hov-donations-amount">{fmtNum(r.amount, 2)}</span>
+              <span className="hov-num hov-donations-block">{fmtNum(r.blockHeight)}</span>
+              <span className="hov-num hov-donations-age">{relativeAge(r.timeSec)}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CommunitySupportPanel({ donations, donationRows, donationsSettled, donationsFailed }) {
   if (!donationsSettled) {
     return (
       <div className="hov-panel hov-panel-center hov-panel--support">
@@ -160,6 +287,8 @@ function CommunitySupportPanel({ donations, donationsSettled, donationsFailed })
           </div>
         </>
       )}
+
+      {donationCount > 0 && <DonationList rows={donationRows} />}
 
       {/* With no donations there is no band to hang the address off, so it
           gets its own row rather than disappearing. */}
@@ -273,6 +402,7 @@ export function HomeOverview({
   gstore,
   countryCounts,
   donations,
+  donationRows,
   donationsSettled,
   donationsFailed
 }) {
@@ -281,6 +411,7 @@ export function HomeOverview({
       <div className="home-overview-row home-overview-row--support">
         <CommunitySupportPanel
           donations={donations}
+          donationRows={donationRows}
           donationsSettled={donationsSettled}
           donationsFailed={donationsFailed}
         />

@@ -30,7 +30,7 @@ import { fetch_global_app_specs_raw } from 'api/specs';
 import { categorizeRunningApps } from 'runningAppsCategorized';
 import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
-import { aggregateDonations } from 'donor/donationTotals';
+import { aggregateDonations, buildDonationRows } from 'donor/donationTotals';
 import { richListRank } from 'wallet/richList';
 import {
   fetch_node_benchmarks,
@@ -334,10 +334,17 @@ async function scanBothDonationAddresses() {
  */
 export async function fetch_donation_totals() {
   const scans = await scanBothDonationAddresses();
-  if (scans.every((txs) => txs === null)) return { ok: false, totals: null };
+  if (scans.every((txs) => txs === null)) return { ok: false, totals: null, rows: [] };
 
   const txs = scans.filter(Boolean).flat();
-  return { ok: true, totals: aggregateDonations(txs) };
+  /*
+   * `rows` rides along rather than getting its own fetch (issue #315). The
+   * individual donations were always in these bytes and were being reduced to
+   * a sum and discarded; listing them is a second reading of one scan, not a
+   * second scan. Given #314, adding a fourth caller to the explorer would have
+   * undone the fix that made this panel affordable in the first place.
+   */
+  return { ok: true, totals: aggregateDonations(txs), rows: buildDonationRows(txs) };
 }
 
 /*

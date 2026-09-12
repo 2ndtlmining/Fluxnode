@@ -122,3 +122,83 @@ export function relativeAge(timeSec, nowMs = Date.now()) {
   const months = Math.round(days / 30);
   return months === 1 ? '1 month ago' : `${months} months ago`;
 }
+
+/*
+ * The same donations, one row each, for the Home list (issue #315).
+ *
+ * Shares paidToDonationAddress, senderOf and the window with
+ * aggregateDonations above, deliberately: the list and the total sit in the
+ * same panel, and if they disagreed about what counts as a donation the panel
+ * would contradict itself on screen. A test pins that they agree.
+ *
+ * The ONE difference is project-owned transfers. aggregateDonations drops them
+ * from the total -- that is the whole point of EXCLUDED_FROM_DONATION_TOTALS,
+ * and it stays true. This lists them with `isProjectTransfer` set instead of
+ * dropping them, so the panel can label them. Hiding them would leave the list
+ * unable to reconcile against the address's on-chain balance with nothing on
+ * screen to explain the gap; showing them unlabelled would headline a project
+ * transfer as community backing, which is the exact hazard the exclusion list
+ * was created for.
+ *
+ * Sorted by block height, descending -- latest first.
+ */
+export function buildDonationRows(txs, { nowMs = Date.now(), excluded } = {}) {
+  if (!Array.isArray(txs)) return [];
+
+  const addresses = donationAddresses();
+  const projectWallets = new Set(excluded || EXCLUDED_FROM_DONATION_TOTALS);
+  const cutoffSec = Math.floor(nowMs / 1000) - WINDOW_SEC;
+
+  const seen = new Set();
+  const rows = [];
+
+  for (const tx of txs) {
+    if (!tx?.txid || seen.has(tx.txid)) continue;
+    if (typeof tx.time !== 'number' || tx.time < cutoffSec) continue;
+
+    const amount = paidToDonationAddress(tx, addresses);
+    if (amount <= 0) continue;
+
+    const from = senderOf(tx, addresses);
+    if (!from) continue;
+
+    seen.add(tx.txid);
+    rows.push({
+      txid: tx.txid,
+      from,
+      // Rounded for the same reason the total is: binary floating point must
+      // not put 0.30000000000000004 on the front page.
+      amount: Math.round(amount * 1e8) / 1e8,
+      blockHeight: tx.blockheight || 0,
+      timeSec: tx.time,
+      isProjectTransfer: projectWallets.has(from)
+    });
+  }
+
+  return rows.sort((a, b) => b.blockHeight - a.blockHeight);
+}
+
+/*
+ * Enough of each end to match a row against the explorer by eye, which is the
+ * only thing the shortened form has to support. Middle-elided rather than
+ * truncated: the tail is what distinguishes two transactions in the same block.
+ */
+export function shortTxid(txid) {
+  if (typeof txid !== 'string' || !txid) return '';
+  if (txid.length <= 14) return txid;
+  return `${txid.slice(0, 6)}..${txid.slice(-6)}`;
+}
+
+/*
+ * The explorer is a HASH-routed SPA, and the obvious-looking path is the broken
+ * one. Measured 2026-09-13:
+ *
+ *   https://explorer.runonflux.io/tx/<txid>    -> 404
+ *   https://explorer.runonflux.io/#/tx/<txid>  -> 200
+ *
+ * Written as a function with a test rather than inlined at the call site, so
+ * a whole panel of dead links cannot be introduced by someone tidying the URL.
+ */
+export function explorerTxUrl(txid) {
+  return `https://explorer.runonflux.io/#/tx/${txid}`;
+}
