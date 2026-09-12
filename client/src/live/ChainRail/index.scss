@@ -279,3 +279,57 @@ $live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
     background: transparent;
   }
 }
+
+/* ── Busiest block of the last 24h (issue #286) ──────────────────────────────
+   Sectioned off with a solid vertical rule, deliberately unlike the animated
+   dashed connector between live blocks: that connector says "these are
+   consecutive in the chain", which this block is not. It is one block pulled
+   out of the last day and shown on its own. */
+.live-chain-divider {
+  flex: 0 0 2px;
+  align-self: stretch;
+  margin: 0 18px;
+  border-radius: 1px;
+  /*
+   * NOT --border-secondary: that resolves to rgba(255,255,255,0.04) on the dark
+   * rail, which measured out as a 1px line at 4% opacity -- invisible, and #286
+   * asked for a visible separator. Tinted with the busiest block's own amber so
+   * the rule and the card it introduces read as one section.
+   */
+  background: var(--accent-amber, #e09205);
+  opacity: 0.45;
+}
+
+.live-chain-block--busiest {
+  // Amber rather than the rail's own accent, so it reads as "singled out"
+  // rather than "the newest one".
+  border-color: var(--accent-amber, #e09205);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent-amber, #e09205);
+  }
+}
+
+.live-chain-block-busiest-marker {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-amber, #e09205);
+  white-space: nowrap;
+}
+
+.live-chain-chip--busiest {
+  --chip-color: var(--accent-amber, #e09205);
+  font-weight: 700;
+}
+
+// Stacked, the vertical rule has nothing to divide; make it a horizontal one.
+@media (max-width: 720px) {
+  .live-chain-divider {
+    flex: 0 0 100%;
+    height: 1px;
+    align-self: auto;
+    margin: 10px 0;
+  }
+}

@@ -14,6 +14,9 @@ const EMPTY_RESULT = {
   scanStartHeight: 0,
   scanTargetHeight: 0,
   syncStatus: 'api_unreachable',
+  // #286: no busiest block when the API is unreachable, same as every other
+  // field here.
+  busiestBlock: null,
 };
 
 describe('fetch_chain_activity', () => {
