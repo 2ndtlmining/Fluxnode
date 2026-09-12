@@ -661,11 +661,6 @@
       "name": "fill_rewards",
       "type": "function"
     },
-    "getDemoWallet": {
-      "length": 0,
-      "name": "getDemoWallet",
-      "type": "function"
-    },
     "getEnterpriseNodes": {
       "length": 0,
       "name": "getEnterpriseNodes",

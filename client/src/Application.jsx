@@ -20,7 +20,6 @@ import { PremiumGate } from 'donor/PremiumGate';
 
 const MainApp = React.lazy(() => import('main/MainApp'));
 const Home = React.lazy(() => import('home/Home'));
-const Demo = React.lazy(() => import('demo/Demo'));
 const Live = React.lazy(() => import('live/Live'));
 const Analytics = React.lazy(() => import('analytics/Analytics'));
 const NotFoundView = React.lazy(() => import('notfound/index'));
@@ -143,16 +142,6 @@ class Application extends React.Component {
                             <MainApp theme={darkMode ? 'dark' : 'light'} donorWallet={donorWallet} setDonorWallet={setDonorWallet} />
                           )}
                         </DonorContext.Consumer>
-                      </React.Suspense>
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
-                  path='/demo'
-                  element={
-                    <ErrorBoundary>
-                      <React.Suspense fallback={<PageLoader />}>
-                        <Demo theme={darkMode ? 'dark' : 'light'} />
                       </React.Suspense>
                     </ErrorBoundary>
                   }

@@ -54,7 +54,6 @@ Fluxnode/
 │   │   ├── rewards/     # Block-reward schedule and countdown
 │   │   ├── wallet/      # Address input and wallet state
 │   │   ├── geo/         # Map bounds and projections
-│   │   ├── demo/        # Demo mode
 │   │   ├── notfound/    # 404 page
 │   │   ├── styles/      # Global styles
 │   │   ├── persistance/ # State persistence (LocalForage)
@@ -214,7 +213,6 @@ Registered in `client/src/Application.jsx`.
 - `/nodes` - Main node overview and details
 - `/analytics` - Apps / Network / Donor / Chain Activity tabs (donor-gated per panel)
 - `/live` - Live chain activity (donor-gated route)
-- `/demo` - Demo mode, runs on a fixed wallet
 - `/*` - 404 page
 
 There is **no `/guide` route**. The Guides page was removed in c02f781, so
@@ -226,7 +224,6 @@ There is **no `/guide` route**. The Guides page was removed in c02f781, so
 The Rust API server provides:
 - `POST /api/v1/nodes` - Aggregate node information
 - `GET /api/v1/node-single/:node_address` - Single node details
-- `GET /api/v1/demo` - Demo data
 - `GET /api/v1/bench-version` - Benchmark version info
 - `POST /api/v1/live/current-winners` - Live page block winners
 - `GET /api/v1/chain-activity` - Utility/empty block rollup and sync status

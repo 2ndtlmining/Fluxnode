@@ -5,7 +5,7 @@ import { FLUXNODE_INFO_API_URL } from 'app-buildinfo';
  * daily utility/empty block counts and the Flux-team transaction log, for however
  * much of the ~8-day retention window the scanning replica has caught up to.
  * Mirrors the existing `${FLUXNODE_INFO_API_URL}/api/v1/...` fetch pattern already
- * used by getDemoWallet() (apidata.js). The backend's JSON is snake_case (Rust's
+ * used by the other ${FLUXNODE_INFO_API_URL} callers. The backend's JSON is snake_case (Rust's
  * serde default) — normalized to camelCase here, once, at the boundary.
  *
  * `syncStatus` distinguishes two different layers, both collapsed into one

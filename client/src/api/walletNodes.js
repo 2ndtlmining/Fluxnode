@@ -18,7 +18,7 @@
  *   fill_health / wallet_health_full      per-wallet health rollup
  *   normalize_raw_node_tier               tier string normalisation
  *   calc_mtn_window                       maintenance window from block heights
- *   validateAddress / getDemoWallet       address check and the demo payload
+ *   validateAddress                       address check
  */
 
 import dayjs from 'dayjs';
@@ -338,21 +338,6 @@ export async function validateAddress(address) {
     return json['data'] !== undefined;
   } catch {
     return false;
-  }
-}
-
-export async function getDemoWallet() {
-  try {
-    const response = await fetch(`${FLUXNODE_INFO_API_URL}/api/v1/demo`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json'
-      }
-    });
-    const jsonData = await response.json();
-    return jsonData;
-  } catch {
-    return null;
   }
 }
 

@@ -1,7 +1,7 @@
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
 import { PremiumUnlock } from 'donor/PremiumUnlock';
-import { getPanelAccess } from 'analytics/panelAccess';
+import { getPanelAccess, isWalletScoped } from 'analytics/panelAccess';
 import './index.scss';
 
 /*
@@ -18,10 +18,27 @@ import './index.scss';
  *   by AppsTab/NetworkTab (Session 3) to preview real data shapes behind
  *   the wall instead of hiding them entirely.
  */
-export function PanelGate({ panelKey, feature, children, preview = 'plain' }) {
-  const { isUnlocked } = useDonorStatus();
+/*
+ * `viewedWallet` matters only for the wallet-scoped panels (#325) -- the ones
+ * whose content belongs to one particular wallet. Everything else ignores it,
+ * so the many callers that gate network-wide panels are unaffected and do not
+ * pass it.
+ */
+export function PanelGate({ panelKey, feature, children, preview = 'plain', viewedWallet = null }) {
+  const { isUnlocked, donorWallet } = useDonorStatus();
 
-  if (getPanelAccess(panelKey, isUnlocked)) return children;
+  if (getPanelAccess(panelKey, isUnlocked, { donorWallet, viewedWallet })) return children;
+
+  /*
+   * A donor looking at somebody ELSE's wallet (#325). They have donated, so
+   * "unlock by donating" is both wrong and insulting -- the panel is not
+   * withheld from them, it simply belongs to a wallet that is not theirs. Say
+   * that, and drop the donate call-to-action.
+   */
+  const otherWallet = isUnlocked && isWalletScoped(panelKey);
+  const title = otherWallet
+    ? `${feature} is only shown for your own wallet`
+    : `${feature} is a premium feature`;
 
   if (preview === 'blur') {
     // preview="blur" intentionally mounts the real `children` into the DOM,
@@ -42,8 +59,8 @@ export function PanelGate({ panelKey, feature, children, preview = 'plain' }) {
           <div className="panel-gate-blurred-scrim" />
           <div className="panel-gate-blurred-card">
             <Lock size={20} className="panel-gate-locked-icon" />
-            <span className="panel-gate-locked-title">{feature} is a premium feature</span>
-            <PremiumUnlock />
+            <span className="panel-gate-locked-title">{title}</span>
+            {!otherWallet && <PremiumUnlock />}
           </div>
         </div>
       </div>
@@ -53,8 +70,8 @@ export function PanelGate({ panelKey, feature, children, preview = 'plain' }) {
   return (
     <div className="panel-gate-locked">
       <Lock size={20} className="panel-gate-locked-icon" />
-      <span className="panel-gate-locked-title">{feature} is a premium feature</span>
-      <PremiumUnlock />
+      <span className="panel-gate-locked-title">{title}</span>
+      {!otherWallet && <PremiumUnlock />}
     </div>
   );
 }

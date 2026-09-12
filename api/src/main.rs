@@ -88,7 +88,6 @@ pub mod api_v1 {
                 "/node-single/:node_address",
                 get(self::node_single::handler),
             )
-            .route("/demo", get(self::node_demo::handler))
             .route("/bench-version", get(self::bench_version::handler))
             .route(
                 "/live/current-winners",
@@ -101,45 +100,6 @@ pub mod api_v1 {
 
     async fn root() -> String {
         "API v1".to_owned()
-    }
-
-    pub mod node_demo {
-        use super::*;
-
-        // Endpoint's response returned back
-        #[derive(Debug, Serialize)]
-        pub struct DemoResultBody {
-            success: bool,
-            address: Option<String>,
-            error: Option<String>,
-        }
-
-        impl DemoResultBody {
-            // Body when the request failed
-            fn make_err(error: String) -> Self {
-                Self {
-                    success: false,
-                    address: None,
-                    error: Some(error),
-                }
-            }
-            // Body when the request succeeded
-            fn make_demo(address: String) -> Self {
-                Self {
-                    success: true,
-                    address: Some(address),
-                    error: None,
-                }
-            }
-        }
-
-        pub async fn handler() -> impl IntoResponse {
-            let result = match services::demo::get_winner_address().await {
-                Ok(response) => DemoResultBody::make_demo(response),
-                Err(err) => DemoResultBody::make_err(err.to_string()),
-            };
-            (StatusCode::OK, Json(result))
-        }
     }
 
     /*
