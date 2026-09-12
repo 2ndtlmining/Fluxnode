@@ -1,4 +1,5 @@
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { tierMeta } from 'content/nodeTierMeta';
 
 /*
  * The three region-scoped cards beside the Network map (issue #254).
@@ -9,8 +10,6 @@ import { APP_CATEGORY_META } from 'content/appCategoryMeta';
  * aggregation can be tested without React, which is where the real risk is:
  * a region total that is wrong looks exactly like a region total that is right.
  */
-
-const TIER_COLORS = { CUMULUS: '#2686d0', NIMBUS: '#e8a33d', STRATUS: '#e05263' };
 
 function fmtNum(n, decimals = 0) {
   if (!n && n !== 0) return '—';
@@ -36,8 +35,8 @@ export function TotalNetworkCard({ stats, label }) {
         {['CUMULUS', 'NIMBUS', 'STRATUS'].map((tier) => (
           <div key={tier} className="hov-kv-row">
             <span className="hov-kv-label">
-              <span className="nt-tier-dot" style={{ background: TIER_COLORS[tier] }} />
-              {tier.charAt(0) + tier.slice(1).toLowerCase()}
+              <span className="nt-tier-dot" style={{ background: tierMeta(tier).color }} />
+              {tierMeta(tier).label}
             </span>
             <span className="hov-kv-value">{fmtNum(t[tier] || 0)}</span>
           </div>

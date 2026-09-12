@@ -5,16 +5,11 @@ import { Tooltip2 } from '@blueprintjs/popover2';
 import { FiCpu, FiHardDrive, FiDownload, FiUpload, FiBox } from 'react-icons/fi';
 
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { tierMeta } from 'content/nodeTierMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
 import { buildSpecIndex } from 'appSpecs';
 
 const ROTATE_MS = 8000;
-
-const TIER_COLOR = {
-  CUMULUS: '#2686d0',
-  NIMBUS: '#d07e26',
-  STRATUS: '#c92641'
-};
 
 /*
  * Utilisation is the whole point of the card, so the bar carries the reading
@@ -94,7 +89,7 @@ function NodeCard({ node, specsByName }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [node.containerAppNames, specsByName]);
 
-  const tierColor = TIER_COLOR[node.tier] || 'var(--text-tertiary)';
+  const tierColor = tierMeta(node.tier).color;
   const b = node.benchmark;
 
   return (

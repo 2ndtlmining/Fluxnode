@@ -1,4 +1,4 @@
-import { aggregateDonorUtilization } from './donorUtilization';
+import { aggregateDonorUtilization, fetch_donor_utilization_source } from './donorUtilization';
 
 const benchmarks = [
   { benchmark: { bench: { ipaddress: '1.2.3.4:16127', cores: 8, ram: 32, totalstorage: 440 } } },
@@ -74,5 +74,35 @@ describe('aggregateDonorUtilization', () => {
     expect(result.cores.utilized).toBe(3);
     expect(result.ram.utilized).toBe(3); // (2048+1024)/1024
     expect(result.ssd.utilized).toBe(30);
+  });
+});
+
+/*
+ * The Donor tab re-aggregates utilisation when a node is selected (issue
+ * #299), so it needs the raw feeds, not just the summed result. This is the
+ * accessor that hands them over — the aggregation itself is already covered
+ * above and is not re-tested through the network path.
+ */
+describe('fetch_donor_utilization_source', () => {
+  const realFetch = global.fetch;
+  afterEach(() => { global.fetch = realFetch; });
+
+  it('returns the raw benchmark and resource feeds, so a caller can re-aggregate a subset', async () => {
+    global.fetch = jest.fn((url) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ status: 'success', data: String(url).includes('benchmark') ? benchmarks : resources }),
+      })
+    );
+
+    const source = await fetch_donor_utilization_source();
+
+    expect(Array.isArray(source.benchmarks)).toBe(true);
+    expect(Array.isArray(source.resources)).toBe(true);
+    // Proves the halves are not swapped: only the benchmark feed is shaped
+    // { benchmark: { bench } }, only the resource feed carries a bare `ip`.
+    expect(source.benchmarks[0]).toHaveProperty('benchmark.bench.ipaddress');
+    expect(source.resources[0]).toHaveProperty('ip');
   });
 });

@@ -7,59 +7,56 @@
 }
 
 /*
- * Three columns at most (issue #288).
+ * Twelve tracks, spanned explicitly.
  *
- * This was `repeat(auto-fit, minmax(320px, 1fr))`, which sizes tracks to the
- * CONTAINER rather than to the content: on a 2125px viewport it laid out six
- * 340px tracks. Only three panels take a single track each -- the other two
- * span the full row -- so half the row was permanently empty, and the three
- * cards stayed narrow while there was 1,050px of nothing beside them.
+ * #288 took this off `repeat(auto-fit, minmax(320px, 1fr))` and onto three
+ * equal columns, which fixed the empty tracks. Twelve is the same idea with
+ * one more degree of freedom: the payout band and the utilisation panel want
+ * more width than the category tally, and equal columns cannot say that. The
+ * apps table and the activity panel span the row exactly as before.
  *
- * Explicit breakpoints instead, matching apps-tab-panel-grid: the count is
- * driven by how many panels there actually are, so they always fill the row.
+ * `align-items: start` is the load-bearing line, and it is not cosmetic.
+ * A grid row stretches every item to the tallest, and YOUR NODES renders one
+ * row per node: measured on a 127-node wallet, the nodes panel was 4,197px and
+ * dragged APPS (content 203px) and UTILIZATION (content 202px) to 4,197px with
+ * it -- about 8,000px of blank panel that no column count could have fixed.
+ * Capping the node list (below) removes today's cause; this removes the
+ * mechanism, so the next long panel cannot do it again.
  */
 .donor-tab-panel-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
   gap: 16px;
-
-  @media (min-width: 720px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (min-width: 1100px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
-/*
- * The reward countdown, sized for a place it shares (issue #288).
- *
- * `compact` shrinks the digits; this pulls in the spacing PayoutTimer's
- * stylesheet sets for a panel of its own, and caps the width so the four
- * numbers read as one clock instead of being flung into the corners by
- * space-between across a 2000px row.
- */
-.donor-tab > .rwc-timer {
-  width: 100%;
-  max-width: 520px;
-  margin: 0 auto;
+.dt-payout-card     { grid-column: span 7; }
+.dt-impact-panel    { grid-column: span 5; }
+.dt-nodes-panel     { grid-column: span 4; }
+.dt-apps-panel      { grid-column: span 3; }
+.dt-util-panel      { grid-column: span 5; }
+.dt-appstable-panel { grid-column: span 12; }
+.dt-activity-panel  { grid-column: span 12; }
 
-  .timer-header {
-    padding: 10px 14px 2px;
+// Laptop widths: the row stops being readable well before it stops fitting, so
+// the wide panels go full-width and the two narrow ones pair up.
+@media (max-width: 1400px) {
+  .dt-payout-card     { grid-column: span 12; }
+  .dt-impact-panel    { grid-column: span 12; }
+  .dt-nodes-panel     { grid-column: span 6; }
+  .dt-apps-panel      { grid-column: span 6; }
+  .dt-util-panel      { grid-column: span 12; }
+}
+
+// Single column. Scoped through `.hov-panel` so it outranks the span rules
+// above on specificity rather than on !important.
+@media (max-width: 820px) {
+  .donor-tab-panel-grid {
+    grid-template-columns: 1fr;
   }
 
-  .timer-number {
-    margin-top: 4px;
-  }
-
-  .timer-info {
-    margin-top: 2px;
-    margin-bottom: 8px;
-  }
-
-  .v-rule {
-    margin: 8px 5px;
+  .donor-tab-panel-grid > .hov-panel {
+    grid-column: 1 / -1;
   }
 }
 
@@ -294,15 +291,51 @@
 // row layout — caught in the final whole-branch review, not this task's
 // own review, because it only shows up once three tabs' stylesheets are
 // all loaded together.
+// The single biggest source of dead space on this tab: 127 rows is a 4,200px
+// panel, and until `align-items: start` landed above it stretched every panel
+// beside it to match. A scroll cap is also simply how a list this long should
+// behave.
+.dt-nodes-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.dt-nodes-head,
 .dt-nodes-panel .hov-ranked-row {
   display: grid;
   align-items: center;
   gap: 6px;
-  grid-template-columns: 60px 1fr 70px;
-  padding: 4px 6px;
+  grid-template-columns: 68px minmax(0, 1fr) 46px 62px 58px;
+}
+
+.dt-nodes-head {
+  padding: 0 6px 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-secondary);
+  margin-bottom: 5px;
+}
+
+.dt-nodes-panel .hov-ranked-row {
+  padding: 5px 6px;
   border-radius: var(--radius-sm);
   border-bottom: 1px solid rgba(128, 128, 128, 0.07);
   transition: background var(--transition-fast);
+
+  // These are <button>s now (issue #299 makes them the tab's filter), so the
+  // browser's own button chrome has to be unwound to leave the row as it was.
+  width: 100%;
+  text-align: left;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 
   &:hover {
     background: var(--surface-inset);
@@ -313,11 +346,90 @@
   }
 }
 
+.dt-node-row--selected {
+  background: rgba(14, 162, 113, 0.1);
+
+  @include rule-mode-dark() {
+    background: rgba(14, 162, 113, 0.16);
+  }
+}
+
+.dt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .dt-node-tier {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  color: var(--text-tertiary);
   text-transform: uppercase;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 1px 0;
+  text-align: center;
+}
+
+.dt-node-rank,
+.dt-node-window {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+// A closed window is the actionable state -- it is why a node cannot be
+// restarted right now -- so it is the one that reads differently.
+.dt-node-window--closed {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+// EPS carries a bar rather than a verdict. Flux publishes no per-tier EPS floor
+// this could be scored against, so the bar is relative to the best reading in
+// THIS wallet's own list -- a comparison the data supports -- and only a
+// genuinely absent reading is called out, as absent rather than as bad.
+.dt-node-eps {
+  position: relative;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  padding-bottom: 4px;
+}
+
+.dt-node-eps-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent-green);
+  opacity: 0.55;
+}
+
+.dt-node-eps--none {
+  color: var(--text-tertiary);
+}
+
+// Phone width: the same five columns, with the fixed ones pared back so the
+// address -- the only column that identifies the row -- keeps a readable share
+// of the ~330px available rather than the 60px the desktop widths leave it.
+@media (max-width: 820px) {
+  .dt-nodes-head,
+  .dt-nodes-panel .hov-ranked-row {
+    grid-template-columns: 58px minmax(0, 1fr) 38px 54px 48px;
+    gap: 4px;
+  }
+}
+
+// The count badge doubles as the filter reset (issue #299).
+.dt-badge-reset {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dt-badge-reset--active {
+  background: rgba(14, 162, 113, 0.18);
+  color: var(--accent-green);
 }
 
 .hov-ranked-name {
@@ -358,7 +470,119 @@
   align-items: center;
   gap: 8px;
   grid-template-columns: 16px 90px 1fr 40px;
-  padding: 3px 0;
+  padding: 3px 4px;
+
+  // Also a <button> now; same unwinding as the node rows above.
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--surface-inset);
+  }
+}
+
+.dt-apps-row--selected {
+  background: rgba(14, 162, 113, 0.1);
+
+  @include rule-mode-dark() {
+    background: rgba(14, 162, 113, 0.16);
+  }
+}
+
+// ── Apps on your nodes, the table (issue #299) ───────────────────────────
+
+.dt-appstable-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.dt-appstable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  // Measured at a 380px panel: without this the six columns compress to 330px
+  // and the repo and node columns become an ellipsis apiece. Scrolling the
+  // table sideways is the honest outcome -- the container is overflow: auto.
+  min-width: 640px;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-primary);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    text-align: left;
+    padding: 0 8px 5px;
+    border-bottom: 1px solid var(--border-secondary);
+  }
+
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.07);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+  }
+
+  tbody tr:hover td {
+    background: var(--surface-inset);
+  }
+
+  small {
+    color: var(--text-tertiary);
+    font-size: 0.9em;
+  }
+}
+
+// The name is the column someone scans, so it gets the width and the weight.
+.dt-appstable-name {
+  width: 26%;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.dt-appstable-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.dt-appstable-component {
+  margin-left: 2px;
+}
+
+.dt-appstable-repo {
+  width: 32%;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+}
+
+.dt-appstable-node {
+  width: 18%;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary) !important;
+}
+
+.dt-appstable-caption {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding-top: 8px;
 }
 
 .dt-apps-icon {
@@ -469,47 +693,7 @@
   max-width: 360px;
 }
 
-// -- Headline stat (hero number) ------------------------------------------
-// Mirrors AppsTab/index.scss's .apps-tab-hero, with this tab's accent.
-
-.dt-tab-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 4px;
-}
-
-.dt-tab-hero-value {
-  font-size: 2.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  line-height: 1.1;
-
-  @include rule-mode-dark() {
-    background: linear-gradient(135deg, var(--accent-green), #34d399);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-}
-
-.dt-tab-hero-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
 // ── Recent activity (issue #211) ──────────────────────────────────
-
-// Spans the grid: two summary columns plus a transaction list need more width
-// than a single cell, and squeezing them would defeat the point.
-.dt-activity-panel {
-  grid-column: 1 / -1;
-}
 
 .dt-activity-summary {
   display: grid;
@@ -616,10 +800,6 @@
 }
 
 // ── Reward reduction impact (issue #240) ─────────────────────────────────────
-
-.dt-impact-panel {
-  grid-column: 1 / -1;
-}
 
 .dt-impact-headline {
   display: flex;

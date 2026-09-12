@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
@@ -6,14 +6,24 @@ import { PremiumUnlock } from 'donor/PremiumUnlock';
 import { fetch_global_stats, fetch_total_network_utils, fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
 import { fetch_donor_nodes, sortByRank, mostRecentPayout } from 'analytics/donorNodes';
-import { fetch_donor_utilization } from 'analytics/donorUtilization';
-import { aggregateDonorAppsByCategory } from 'analytics/donorApps';
+import { fetch_donor_utilization_source, aggregateDonorUtilization } from 'analytics/donorUtilization';
+import { buildDonorAppRows, tallyRowCategories } from 'analytics/donorAppRows';
+import { buildDonorNodeRows } from 'analytics/donorNodeRows';
+import { filterAppRows, utilizationAddresses } from 'analytics/donorFilters';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { tierMeta } from 'content/nodeTierMeta';
 import { fetch_wallet_tx_history } from 'analytics/walletTxFetch';
 import { counterpartyDisplay, WINDOW_DAYS } from 'analytics/walletTxHistory';
 import { RewardCountdown } from 'rewards/RewardCountdown';
 import { rewardImpact, tallyWalletTiers } from 'rewards/rewardReduction';
 import './index.scss';
+
+const EMPTY_UTILIZATION = {
+  nodesWithCapacity: 0,
+  cores: { utilized: 0, total: 0, percentage: 0 },
+  ram: { utilized: 0, total: 0, percentage: 0 },
+  ssd: { utilized: 0, total: 0, percentage: 0 },
+};
 
 function fmtNum(n) {
   if (!n && n !== 0) return '—';
@@ -26,12 +36,12 @@ function fmtPct(n) {
 
 
 function fmtFlux(n) {
-  if (n == null) return '\u2014';
+  if (n == null) return '—';
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function txTime(unixSeconds) {
-  if (!unixSeconds) return '\u2014';
+  if (!unixSeconds) return '—';
   return new Date(unixSeconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
@@ -112,7 +122,7 @@ function WalletActivityPanel({ walletAddress }) {
       </div>
 
       <div className={`dt-activity-net${net >= 0 ? ' dt-activity-net--up' : ' dt-activity-net--down'}`}>
-        net {net >= 0 ? '+' : '\u2212'}{fmtFlux(Math.abs(net))} FLUX over {WINDOW_DAYS} days
+        net {net >= 0 ? '+' : '−'}{fmtFlux(Math.abs(net))} FLUX over {WINDOW_DAYS} days
       </div>
 
       <div className="dt-activity-list">
@@ -126,7 +136,7 @@ function WalletActivityPanel({ walletAddress }) {
                 {counterpartyDisplay(row)}
               </span>
               <span className={`dt-activity-amount dt-activity-amount--${row.direction}`}>
-                {row.direction === 'in' ? '+' : '\u2212'}{fmtFlux(row.amount)}
+                {row.direction === 'in' ? '+' : '−'}{fmtFlux(row.amount)}
               </span>
             </div>
           ))
@@ -231,7 +241,7 @@ function RewardImpactPanel({ nodes, gstore }) {
       <div className="dt-impact-tiers">
         {Object.entries(impact.perTier).map(([tier, t]) => (
           <span key={tier} className="dt-impact-chip">
-            {tier.charAt(0) + tier.slice(1).toLowerCase()} &times;{t.nodes}
+            {tierMeta(tier).label} &times;{t.nodes}
             <strong>{fmtSigned(t.deltaDaily)}</strong>
             <small>FLUX/day</small>
           </span>
@@ -249,14 +259,14 @@ function RewardImpactPanel({ nodes, gstore }) {
 }
 
 /*
- * The three time-based facts on this tab, in one band (issue #288).
+ * Last payout, next payout, and the reward countdown, in one band.
  *
- * The two payout stats had a full-width panel to themselves and the reward
- * countdown had another below it, so the tab opened with two mostly-empty rows
- * -- each stat was given half a 2,100px panel to hold about 300px of text.
- * Putting the countdown in alongside them fills the row with the thing that
- * belongs there anyway: when you were last paid, when you are next paid, and
- * when the reward itself changes.
+ * #288 already merged these three -- this is that component unchanged, moved
+ * INTO the panel grid so it can sit beside REWARD REDUCTION IMPACT, which is
+ * the half of #300 that was still outstanding. The tab's separate hero, which
+ * rendered "57 mins / NEXT PAYOUT" directly above this card's own
+ * "NEXT PAYOUT / 57 mins", is deleted rather than restyled: it was duplication,
+ * not emphasis.
  */
 function PayoutCard({ nextNode, lastPaidNode, currentBlock }) {
   return (
@@ -284,24 +294,82 @@ function PayoutCard({ nextNode, lastPaidNode, currentBlock }) {
 
 // ── Your nodes ────────────────────────────────────────────────────────────
 
-function DonorNodesList({ nodes }) {
+function fmtEps(eps) {
+  if (eps == null) return '—';
+  return Math.round(eps).toLocaleString();
+}
+
+/*
+ * The donor's nodes, and the tab's primary filter (issues #299, #301).
+ *
+ * Selecting a row narrows the apps table, the category tally and the
+ * utilisation panel to that one machine; the count badge clears it. The badge
+ * doubles as the reset because that is where #299 asked for it, and because a
+ * separate "clear" control would be one more thing on a row that is already
+ * carrying five columns.
+ *
+ * EPS is deliberately NOT scored against a pass mark. Flux publishes no per-tier
+ * EPS floor that could be cited here, and inventing thresholds would dress a
+ * guess up as a verdict -- so the bar is relative to the best reading in this
+ * wallet's own list, which is a comparison the data actually supports. Only a
+ * genuinely absent reading is called out, and as absent rather than as bad.
+ */
+function DonorNodesList({ rows, selectedNode, onSelect, onReset }) {
+  const maxEps = rows.reduce((max, n) => (n.eps != null && n.eps > max ? n.eps : max), 0);
+
   return (
     <div className="hov-panel dt-nodes-panel">
       <div className="hov-header">
         <span className="hov-header-title">YOUR NODES</span>
-        <span className="hov-header-badge">{nodes.length}</span>
+        <button
+          type="button"
+          className={`hov-header-badge dt-badge-reset${selectedNode ? ' dt-badge-reset--active' : ''}`}
+          onClick={onReset}
+          title={selectedNode ? 'Show all nodes again' : 'All nodes'}
+        >
+          {selectedNode ? `1 / ${rows.length}` : rows.length}
+        </button>
       </div>
-      <div className="hov-ranked-list">
-        {nodes.length === 0 ? (
+      <div className="dt-nodes-head">
+        <span>Tier</span>
+        <span>Address</span>
+        <span className="dt-num">Rank</span>
+        <span className="dt-num">Window</span>
+        <span className="dt-num">EPS</span>
+      </div>
+      <div className="hov-ranked-list dt-nodes-list">
+        {rows.length === 0 ? (
           <div className="hov-empty">No nodes found for this wallet</div>
         ) : (
-          nodes.map((n) => (
-            <div key={n.id} className="hov-ranked-row">
-              <span className="dt-node-tier">{n.tier}</span>
-              <span className="hov-ranked-name" title={n.ip_display}>{n.ip_display}</span>
-              <span className="hov-badge">Rank {fmtNum(n.rank)}</span>
-            </div>
-          ))
+          rows.map((n) => {
+            const meta = tierMeta(n.tier);
+            const selected = selectedNode === n.ip_display;
+            return (
+              <button
+                type="button"
+                key={n.id}
+                className={`hov-ranked-row dt-node-row${selected ? ' dt-node-row--selected' : ''}`}
+                onClick={() => onSelect(n.ip_display)}
+                title={selected ? 'Selected — click the count to show all' : `Show only ${n.ip_display}`}
+              >
+                <span className="dt-node-tier" style={{ color: meta.color, borderColor: `${meta.color}55` }}>
+                  {meta.label}
+                </span>
+                <span className="hov-ranked-name" title={n.ip_display}>{n.ip_display}</span>
+                <span className="dt-num dt-node-rank">{fmtNum(n.rank)}</span>
+                <span className={`dt-num dt-node-window${n.mtnWindow === 'Closed' ? ' dt-node-window--closed' : ''}`}>
+                  {n.mtnWindow || '—'}
+                </span>
+                <span className={`dt-num dt-node-eps${n.eps == null ? ' dt-node-eps--none' : ''}`}>
+                  {fmtEps(n.eps)}
+                  <i
+                    className="dt-node-eps-bar"
+                    style={{ width: maxEps > 0 && n.eps != null ? `${(n.eps / maxEps) * 100}%` : 0 }}
+                  />
+                </span>
+              </button>
+            );
+          })
         )}
       </div>
     </div>
@@ -310,14 +378,28 @@ function DonorNodesList({ nodes }) {
 
 // ── Apps by category ─────────────────────────────────────────────────────
 
-function AppsByCategoryPanel({ categories, totalApps }) {
+/*
+ * Renamed from "Apps on your Nodes" (issue #299): it was never a list of apps,
+ * it was a tally of their categories, and the name was taken by the table that
+ * now sits below. Its rows filter the table the same way a node row does.
+ */
+function AppCategoriesPanel({ categories, totalApps, selectedCategory, onSelect, onReset }) {
   const maxVal = categories[0]?.count || 1;
 
   return (
     <div className="hov-panel dt-apps-panel">
       <div className="hov-header">
-        <span className="hov-header-title">APPS ON YOUR NODES</span>
-        {totalApps > 0 && <span className="hov-header-badge">{totalApps}</span>}
+        <span className="hov-header-title">APP CATEGORIES</span>
+        {totalApps > 0 && (
+          <button
+            type="button"
+            className={`hov-header-badge dt-badge-reset${selectedCategory ? ' dt-badge-reset--active' : ''}`}
+            onClick={onReset}
+            title={selectedCategory ? 'Show all categories again' : 'All categories'}
+          >
+            {totalApps}
+          </button>
+        )}
       </div>
       <div className="dt-apps-list">
         {categories.length === 0 ? (
@@ -327,8 +409,15 @@ function AppsByCategoryPanel({ categories, totalApps }) {
             const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
             const { label, Icon, color } = meta;
             const barPct = (count / maxVal) * 100;
+            const selected = selectedCategory === category;
             return (
-              <div key={category} className="dt-apps-row">
+              <button
+                type="button"
+                key={category}
+                className={`dt-apps-row${selected ? ' dt-apps-row--selected' : ''}`}
+                onClick={() => onSelect(category)}
+                title={selected ? 'Selected — click the count to show all' : `Show only ${label} apps`}
+              >
                 <span className="dt-apps-icon" style={{ color }}>
                   <Icon size={11} />
                 </span>
@@ -337,10 +426,93 @@ function AppsByCategoryPanel({ categories, totalApps }) {
                   <div className="dt-apps-bar-fill" style={{ width: `${barPct}%`, background: color }} />
                 </div>
                 <span className="hov-badge">{fmtNum(count)}</span>
-              </div>
+              </button>
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── The apps themselves ──────────────────────────────────────────────────
+
+/*
+ * A resource cell. null is "not knowable" (an enterprise app's compose is
+ * encrypted; an unresolvable spec has no figures at all) and must not render as
+ * 0 -- nor as "— GB", which reads as a unit attached to a missing number rather
+ * than as no answer, so the unit goes with the value or not at all.
+ */
+function ResCell({ value, digits = 1, unit }) {
+  if (value == null) return <>—</>;
+  return (
+    <>
+      {value.toLocaleString(undefined, { maximumFractionDigits: digits })}
+      {unit && <small> {unit}</small>}
+    </>
+  );
+}
+
+/*
+ * APPS ON YOUR NODES, as an actual list of apps (issue #299).
+ *
+ * One row per running container, so an app deployed to three of the wallet's
+ * nodes appears three times -- that is what is running, and collapsing it would
+ * hide exactly the thing a node filter is for. The repo column is the image of
+ * the specific component this container is, not the app's primary image.
+ */
+function DonorAppsTable({ rows, totalRows, filtered }) {
+  return (
+    <div className="hov-panel dt-appstable-panel">
+      <div className="hov-header">
+        <span className="hov-header-title">APPS ON YOUR NODES</span>
+        <span className="hov-header-badge">{filtered ? `${rows.length} / ${totalRows}` : rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <div className="hov-empty">
+          {totalRows === 0 ? 'No running apps found' : 'No apps match the current selection'}
+        </div>
+      ) : (
+        <div className="dt-appstable-scroll">
+          <table className="dt-appstable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Repo</th>
+                <th>Node</th>
+                <th className="dt-num">CPU</th>
+                <th className="dt-num">RAM</th>
+                <th className="dt-num">SSD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const meta = APP_CATEGORY_META[row.category] || APP_CATEGORY_META.other;
+                return (
+                  <tr key={row.key}>
+                    <td className="dt-appstable-name" title={row.name}>
+                      <span className="dt-appstable-dot" style={{ background: meta.color }} />
+                      {row.name}
+                      {row.component && <small className="dt-appstable-component">/{row.component}</small>}
+                    </td>
+                    <td className="dt-appstable-repo" title={row.repotag || 'Image not published'}>
+                      {row.repotag || '—'}
+                    </td>
+                    <td className="dt-appstable-node" title={row.nodeAddress}>{row.nodeAddress}</td>
+                    <td className="dt-num"><ResCell value={row.cpu} /></td>
+                    <td className="dt-num"><ResCell value={row.ramGB} unit="GB" /></td>
+                    <td className="dt-num"><ResCell value={row.ssdGB} digits={0} unit="GB" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="dt-appstable-caption">
+        One row per running container. Resources are what the specification
+        reserves per instance; an enterprise app&apos;s specification is
+        encrypted, so its figures read as unknown rather than zero.
       </div>
     </div>
   );
@@ -354,11 +526,12 @@ const RESOURCE_ROWS = [
   { key: 'ssd', label: 'SSD' },
 ];
 
-function UtilizationPanel({ donorUtil, networkPct }) {
+function UtilizationPanel({ donorUtil, networkPct, selectedNode }) {
   return (
     <div className="hov-panel dt-util-panel">
       <div className="hov-header">
         <span className="hov-header-title">UTILIZATION VS NETWORK AVERAGE</span>
+        {selectedNode && <span className="hov-header-badge">{selectedNode}</span>}
       </div>
       {donorUtil.nodesWithCapacity === 0 ? (
         <div className="hov-empty">No capacity data available for your nodes</div>
@@ -413,13 +586,16 @@ export function DonorTab() {
 
   const [loading, setLoading] = useState(true);
   const [nodes, setNodes] = useState([]);
-  const [utilization, setUtilization] = useState({
-    nodesWithCapacity: 0,
-    cores: { utilized: 0, total: 0, percentage: 0 },
-    ram: { utilized: 0, total: 0, percentage: 0 },
-    ssd: { utilized: 0, total: 0, percentage: 0 },
-  });
-  const [appCategories, setAppCategories] = useState({ categories: [], totalApps: 0 });
+  /*
+   * The RAW utilisation feeds, not the summed result. Selecting a node
+   * re-aggregates over that one address (issue #299), and a percentage of a
+   * subset cannot be recovered from a percentage of the whole -- so the tab has
+   * to hold the inputs. Both fetches are the shared module-level ones, so this
+   * costs no extra network traffic.
+   */
+  const [utilSource, setUtilSource] = useState({ benchmarks: [], resources: [] });
+  const [nodesByIp, setNodesByIp] = useState({});
+  const [specIndex, setSpecIndex] = useState({});
   const [networkPct, setNetworkPct] = useState({ cores: 0, ram: 0, ssd: 0 });
   /*
    * The loader already fetches the global store for utilisation and app
@@ -429,6 +605,11 @@ export function DonorTab() {
    */
   const [gstore, setGstore] = useState(null);
 
+  // The two selections (issue #299). Independent: a node narrows apps,
+  // categories and utilisation; a category narrows only the apps table.
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
   useEffect(() => {
     if (!donorWallet) {
       setLoading(false);
@@ -436,6 +617,9 @@ export function DonorTab() {
     }
 
     setLoading(true);
+    // A different wallet's node is not a selection that can survive.
+    setSelectedNode(null);
+    setSelectedCategory(null);
 
     let cancelled = false;
 
@@ -444,19 +628,17 @@ export function DonorTab() {
       if (cancelled) return;
       setNodes(donorNodes);
 
-      const addresses = donorNodes.map((n) => n.ip_display).filter(Boolean);
-
       // fetch_total_network_utils() already calls fetch_fluxinfo_aggregate()
       // internally and carries nodesByIp through onto its resolved gstore
       // (apidata.js's fetchTotalDeployedApps, Task 1) — read it from there
       // rather than fetching the ~726KB fluxinfo payload a second time.
-      const [util, stage1] = await Promise.all([
-        fetch_donor_utilization(addresses),
+      const [source, stage1] = await Promise.all([
+        fetch_donor_utilization_source(),
         fetch_global_stats(null),
       ]);
       if (cancelled) return;
 
-      setUtilization(util);
+      setUtilSource(source);
 
       // Named distinctly from the `gstore` state above: shadowing it here
       // compiles and behaves correctly, but reads as though setGstore were
@@ -467,8 +649,8 @@ export function DonorTab() {
       ]);
       if (cancelled) return;
 
-      const specIndex = buildSpecIndex(rawSpecs);
-      setAppCategories(aggregateDonorAppsByCategory(fetchedStore.nodesByIp || {}, addresses, specIndex));
+      setSpecIndex(buildSpecIndex(rawSpecs));
+      setNodesByIp(fetchedStore.nodesByIp || {});
       setGstore(fetchedStore);
       setNetworkPct({
         cores: fetchedStore.utilized.cores_percentage,
@@ -484,6 +666,39 @@ export function DonorTab() {
 
     return () => { cancelled = true; };
   }, [donorWallet]);
+
+  const addresses = useMemo(() => nodes.map((n) => n.ip_display).filter(Boolean), [nodes]);
+
+  const nodeRows = useMemo(
+    () => buildDonorNodeRows(nodes, utilSource.benchmarks, gstore?.current_block_height),
+    [nodes, utilSource, gstore]
+  );
+
+  const allAppRows = useMemo(
+    () => buildDonorAppRows(nodesByIp, addresses, specIndex),
+    [nodesByIp, addresses, specIndex]
+  );
+
+  // The apps table sees both selections; the category tally sees only the node
+  // one, or selecting a category would collapse the panel to the single row
+  // that was just clicked and there would be no way back.
+  const appRows = useMemo(
+    () => filterAppRows(allAppRows, { node: selectedNode, category: selectedCategory }),
+    [allAppRows, selectedNode, selectedCategory]
+  );
+  const categoryTally = useMemo(
+    () => tallyRowCategories(filterAppRows(allAppRows, { node: selectedNode })),
+    [allAppRows, selectedNode]
+  );
+
+  const utilization = useMemo(() => {
+    if (addresses.length === 0) return EMPTY_UTILIZATION;
+    return aggregateDonorUtilization(
+      utilizationAddresses(addresses, selectedNode),
+      utilSource.benchmarks,
+      utilSource.resources
+    );
+  }, [addresses, selectedNode, utilSource]);
 
   if (!donorWallet) {
     return (
@@ -506,20 +721,28 @@ export function DonorTab() {
 
   return (
     <div className="donor-tab">
-      <div className="dt-tab-hero">
-        <span className="dt-tab-hero-value">{nextNode ? nextNode.next_reward : '—'}</span>
-        <span className="dt-tab-hero-label">Next payout</span>
-      </div>
-      <PayoutCard
-        nextNode={nextNode}
-        lastPaidNode={lastPaidNode}
-        currentBlock={gstore?.current_block_height}
-      />
       <div className="donor-tab-panel-grid">
-        <DonorNodesList nodes={nodes} />
-        <AppsByCategoryPanel categories={appCategories.categories} totalApps={appCategories.totalApps} />
-        <UtilizationPanel donorUtil={utilization} networkPct={networkPct} />
+        <PayoutCard nextNode={nextNode} lastPaidNode={lastPaidNode} currentBlock={gstore?.current_block_height} />
         <RewardImpactPanel nodes={nodes} gstore={gstore} />
+        <DonorNodesList
+          rows={nodeRows}
+          selectedNode={selectedNode}
+          onSelect={setSelectedNode}
+          onReset={() => setSelectedNode(null)}
+        />
+        <AppCategoriesPanel
+          categories={categoryTally.categories}
+          totalApps={categoryTally.totalApps}
+          selectedCategory={selectedCategory}
+          onSelect={setSelectedCategory}
+          onReset={() => setSelectedCategory(null)}
+        />
+        <UtilizationPanel donorUtil={utilization} networkPct={networkPct} selectedNode={selectedNode} />
+        <DonorAppsTable
+          rows={appRows}
+          totalRows={allAppRows.length}
+          filtered={!!(selectedNode || selectedCategory)}
+        />
         <WalletActivityPanel walletAddress={donorWallet} />
       </div>
     </div>
