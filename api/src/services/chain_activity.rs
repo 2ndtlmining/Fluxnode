@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use reqwest::{Client, ClientBuilder};
@@ -245,6 +245,9 @@ pub struct BlockScanResult {
     pub is_p2p: bool,
     pub is_dapp: bool,
     pub transfer_count: u32,
+    // How many app specs were attributed to this block, not merely whether any
+    // were (issue #286). is_dapp stays as `deployment_count > 0`.
+    pub deployment_count: u32,
     pub date: String,
     pub team_txs: Vec<TeamTx>,
 }
@@ -266,6 +269,16 @@ pub struct UtilityBlockRecord {
     pub is_p2p: bool,
     pub is_dapp: bool,
     pub transfer_count: u32,
+    /*
+     * Added by issue #286. `serde(default)` is load-bearing, not decoration:
+     * this file is already on disk in every running deployment without the
+     * field, and a missing-field error would fail the whole read, discard the
+     * retained window and trigger a ~23,040-block rescan on upgrade. Records
+     * written before this change report 0 deployments, which is the honest
+     * answer -- the count was never captured for them.
+     */
+    #[serde(default)]
+    pub deployment_count: u32,
 }
 
 // ── Persisted shapes ──────────────────────────────────────────────────────────
@@ -463,8 +476,9 @@ pub fn extract_p2p_transfers(txs: &[RawTx]) -> Vec<TxTransfer> {
     transfers
 }
 
-pub fn is_block_utility(height: i64, transfers: &[TxTransfer], deployment_heights: &HashSet<i64>) -> bool {
-    !transfers.is_empty() || deployment_heights.contains(&height)
+pub fn is_block_utility(height: i64, transfers: &[TxTransfer], deployment_heights: &HashMap<i64, u32>) -> bool {
+    // `> 0` is exactly what the HashSet's `contains` meant -- see #286.
+    !transfers.is_empty() || deployment_heights.get(&height).copied().unwrap_or(0) > 0
 }
 
 pub fn extract_team_txs(height: i64, transfers: &[TxTransfer]) -> Vec<TeamTx> {
@@ -545,6 +559,7 @@ pub fn fold_contiguous_results(
                         is_p2p: r.is_p2p,
                         is_dapp: r.is_dapp,
                         transfer_count: r.transfer_count,
+                        deployment_count: r.deployment_count,
                     });
                 }
                 checkpoint = height;
@@ -644,6 +659,64 @@ pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
 }
 
 /*
+ * Deployments per block height (issue #286).
+ *
+ * This used to be `.map(|s| s.height).collect::<HashSet<_>>()`, and a HashSet
+ * de-duplicates: several apps deployed in the same block collapsed to a single
+ * entry and the count was discarded on that line. Nothing else had to change to
+ * recover it -- the number was already in hand and thrown away.
+ */
+pub fn count_deployments_by_height(heights: Vec<i64>) -> HashMap<i64, u32> {
+    let mut counts: HashMap<i64, u32> = HashMap::new();
+    for h in heights {
+        *counts.entry(h).or_insert(0) += 1;
+    }
+    counts
+}
+
+/*
+ * The block with the most going on, over whatever slice of records it is given.
+ *
+ * Ranked on transfers PLUS deployments, which is the whole point: ranking on
+ * transfers alone would put a block with 3 transfers above one with 2 transfers
+ * and 9 deployments.
+ *
+ * Ties go to the HIGHER block. An arbitrary winner would flip between refreshes
+ * as records age out, and of two equally busy blocks the recent one is the more
+ * useful to show.
+ */
+pub fn busiest_block(blocks: &[UtilityBlockRecord]) -> Option<&UtilityBlockRecord> {
+    blocks
+        .iter()
+        .max_by_key(|b| (b.transfer_count + b.deployment_count, b.height))
+}
+
+/*
+ * The busiest block within the last `window` blocks of `tip` (issue #286).
+ *
+ * Windowed by HEIGHT rather than by the `date` string on each record. The dates
+ * are calendar days in UTC, so "today" is anywhere from a minute to 24 hours of
+ * chain depending on when it is asked -- which would make the answer depend on
+ * the time of day rather than on the chain. Heights are uniform: 2,880 blocks
+ * is 24 hours at the 30-second target, the same basis BLOCKS_PER_DAY already
+ * uses everywhere else in this file.
+ */
+pub fn busiest_block_in_window(
+    blocks: &[UtilityBlockRecord],
+    tip: i64,
+    window: i64,
+) -> Option<&UtilityBlockRecord> {
+    if tip <= 0 || window <= 0 {
+        return None;
+    }
+    let floor = tip - window;
+    blocks
+        .iter()
+        .filter(|b| b.height > floor && b.height <= tip)
+        .max_by_key(|b| (b.transfer_count + b.deployment_count, b.height))
+}
+
+/*
  * One-time sync of every app spec's real deploy height, re-fetched fresh each
  * scan cycle rather than incrementally diffed — deliberately NOT a port of
  * client/src/live/apidata.js's diffDeployedForEvents, which diffs successive
@@ -653,19 +726,19 @@ pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
  * field is already the real, stable answer to "was a deploy attributed to
  * this block."
  */
-pub async fn fetch_deployment_heights(client: &Client) -> HashSet<i64> {
+pub async fn fetch_deployment_heights(client: &Client) -> HashMap<i64, u32> {
     let res = match get_with_backoff(client, APP_SPECS_URL).await {
         Some(r) => r,
-        None => return HashSet::new(),
+        None => return HashMap::new(),
     };
     let parsed: AppSpecsResponse = match res.json().await {
         Ok(p) => p,
-        Err(_) => return HashSet::new(),
+        Err(_) => return HashMap::new(),
     };
     if parsed.status == "error" {
-        return HashSet::new();
+        return HashMap::new();
     }
-    parsed.data.unwrap_or_default().into_iter().map(|s| s.height).collect()
+    count_deployments_by_height(parsed.data.unwrap_or_default().into_iter().map(|s| s.height).collect())
 }
 
 async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
@@ -701,14 +774,15 @@ async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Option<Vec<Ra
     Some(all_txs)
 }
 
-pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &HashSet<i64>) -> Option<BlockScanResult> {
+pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &HashMap<i64, u32>) -> Option<BlockScanResult> {
     let hash = resolve_block_hash(client, height).await?;
     let txs = fetch_all_block_txs(client, &hash).await?;
     let transfers = extract_p2p_transfers(&txs);
     // The two categories, kept rather than collapsed. is_utility stays exactly
     // `is_p2p || is_dapp`, so every existing is_block_utility test still holds.
     let is_p2p = !transfers.is_empty();
-    let is_dapp = deployment_heights.contains(&height);
+    let deployment_count = deployment_heights.get(&height).copied().unwrap_or(0);
+    let is_dapp = deployment_count > 0;
     let transfer_count = transfers.len() as u32;
     let is_utility = is_block_utility(height, &transfers, deployment_heights);
     let team_txs = extract_team_txs(height, &transfers);
@@ -722,7 +796,7 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
         .or_else(|| txs.first().and_then(|t| t.time))
         .unwrap_or(0);
     let date = unix_to_utc_date(block_time);
-    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, date, team_txs })
+    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, deployment_count, date, team_txs })
 }
 
 /*
@@ -737,7 +811,7 @@ async fn scan_range(
     client: &Client,
     start_height: i64,
     tip_height: i64,
-    deployment_heights: &HashSet<i64>,
+    deployment_heights: &HashMap<i64, u32>,
     daily: &mut Vec<DailyCount>,
     team_txs: &mut Vec<TeamTx>,
     utility_blocks: &mut Vec<UtilityBlockRecord>,
@@ -951,6 +1025,124 @@ mod tests {
     use super::*;
 
     /*
+     * Issue #286: "busiest block of the last 24h" is transfers + deployments,
+     * and the deployment half did not exist. fetch_deployment_heights collected
+     * spec heights into a HashSet, which de-duplicates -- several apps deployed
+     * in the same block collapsed to one entry and the count was discarded on
+     * that line. These cover the counting that replaces it.
+     */
+    #[test]
+    fn counts_every_deployment_at_a_height_not_just_whether_one_happened() {
+        let counts = count_deployments_by_height(vec![100, 100, 100, 250]);
+        assert_eq!(counts.get(&100), Some(&3));
+        assert_eq!(counts.get(&250), Some(&1));
+    }
+
+    #[test]
+    fn a_height_with_no_deployment_is_absent_rather_than_zero() {
+        let counts = count_deployments_by_height(vec![100]);
+        assert_eq!(counts.get(&999), None);
+    }
+
+    #[test]
+    fn empty_spec_list_yields_no_counts_rather_than_panicking() {
+        assert!(count_deployments_by_height(vec![]).is_empty());
+    }
+
+    /*
+     * is_dapp has to keep meaning exactly what it meant, because
+     * is_block_utility is `is_p2p || is_dapp` and every existing utility
+     * classification depends on it. count > 0 is the same predicate the
+     * HashSet's `contains` was.
+     */
+    #[test]
+    fn is_dapp_still_means_at_least_one_deployment() {
+        let counts = count_deployments_by_height(vec![100, 100]);
+        assert!(counts.get(&100).copied().unwrap_or(0) > 0);
+        assert!(counts.get(&101).copied().unwrap_or(0) == 0);
+    }
+
+    /*
+     * The busiest block is ranked on transfers PLUS deployments. Ranking on
+     * transfers alone would put a block with 3 transfers above one with 2
+     * transfers and 9 deployments, which is the wrong answer to the question
+     * being asked.
+     */
+    #[test]
+    fn busiest_block_ranks_on_transfers_plus_deployments() {
+        let blocks = vec![
+            utility_record(10, 3, 0),
+            utility_record(11, 2, 9),
+            utility_record(12, 1, 1),
+        ];
+        assert_eq!(busiest_block(&blocks).map(|b| b.height), Some(11));
+    }
+
+    #[test]
+    fn busiest_block_prefers_the_higher_block_when_activity_ties() {
+        // A tie should resolve to the more recent block: it is the more useful
+        // one to show, and an arbitrary winner would flicker between refreshes.
+        let blocks = vec![utility_record(10, 2, 0), utility_record(40, 1, 1)];
+        assert_eq!(busiest_block(&blocks).map(|b| b.height), Some(40));
+    }
+
+    /*
+     * The upgrade path. Every running deployment already has
+     * chain_activity_utility_blocks.json on disk WITHOUT this field, and a
+     * missing-field error fails the whole read -- which would discard the
+     * retained window and trigger a ~23,040-block rescan the first time the
+     * new binary starts. Remove the serde(default) and this test says so.
+     */
+    #[test]
+    fn reads_records_written_before_deployment_count_existed() {
+        let old = r#"[{"height":42,"date":"2026-09-01","is_p2p":true,"is_dapp":false,"transfer_count":3}]"#;
+        let parsed: Vec<UtilityBlockRecord> =
+            serde_json::from_str(old).expect("pre-#286 records must still deserialize");
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].height, 42);
+        assert_eq!(parsed[0].transfer_count, 3);
+        // Never captured for these, so 0 is the honest answer rather than a guess.
+        assert_eq!(parsed[0].deployment_count, 0);
+    }
+
+    #[test]
+    fn busiest_block_in_window_ignores_blocks_older_than_the_window() {
+        let blocks = vec![
+            utility_record(1_000, 50, 50), // busiest overall, but far outside 24h
+            utility_record(9_500, 2, 1),
+        ];
+        // tip 10_000, window 2_880 -> floor 7_120
+        let picked = busiest_block_in_window(&blocks, 10_000, 2_880);
+        assert_eq!(picked.map(|b| b.height), Some(9_500));
+    }
+
+    #[test]
+    fn busiest_block_in_window_ignores_blocks_beyond_the_tip() {
+        // A record above the tip would mean the retained set is ahead of the
+        // checkpoint; it must not be offered as "the last 24 hours".
+        let blocks = vec![utility_record(10_500, 99, 99), utility_record(9_900, 1, 0)];
+        assert_eq!(busiest_block_in_window(&blocks, 10_000, 2_880).map(|b| b.height), Some(9_900));
+    }
+
+    #[test]
+    fn busiest_block_in_window_is_none_when_nothing_falls_inside_it() {
+        let blocks = vec![utility_record(1_000, 5, 5)];
+        assert!(busiest_block_in_window(&blocks, 10_000, 2_880).is_none());
+    }
+
+    #[test]
+    fn busiest_block_in_window_is_none_without_a_usable_tip() {
+        // Before the first scan completes there is no checkpoint height.
+        let blocks = vec![utility_record(9_900, 5, 5)];
+        assert!(busiest_block_in_window(&blocks, 0, 2_880).is_none());
+    }
+
+    #[test]
+    fn busiest_block_is_none_when_there_are_no_blocks() {
+        assert!(busiest_block(&[]).is_none());
+    }
+
+    /*
      * Issue #231: the drill-down was empty on a deployment whose checkpoint had
      * already reached the tip before utility blocks existed.
      */
@@ -1072,19 +1264,18 @@ mod tests {
     #[test]
     fn is_block_utility_true_with_a_transfer() {
         let transfers = vec![TxTransfer { txid: "t".into(), from: Some("a".into()), to: "b".into(), amount: 1.0 }];
-        assert!(is_block_utility(100, &transfers, &HashSet::new()));
+        assert!(is_block_utility(100, &transfers, &HashMap::new()));
     }
 
     #[test]
     fn is_block_utility_true_with_a_deployment_at_this_height() {
-        let mut heights = HashSet::new();
-        heights.insert(100);
+        let heights = count_deployments_by_height(vec![100]);
         assert!(is_block_utility(100, &[], &heights));
     }
 
     #[test]
     fn is_block_utility_false_when_neither() {
-        assert!(!is_block_utility(100, &[], &HashSet::new()));
+        assert!(!is_block_utility(100, &[], &HashMap::new()));
     }
 
     #[test]
@@ -1143,6 +1334,18 @@ mod tests {
      * scan_one_block computes it -- a helper that let those drift apart would
      * make every test below meaningless.
      */
+    /// A retained utility block with a given transfer and deployment count.
+    fn utility_record(height: i64, transfers: u32, deployments: u32) -> UtilityBlockRecord {
+        UtilityBlockRecord {
+            height,
+            date: "2026-09-12".into(),
+            is_p2p: transfers > 0,
+            is_dapp: deployments > 0,
+            transfer_count: transfers,
+            deployment_count: deployments,
+        }
+    }
+
     fn scan_result(height: i64, is_p2p: bool, is_dapp: bool, date: &str) -> BlockScanResult {
         BlockScanResult {
             height,
@@ -1150,6 +1353,7 @@ mod tests {
             is_p2p,
             is_dapp,
             transfer_count: if is_p2p { 2 } else { 0 },
+            deployment_count: if is_dapp { 1 } else { 0 },
             date: date.into(),
             team_txs: vec![],
         }
@@ -1219,9 +1423,9 @@ mod tests {
     #[test]
     fn trim_utility_blocks_drops_everything_below_the_window_edge() {
         let mut blocks = vec![
-            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
-            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
-            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0 },
+            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
+            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
+            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1 },
         ];
         trim_utility_blocks(&mut blocks, 200);
         // Boundary is inclusive, matching trim_team_txs: a block exactly at the
@@ -1235,10 +1439,10 @@ mod tests {
         // total -- overlapping "any P2P" / "any Dapp" counts would not add up
         // and would read as a bug on screen.
         let blocks = vec![
-            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3 },
-            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1 },
-            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0 },
-            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2 },
+            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3, deployment_count: 0 },
+            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0 },
+            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1 },
+            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2, deployment_count: 1 },
         ];
         let p2p_only = blocks.iter().filter(|b| b.is_p2p && !b.is_dapp).count();
         let dapp_only = blocks.iter().filter(|b| !b.is_p2p && b.is_dapp).count();
