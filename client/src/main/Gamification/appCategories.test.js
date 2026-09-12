@@ -206,3 +206,44 @@ describe('game servers tracked by fluxview / Fluxtracker', () => {
     expect(categorizeApp('ekzhang/rustpad:latest')).toBe('web');
   });
 });
+
+/*
+ * Issue #309. Games ordered from RunOnFlux's dedicated hosting sites ship an
+ * encrypted spec (enterprise set, compose empty), so the enterprise branch used
+ * to answer before any keyword was consulted -- 103 specs / 219 instances of
+ * known games, including four whose keyword was already in the list.
+ */
+describe('categorizeAppSpec — apps deployed through a dedicated hosting site', () => {
+  it('categorizes an encrypted game spec by the site prefix in its name', () => {
+    // Real on-network spec: RuneScape: Dragonwilds, the game #309 is about.
+    const spec = { name: 'dragonwilds1789155733040', compose: [], enterprise: 'AbCdEf...' };
+    expect(categorizeAppSpec(spec)).toBe('gaming');
+  });
+
+  it('recovers the games whose keyword was already listed but never reached', () => {
+    for (const name of ['valheim1787327994881', 'fivem1787211516616', 'projectzomboid1786661732584']) {
+      expect(categorizeAppSpec({ name, compose: [], enterprise: 'x' })).toBe('gaming');
+    }
+  });
+
+  it('leaves an encrypted spec whose name means nothing in the enterprise bucket', () => {
+    // The bucket keeps its meaning: "not allowed to see this", not "unrecognised".
+    const spec = { name: 'Fluxtracker', compose: [], enterprise: 'l/CKxfdabV5BoEG8...' };
+    expect(categorizeAppSpec(spec)).toBe('enterprise');
+  });
+
+  it('still prefers a readable repotag over the site prefix', () => {
+    // Not encrypted, so there is a real image to read -- the prefix must not
+    // pre-empt the rule that the image wins.
+    const spec = {
+      name: 'valheim1787327994881',
+      compose: [{ repotag: 'yurinnick/folding-at-home:latest' }],
+    };
+    expect(categorizeAppSpec(spec)).toBe('computing');
+  });
+
+  it('does not sweep up a hand-named app that merely starts like a site prefix', () => {
+    const spec = { name: 'palworld16slots', compose: [], enterprise: 'x' };
+    expect(categorizeAppSpec(spec)).toBe('enterprise');
+  });
+});
