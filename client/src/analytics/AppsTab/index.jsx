@@ -486,9 +486,21 @@ export function AppsTab() {
         * seven-column table cannot live in a grid cell.
         */}
       <div className="apps-kpi-strip">
-        <KpiTile value={fmtNum(networkTotalInstances)} label="Ordered app instances" />
-        <KpiTile value={fmtNum(distinctApps)} label="Distinct apps" />
-        <KpiTile value={fmtNum(appOwners)} label="App owners" />
+        {/*
+          Gated since #298, like everything else on this page. These three
+          rendered free beside a locked fourth tile, which was the same silent
+          default the three Network cards had: no PanelGate, no entry, outside
+          the mechanism rather than public by decision.
+        */}
+        <PanelGate panelKey="appsKpis" feature="App totals" preview="blur">
+          <KpiTile value={fmtNum(networkTotalInstances)} label="Ordered app instances" />
+        </PanelGate>
+        <PanelGate panelKey="appsKpis" feature="App totals" preview="blur">
+          <KpiTile value={fmtNum(distinctApps)} label="Distinct apps" />
+        </PanelGate>
+        <PanelGate panelKey="appsKpis" feature="App totals" preview="blur">
+          <KpiTile value={fmtNum(appOwners)} label="App owners" />
+        </PanelGate>
         <PanelGate panelKey="appsTeamSponsoredStat" feature="Flux-team-sponsored stat" preview="blur">
           <KpiTile
             value={`${sharePct.toFixed(1)}%`}
