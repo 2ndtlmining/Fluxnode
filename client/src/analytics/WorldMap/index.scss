@@ -94,71 +94,97 @@
 }
 
 /*
- * The landmass layer. Stretched to the frame with preserveAspectRatio="none",
- * so its 0..360 / 0..180 viewBox maps 1:1 onto the same box the bubbles are
- * positioned within as percentages -- alignment is structural, not tuned.
+ * The map layers (issue #290).
  *
- * Ocean is .wm-frame's own background; this only draws land. The hairline
- * stroke is vector-effect: non-scaling-stroke so a coastline stays 1px at any
- * container width instead of being stretched into a wedge by the non-uniform
- * scaling (the frame is 2:1, the viewBox is 2:1, but the container can be any
- * size).
+ * Everything below is now SVG produced by react-simple-maps and projected
+ * through one projection, rather than a hand-drawn path plus HTML bubbles
+ * positioned in percentages. The colours are carried over unchanged from the
+ * hand-rolled version so the map's identity in both themes is the same.
+ *
+ * Ocean stays .wm-frame's own background; these only draw land and marks.
  */
-.wm-land {
-  position: absolute;
-  inset: 0;
+.wm-svg {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
-  pointer-events: none;
+}
 
-  path {
+.wm-country {
+  fill: #eef2e9;
+  stroke: rgba(30, 64, 120, 0.28);
+  stroke-width: 0.4;
+  // A coastline should stay a hairline at any container width instead of being
+  // scaled into a wedge along with the geometry.
+  vector-effect: non-scaling-stroke;
+  outline: none;
+
+  // react-simple-maps emits pressed/hover variants; the map is not a country
+  // picker (the bubbles and the selector above are), so they all look the same.
+  &:hover,
+  &:focus,
+  &:active {
     fill: #eef2e9;
-    stroke: rgba(30, 64, 120, 0.28);
-    stroke-width: 0.5;
-    vector-effect: non-scaling-stroke;
+    outline: none;
   }
 
   @include rule-mode-dark() {
-    path {
+    fill: #16324a;
+    stroke: rgba(148, 197, 255, 0.22);
+
+    &:hover,
+    &:focus,
+    &:active {
       fill: #16324a;
-      stroke: rgba(148, 197, 255, 0.22);
     }
   }
 }
 
-.wm-graticule {
-  position: absolute;
-  background: rgba(30, 64, 120, 0.07);
+.wm-graticule-line {
+  fill: none;
+  stroke: rgba(30, 64, 120, 0.07);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
 
   @include rule-mode-dark() {
-    background: rgba(255, 255, 255, 0.045);
-  }
-
-  &--h {
-    left: 0;
-    right: 0;
-    height: 1px;
-  }
-
-  &--v {
-    top: 0;
-    bottom: 0;
-    width: 1px;
+    stroke: rgba(255, 255, 255, 0.045);
   }
 }
 
-.wm-bubble {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: rgba(38, 134, 208, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  cursor: default;
-  transition: background var(--transition-fast);
+.wm-bubble-dot {
+  fill: rgba(38, 134, 208, 0.55);
+  stroke: rgba(255, 255, 255, 0.65);
+  transition: fill var(--transition-fast);
+}
 
-  &:hover {
-    background: rgba(38, 134, 208, 0.85);
+.wm-bubble {
+  cursor: default;
+  outline: none;
+
+  &:hover .wm-bubble-dot {
+    fill: rgba(38, 134, 208, 0.85);
+  }
+}
+
+.wm-bubble-ring {
+  stroke: #2b61d1;
+}
+
+/* Selectable bubbles (issue #254) */
+.wm-bubble--clickable {
+  cursor: pointer;
+
+  // The marker is a focusable <g>; give keyboard users the same ring the
+  // selected state uses rather than relying on the UA outline, which SVG
+  // renders inconsistently.
+  &:focus-visible .wm-bubble-dot {
+    stroke: #2b61d1;
+    stroke-width: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-bubble-dot {
+    transition: none;
   }
 }
 
@@ -169,13 +195,3 @@
   text-align: right;
 }
 
-/* Selectable bubbles (issue #254) */
-.wm-bubble--clickable {
-  cursor: pointer;
-}
-
-.wm-bubble--selected {
-  outline: 2px solid #2b61d1;
-  outline-offset: 2px;
-  z-index: 2;
-}
