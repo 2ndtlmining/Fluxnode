@@ -37,41 +37,33 @@ export function boundsFor(scope) {
 }
 
 /*
- * The SVG viewBox for a box.
+ * The same bounds box, restated as the (center, zoom) pair react-simple-maps
+ * frames by (issue #290).
  *
- * WorldMap draws its landmass with viewBox "0 0 360 180" and
- * preserveAspectRatio="none", so the SVG's coordinate space IS
- * (lon + 180, 90 - lat). Converting a bounds box is therefore a direct
- * translation with no projection maths.
+ * The boxes above stay the single source of truth for what selecting a
+ * continent means; only the units the renderer wants have changed.
+ *
+ * Zoom takes the SMALLER of the two axis ratios deliberately. Europe spans 70°
+ * of longitude (360/70 = 5.14) and 37° of latitude (180/37 = 4.86); taking the
+ * larger would fill the frame horizontally and crop Scandinavia off the top,
+ * which is exactly the "cuts the corner off Scandinavia" failure the boxes were
+ * written generously to avoid.
+ *
+ * Clamped at 1 so a box wider than the world cannot zoom out past it and leave
+ * the map floating in empty space.
  */
-export function viewBoxFor(bounds) {
-  const [south, west, north, east] = bounds || WORLD_BOUNDS;
-  const x = west + 180;
-  const y = 90 - north;
-  return `${x} ${y} ${east - west} ${north - south}`;
-}
+export function mapFrameFor(bounds) {
+  const box = Array.isArray(bounds) && bounds.length === 4 ? bounds : WORLD_BOUNDS;
+  const [south, west, north, east] = box;
 
-/*
- * A whole-world percentage position, restated relative to the zoomed box.
- *
- * Bubbles are HTML elements positioned in percent inside the same frame as the
- * SVG, so they have to be remapped by the same box the viewBox came from --
- * otherwise the pings drift off their countries as soon as anything zooms.
- *
- * Deliberately does NOT clamp: a result outside 0-100 means the point is off
- * the current view, and the caller hides it rather than pinning it to an edge
- * where it would read as a real node in the wrong place.
- */
-export function remapToBounds({ xPct, yPct }, bounds) {
-  const [south, west, north, east] = bounds || WORLD_BOUNDS;
-
-  const x0 = ((west + 180) / 360) * 100;
-  const x1 = ((east + 180) / 360) * 100;
-  const y0 = ((90 - north) / 180) * 100;
-  const y1 = ((90 - south) / 180) * 100;
+  const lonSpan = east - west;
+  const latSpan = north - south;
+  if (!(lonSpan > 0) || !(latSpan > 0)) {
+    return { center: [0, 0], zoom: 1 };
+  }
 
   return {
-    xPct: ((xPct - x0) / (x1 - x0)) * 100,
-    yPct: ((yPct - y0) / (y1 - y0)) * 100
+    center: [(west + east) / 2, (south + north) / 2],
+    zoom: Math.max(1, Math.min(360 / lonSpan, 180 / latSpan))
   };
 }

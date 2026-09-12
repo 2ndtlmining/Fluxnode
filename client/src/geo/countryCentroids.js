@@ -46,21 +46,7 @@ export const COUNTRY_CENTROIDS = {
   BO: [-16.3, -63.6], PY: [-23.4, -58.4], GY: [4.9, -58.9], SR: [3.9, -56.0],
 };
 
-// Fallback so an unmapped country still gets a plausible spot instead of the
-// map's [0, 0] origin (which is empty ocean).
-export const DEFAULT_CENTROID = [20, 0];
-
 export function getCountryCentroid(countryCode) {
   if (!countryCode) return null;
   return COUNTRY_CENTROIDS[countryCode.toUpperCase()] || null;
-}
-
-// Equirectangular projection: plain lat/lon -> percentage position within a
-// rectangular map container. No mapping library needed, GPU-friendly (the
-// caller only ever sets a CSS transform/left/top from these), and accurate
-// enough for a country-level dot.
-export function projectToPercent([lat, lon]) {
-  const x = ((lon + 180) / 360) * 100;
-  const y = ((90 - lat) / 180) * 100;
-  return { xPct: x, yPct: y };
 }

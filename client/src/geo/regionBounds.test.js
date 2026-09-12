@@ -1,4 +1,4 @@
-import { CONTINENT_BOUNDS, boundsFor, viewBoxFor, remapToBounds, WORLD_BOUNDS } from './regionBounds';
+import { CONTINENT_BOUNDS, boundsFor, mapFrameFor, WORLD_BOUNDS } from './regionBounds';
 
 /*
  * Issue #254 -- zooming the Network map to a continent.
@@ -60,33 +60,47 @@ describe('boundsFor', () => {
   });
 });
 
-describe('viewBoxFor', () => {
-  it('is the full equirectangular frame for the world', () => {
-    expect(viewBoxFor(WORLD_BOUNDS)).toBe('0 0 360 180');
+/*
+ * Issue #290: the map moved to react-simple-maps, which frames by
+ * (center, zoom) rather than an SVG viewBox. These bounds boxes stay the single
+ * source of truth for what a continent selection means -- this just restates
+ * one in the units the new renderer wants, so zoom-to-scope survives the swap.
+ */
+describe('mapFrameFor', () => {
+  test('the whole world is centred at the origin, unzoomed', () => {
+    expect(mapFrameFor(WORLD_BOUNDS)).toEqual({ center: [0, 0], zoom: 1 });
   });
 
-  it('converts a box to the map\'s lon+180 / 90-lat coordinate space', () => {
-    // [south, west, north, east] = [0, 0, 90, 90]
-    //   x = west + 180 = 180, y = 90 - north = 0, w = 90, h = 90
-    expect(viewBoxFor([0, 0, 90, 90])).toBe('180 0 90 90');
-  });
-});
-
-describe('remapToBounds', () => {
-  it('leaves percentages untouched for the world view', () => {
-    expect(remapToBounds({ xPct: 25, yPct: 40 }, WORLD_BOUNDS)).toEqual({ xPct: 25, yPct: 40 });
+  test('centres on the middle of the box', () => {
+    // Europe: [34, -25, 71, 45] -> lon (-25+45)/2 = 10, lat (34+71)/2 = 52.5
+    expect(mapFrameFor(CONTINENT_BOUNDS.Europe).center).toEqual([10, 52.5]);
   });
 
-  it('rescales a point into the zoomed box', () => {
-    // Box covering the eastern/northern quarter: x 50..100%, y 0..50%.
-    // A point at 75%,25% sits dead centre of it.
-    const out = remapToBounds({ xPct: 75, yPct: 25 }, [0, 0, 90, 180]);
-    expect(out.xPct).toBeCloseTo(50, 6);
-    expect(out.yPct).toBeCloseTo(50, 6);
+  test('zooms by whichever axis is the tighter fit, so nothing is cropped', () => {
+    // Europe spans 70 deg lon (360/70 = 5.14) and 37 deg lat (180/37 = 4.86).
+    // Taking the LARGER would crop the top and bottom off the continent.
+    expect(mapFrameFor(CONTINENT_BOUNDS.Europe).zoom).toBeCloseTo(4.86, 2);
   });
 
-  it('reports points outside the box as outside, so they can be hidden', () => {
-    const out = remapToBounds({ xPct: 10, yPct: 90 }, [0, 0, 90, 180]);
-    expect(out.xPct < 0 || out.xPct > 100 || out.yPct < 0 || out.yPct > 100).toBe(true);
+  test('never zooms out past the whole world', () => {
+    // A box larger than the world would otherwise produce a zoom below 1.
+    expect(mapFrameFor([-90, -360, 90, 360]).zoom).toBe(1);
+  });
+
+  test('falls back to the world view for missing or malformed bounds', () => {
+    const world = { center: [0, 0], zoom: 1 };
+    expect(mapFrameFor(null)).toEqual(world);
+    expect(mapFrameFor(undefined)).toEqual(world);
+  });
+
+  test('gives every real continent a usable frame', () => {
+    for (const [name, bounds] of Object.entries(CONTINENT_BOUNDS)) {
+      const frame = mapFrameFor(bounds);
+      expect(Number.isFinite(frame.center[0])).toBe(true);
+      expect(Number.isFinite(frame.center[1])).toBe(true);
+      expect(frame.zoom).toBeGreaterThanOrEqual(1);
+      expect(Number.isFinite(frame.zoom)).toBe(true);
+      expect(name).toBeTruthy();
+    }
   });
 });
