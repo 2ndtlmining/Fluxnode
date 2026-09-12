@@ -472,6 +472,19 @@
 .nt-apps-list {
   max-height: 190px;
   overflow-y: auto;
+  /*
+   * Reserve the scrollbar's width (issue #318). Every list here is capped and
+   * scrollable with a RIGHT-ALIGNED numeric column, so without this the bar is
+   * drawn straight over the numbers the reader came for.
+   *
+   * Padding rather than `scrollbar-gutter: stable`: gutter only reserves space
+   * for CLASSIC scrollbars, and does nothing under the overlay scrollbars that
+   * are the macOS default -- which is exactly the configuration this was
+   * reported from. Padding holds in both, and applies whether or not the list
+   * is currently overflowing, so rows do not shift sideways as one grows past
+   * the cap.
+   */
+  padding-right: 10px;
 }
 
 /* ── Scope selector ──────────────────────────────────────────────────────── */
