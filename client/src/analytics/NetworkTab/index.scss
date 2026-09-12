@@ -594,3 +594,51 @@
     transition: none;
   }
 }
+
+/* ── Chain-wide status strip (issue #284) ────────────────────────────────────
+   Sits above the scope selector, because everything above the selector is
+   network-wide and everything below it answers to the selection. Wraps rather
+   than scrolls: these are eight short facts, and a hidden one is a lost one. */
+.nt-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 4px 0 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+}
+
+.nt-status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.nt-status-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.nt-status-value--accent {
+  color: var(--accent-green, #2fc29e);
+}
+
+.nt-status-label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 640px) {
+  .nt-status-strip {
+    gap: 10px 18px;
+    padding: 10px 12px;
+  }
+}

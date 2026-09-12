@@ -40,7 +40,6 @@ import {
   fetch_wallet_donation_summary,
   fetch_donation_totals,
   fetch_total_network_utils,
-  fetch_gpu_prices
 } from 'apidata';
 
 import { appStore, StoreKeys } from 'persistance/store';
@@ -85,9 +84,6 @@ class Home extends React.Component {
       donations: null,
       donationsSettled: false,
       donationsFailed: false,
-      countryCountsSettled: false,
-      countryCountsFailed: false,
-      gpuPrices: null
     };
 
     this._refreshInterval = null;
@@ -242,26 +238,19 @@ class Home extends React.Component {
   }
 
   /*
-   * NODE DISTRIBUTION and the Flux Edge GPU / FluxAI rows describe the whole
-   * network, not the wallet being viewed, so they load on EVERY mount (#250).
+   * Country counts describe the whole network, not the wallet being viewed, so
+   * they load on EVERY mount (#250). They previously sat inside hydrateApp's
+   * no-wallet branch, so arriving with a ?wallet= link -- or as an unlocked
+   * donor, after #230 added that branch -- left the panels that needed them
+   * empty forever, despite having nothing to do with the wallet.
    *
-   * They previously sat inside hydrateApp's no-wallet branch, so arriving with
-   * a ?wallet= link -- or as an unlocked donor, after #230 added that branch --
-   * left NODE DISTRIBUTION spinning forever and silently dropped two rows from
-   * the FLUX NETWORK panel. Neither has anything to do with the wallet.
-   *
-   * `countryCountsSettled` is what lets the panel tell "still loading" from
-   * "tried and failed"; the old `.catch(() => {})` made those identical.
+   * The settled/failed flags went with the geo panel in #284. Nothing on Home
+   * now distinguishes "still loading" from "failed" here: the donor panel's
+   * teaser falls back to generic copy in both cases, which is correct for both.
    */
   _loadNetworkWideData() {
     fetch_country_node_counts()
-      .then((counts) =>
-        this.setState({ countryCounts: counts, countryCountsSettled: true, countryCountsFailed: false })
-      )
-      .catch(() => this.setState({ countryCountsSettled: true, countryCountsFailed: true }));
-
-    fetch_gpu_prices()
-      .then((data) => this.setState({ gpuPrices: data }))
+      .then((counts) => this.setState({ countryCounts: counts }))
       .catch(() => {});
 
     // #258: community donation totals. Network-wide, so it belongs here with
@@ -676,12 +665,14 @@ class Home extends React.Component {
                 </Row>
               </Container>
 
+              {/*
+                countryCounts stays after #284 removed the geo panel: the donor
+                panel's "N nodes across N countries" teaser is derived from it.
+                The settled/failed flags went with the panel that used them.
+              */}
               <HomeOverview
                 gstore={this.state.gstore}
                 countryCounts={this.state.countryCounts}
-                countryCountsSettled={this.state.countryCountsSettled}
-                countryCountsFailed={this.state.countryCountsFailed}
-                gpuPrices={this.state.gpuPrices}
                 donations={this.state.donations}
                 donationsSettled={this.state.donationsSettled}
                 donationsFailed={this.state.donationsFailed}

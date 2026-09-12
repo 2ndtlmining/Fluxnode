@@ -29,6 +29,37 @@
   }
 }
 
+/*
+ * The support row (issue #284).
+ *
+ * Two panels rather than three, and deliberately not equal halves: the
+ * donations panel carries a hero figure plus a key/value list, while the
+ * countdown is four digits and a caption. Splitting 50/50 left the clock
+ * marooned in whitespace.
+ *
+ * Collapses to one column at the same 640px the three-column row does, so the
+ * page has one stacking breakpoint rather than two.
+ */
+.home-overview-row--support {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  // The band was a full-width strip of its own before this row existed, so it
+  // carried a bottom margin and centred itself against the page. In a shared
+  // row it is a panel like any other.
+  .hov-panel--reward-band {
+    margin-bottom: 0;
+    justify-content: center;
+  }
+}
+
 // ── Staggered panel entrance ──────────────────────────────────────────────────
 
 @keyframes panel-enter {
