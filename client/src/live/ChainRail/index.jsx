@@ -129,7 +129,7 @@ function BusiestBlock({ block, isSelected, onSelect }) {
  * with no remount and so no animation, which is correct. See
  * live/blockAnimation.js for the phase state machine this renders.
  */
-export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock, busiestBlock }) {
+export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock, busiestSlot }) {
   return (
     <div className="live-panel live-chain-rail">
       <div className="live-panel-header">
@@ -159,15 +159,26 @@ export function ChainRail({ blocks, tipHeight, selectedHeight, onSelectBlock, bu
           would claim this block sits next to the live ones in the chain, and it
           does not -- it is one block pulled out of the last 24 hours.
         */}
-        {busiestBlock && (
-          <>
-            <span className="live-chain-divider" aria-hidden="true" />
-            <BusiestBlock
-              block={busiestBlock}
-              isSelected={selectedHeight === busiestBlock.height}
-              onSelect={onSelectBlock}
-            />
-          </>
+        {/*
+          #316: the divider and the slot are ALWAYS rendered. Previously this
+          was `{busiestBlock && ...}`, so an absent block took the whole section
+          off the page -- which made "the API is not served here", "the scanner
+          is still catching up" and "the chain was quiet" look identical to each
+          other, and identical to the feature never having been built. It was
+          reported as missing for exactly that reason.
+        */}
+        <span className="live-chain-divider" aria-hidden="true" />
+        {busiestSlot?.kind === 'block' ? (
+          <BusiestBlock
+            block={busiestSlot.block}
+            isSelected={selectedHeight === busiestSlot.block.height}
+            onSelect={onSelectBlock}
+          />
+        ) : (
+          <div className={`live-busiest-placeholder live-busiest-placeholder--${busiestSlot?.kind || 'unavailable'}`}>
+            <span className="live-busiest-placeholder-label">{BUSIEST_LABEL}</span>
+            <span className="live-busiest-placeholder-detail">{busiestSlot?.detail || ''}</span>
+          </div>
         )}
       </div>
     </div>

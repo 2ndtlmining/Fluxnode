@@ -333,3 +333,47 @@ $live-chain-slot-shift: 150px; // block width (122px) + connector (28px)
     margin: 10px 0;
   }
 }
+
+/*
+ * The busiest-block slot when there is no block to show (issue #316).
+ *
+ * Deliberately occupies the space the card would, rather than collapsing. The
+ * point of this issue was that an absent card was indistinguishable from an
+ * absent FEATURE -- so the slot keeps its label and says what is going on.
+ *
+ * Quieter than the card: this is an explanation, not a thing to click.
+ */
+.live-busiest-placeholder {
+  flex: 0 0 auto;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px dashed var(--accent-amber, #e09205);
+  border-radius: var(--radius-sm, 4px);
+  opacity: 0.75;
+}
+
+.live-busiest-placeholder-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent-amber, #e09205);
+}
+
+.live-busiest-placeholder-detail {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+}
+
+/*
+ * "Still catching up" is the one state that resolves itself, so it reads as
+ * progress rather than as a problem.
+ */
+.live-busiest-placeholder--scanning {
+  border-style: solid;
+  opacity: 0.9;
+}

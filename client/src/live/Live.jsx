@@ -23,6 +23,7 @@ import { relativeTime } from 'live/timeFormat';
 
 import { ChainRail } from 'live/ChainRail';
 import { busiestBlockToRailBlock } from 'live/busiestBlock';
+import { busiestBlockSlotState } from 'live/busiestBlockSlot';
 import { fetch_chain_activity } from 'analytics/chainActivity';
 import { DetailsPanel } from 'live/DetailsPanel';
 import { FlowCanvas } from 'live/FlowCanvas';
@@ -76,7 +77,7 @@ export default function Live() {
   // #286: the busiest block of the last 24h, from the chain-activity scanner
   // rather than the live poll -- it is almost never among the blocks on the
   // rail, which is the whole reason it gets its own slot.
-  const [busiestBlock, setBusiestBlock] = useState(null);
+  const [chainActivity, setChainActivity] = useState(null);
   // How many blocks the rail shows — grows/shrinks with available width
   // (see the ResizeObserver effect below), bounded to [5, 10].
   const [visibleBlockCount, setVisibleBlockCount] = useState(MIN_VISIBLE_BLOCK_COUNT);
@@ -177,8 +178,13 @@ export default function Live() {
     // only meaningful once per block, so it rides the 5-minute refresh rather
     // than the fast poll.
     fetch_chain_activity()
-      .then((activity) => setBusiestBlock(busiestBlockToRailBlock(activity?.busiestBlock)))
-      .catch(() => {});
+      .then((activity) => setChainActivity(activity))
+      /*
+       * #316: a rejection must still reach state. Swallowing it left
+       * chainActivity null, which is indistinguishable from "not fetched yet"
+       * and is how the slot used to vanish silently.
+       */
+      .catch(() => setChainActivity(null));
 
     const currentHeight = tipBlocks[0]?.height || 0;
     const specs = await fetch_global_app_specs({ fluxBlockHeight: currentHeight });
@@ -267,6 +273,14 @@ export default function Live() {
   }, [refreshSlowData, pollFast]);
 
   const tipHeight = displayBlocks.find((b) => b.phase !== 'leaving')?.height ?? null;
+  const busiestSlot = useMemo(() => {
+    const state = busiestBlockSlotState(chainActivity);
+    return state.kind === 'block'
+      ? { ...state, block: busiestBlockToRailBlock(state.block) }
+      : state;
+  }, [chainActivity]);
+  const busiestBlock = busiestSlot.kind === 'block' ? busiestSlot.block : null;
+
   const displayedHeight = selectedHeight ?? tipHeight;
   const displayedBlock =
     displayBlocks.find((b) => b.height === displayedHeight) ||
@@ -407,7 +421,7 @@ export default function Live() {
             tipHeight={tipHeight}
             selectedHeight={selectedHeight}
             onSelectBlock={handleSelectBlock}
-            busiestBlock={busiestBlock}
+            busiestSlot={busiestSlot}
           />
         </div>
         <DetailsPanel
