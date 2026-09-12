@@ -3,7 +3,7 @@ import './index.scss';
 
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
-import { relativeAge, shortTxid, explorerTxUrl } from 'donor/donationTotals';
+import { relativeAge, shortId } from 'donor/donationTotals';
 import { FaHeart } from 'react-icons/fa';
 import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
@@ -132,13 +132,18 @@ function DonationList({ rows }) {
    * match to fall into.
    */
   const q = query.trim().toLowerCase();
+  /*
+   * Wallet and amount only -- deliberately NOT txid (#322).
+   *
+   * It used to match txid too, which was defensible while the full id was on
+   * screen. It is not now: searching "45" would return a 10 FLUX donation whose
+   * transaction id happens to contain "45", and with the id no longer readable
+   * there is nothing on the row to explain the match. A search that returns
+   * rows the reader cannot connect to their query reads as a bug, so the
+   * predicate matches the placeholder.
+   */
   const filtered = q
-    ? rows.filter(
-        (r) =>
-          r.from.toLowerCase().includes(q) ||
-          String(r.amount).includes(q) ||
-          r.txid.toLowerCase().includes(q)
-      )
+    ? rows.filter((r) => r.from.toLowerCase().includes(q) || String(r.amount).includes(q))
     : rows;
 
   const get = SORTS[sortKey].get;
@@ -197,23 +202,23 @@ function DonationList({ rows }) {
               key={r.txid}
               className={`hov-donations-row${r.isProjectTransfer ? ' hov-donations-row--project' : ''}`}
             >
-              <span className="hov-donations-donor" title={r.from}>
-                {shortTxid(r.from)}
+              {/*
+                #322: no `title` with the full value, and no link. A tooltip
+                carrying the whole address, or an href carrying the whole txid,
+                republishes exactly what the shortening is here to withhold --
+                one is readable on hover, the other in the status bar and on
+                copy-link. Shortening the visible text while leaking the full
+                value into an attribute would be security theatre.
+              */}
+              <span className="hov-donations-donor">
+                {shortId(r.from, 3, 3)}
                 {r.isProjectTransfer && (
                   <span className="hov-donations-tag" title="Sent from a project-owned wallet, so it is not counted in the community total above">
                     project
                   </span>
                 )}
               </span>
-              <a
-                className="hov-donations-tx"
-                href={explorerTxUrl(r.txid)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={r.txid}
-              >
-                {shortTxid(r.txid)}
-              </a>
+              <span className="hov-donations-tx">{shortId(r.txid, 4, 4)}</span>
               <span className="hov-num hov-donations-amount">{fmtNum(r.amount, 2)}</span>
               <span className="hov-num hov-donations-block">{fmtNum(r.blockHeight)}</span>
               <span className="hov-num hov-donations-age">{relativeAge(r.timeSec)}</span>

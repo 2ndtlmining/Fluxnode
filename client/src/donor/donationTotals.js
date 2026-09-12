@@ -179,26 +179,22 @@ export function buildDonationRows(txs, { nowMs = Date.now(), excluded } = {}) {
 }
 
 /*
- * Enough of each end to match a row against the explorer by eye, which is the
- * only thing the shortened form has to support. Middle-elided rather than
- * truncated: the tail is what distinguishes two transactions in the same block.
- */
-export function shortTxid(txid) {
-  if (typeof txid !== 'string' || !txid) return '';
-  if (txid.length <= 14) return txid;
-  return `${txid.slice(0, 6)}..${txid.slice(-6)}`;
-}
-
-/*
- * The explorer is a HASH-routed SPA, and the obvious-looking path is the broken
- * one. Measured 2026-09-13:
+ * Middle-elided identifiers for the Home donation list.
  *
- *   https://explorer.runonflux.io/tx/<txid>    -> 404
- *   https://explorer.runonflux.io/#/tx/<txid>  -> 200
+ * Deliberately SHORT. Home is the front page, and a full donor address or
+ * transaction id printed there publishes, to everyone who loads the site, a
+ * tidy index of who supports the project and exactly which transactions they
+ * sent. All of it is public on chain -- but public-if-you-go-looking and
+ * published-on-the-landing-page are different things, and the second is not
+ * something a donor opted into by donating.
  *
- * Written as a function with a test rather than inlined at the call site, so
- * a whole panel of dead links cannot be introduced by someone tidying the URL.
+ * What survives is enough to recognise a row and to paste into the explorer's
+ * search if you already know what you are looking for, and not enough to read
+ * the page as a directory. `head`/`tail` are explicit at each call site
+ * because the two columns are deliberately different widths.
  */
-export function explorerTxUrl(txid) {
-  return `https://explorer.runonflux.io/#/tx/${txid}`;
+export function shortId(value, head, tail) {
+  if (typeof value !== 'string' || !value) return '';
+  if (value.length <= head + tail + 2) return value;
+  return `${value.slice(0, head)}..${value.slice(-tail)}`;
 }
