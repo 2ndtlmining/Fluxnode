@@ -260,13 +260,66 @@ async function scanDonationAddress(address) {
   return pages.reduce((prev, current) => prev.concat(current.txs || []), []);
 }
 
+/*
+ * One scan, shared (issue #314).
+ *
+ * THREE exported functions below call this -- fetch_donation_totals,
+ * fetch_wallet_donation_summary and fetch_total_donations -- and Home calls two
+ * of them on a single page load (Home.jsx:258 and :384). Each call used to walk
+ * every page of BOTH addresses from page 1, so one visit re-read the entire
+ * donation history two or three times over. That is what was getting the
+ * explorer to answer 429, which the browser then reported as a CORS error
+ * because a rate-limited response omits its CORS headers (see explorer.js).
+ *
+ * Capping the pages instead would have been wrong. This total is ALL-TIME by
+ * design: it feeds Home's transparency panel (#258) and the achievement gates
+ * in Gamification, so a truncated scan is a quietly wrong number rather than a
+ * slightly stale one. Sharing is the fix; truncating is not.
+ *
+ * In-flight sharing plus a short result cache, the same shape as
+ * networkNodes.js's _shared() and for the same reason: in-flight alone only
+ * helps when callers overlap, and Home's two callers fire at different moments
+ * (one on mount, one once a wallet address is entered).
+ */
+const DONATION_SCAN_TTL_MS = 60 * 1000;
+
+let _donationScanInFlight = null;
+let _donationScanCache = null;
+let _donationScanAt = 0;
+
 /** Both donation addresses, scanned independently. One failing does not erase the other. */
 async function scanBothDonationAddresses() {
-  const scans = [];
-  for (const address of [window.gContent.ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
-    scans.push(await scanDonationAddress(address));
+  if (_donationScanCache && Date.now() - _donationScanAt < DONATION_SCAN_TTL_MS) {
+    return _donationScanCache;
   }
-  return scans;
+  if (_donationScanInFlight) return _donationScanInFlight;
+
+  _donationScanInFlight = (async () => {
+    const scans = [];
+    for (const address of [window.gContent.ADDRESS_FLUX, OLD_ADDRESS_FLUX]) {
+      scans.push(await scanDonationAddress(address));
+    }
+    return scans;
+  })();
+
+  try {
+    const scans = await _donationScanInFlight;
+    /*
+     * Only hold on to a real answer. Caching a scan where every address came
+     * back null would turn a single 429 into a solid minute of confidently
+     * wrong zeros on Home -- worse than the duplicate requests this exists to
+     * prevent. A partial result IS cached: one address failing while the other
+     * reads is a real answer about the one that read, and the callers already
+     * distinguish null-per-address from empty.
+     */
+    if (!scans.every((txs) => txs === null)) {
+      _donationScanCache = scans;
+      _donationScanAt = Date.now();
+    }
+    return scans;
+  } finally {
+    _donationScanInFlight = null;
+  }
 }
 
 /*
