@@ -206,6 +206,7 @@ export class WalletNodes extends React.Component {
           walletPASummary={this.props.walletPASummary}
           totalDonations={this.props.totalDonations}
           globalRankings={this.props.globalRankings}
+          activeAddress={this.props.activeAddress}
         />
       </>
     );

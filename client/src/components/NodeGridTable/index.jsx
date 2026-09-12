@@ -39,6 +39,9 @@ export const NodeGridTable = ({
   walletPASummary,
   totalDonations,
   globalRankings,
+  // The wallet these rows belong to. Only the two wallet-scoped PanelGates
+  // read it (#325); it is not otherwise displayed.
+  activeAddress,
 }) => {
   const { enableGamification } = useContext(LayoutContext);
   const gridRef = useRef();
@@ -340,7 +343,7 @@ export const NodeGridTable = ({
 
       {activeTab === 'achievements' ? (
         <div className='gami-panel-scroll'>
-          <PanelGate panelKey='nodesAchievements' feature='Achievements' preview='blur'>
+          <PanelGate panelKey='nodesAchievements' feature='Achievements' preview='blur' viewedWallet={activeAddress}>
             <GamificationSection
               gstore={gstore}
               walletNodes={data}
@@ -352,7 +355,7 @@ export const NodeGridTable = ({
         </div>
       ) : activeTab === 'apps' ? (
         <div className='gami-panel-scroll'>
-          <PanelGate panelKey='nodesApps' feature='Your apps breakdown' preview='blur'>
+          <PanelGate panelKey='nodesApps' feature='Your apps breakdown' preview='blur' viewedWallet={activeAddress}>
             <AppsSection walletNodes={data} gstore={gstore} />
           </PanelGate>
         </div>
