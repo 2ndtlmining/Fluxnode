@@ -3,7 +3,9 @@ import { FiServer, FiZap, FiCpu, FiDatabase, FiAward, FiLink, FiBox, FiShield, F
 import { LuBoxes, LuWarehouse } from 'react-icons/lu';
 import { GiToaster, GiTortoise, GiCastle, GiOilPump, GiSpermWhale, GiPlasticDuck, GiSwan, GiPotato, GiHeartBeats, GiSloth, GiRetroController, GiNestBirds } from 'react-icons/gi';
 import { TbBuildingSkyscraper, TbActivityHeartbeat, TbBrowser } from 'react-icons/tb';
+import { GrHostMaintenance } from 'react-icons/gr';
 import { categorizeAppSpec } from './appCategories';
+import { hostsFluxnodeApp } from './fluxnodeApp';
 import { fv_compare } from 'main/flux_version';
 import { hide_sensitive_number } from '../../utils';
 import { rankInGroup, topInGroup } from './rankInGroup';
@@ -56,6 +58,9 @@ export const ACHIEVEMENT_DEFS = [
   def('app_diversity', 'Diverse Host', 'Host applications in 4 or more categories', 'Host apps in 4+ categories', LuBoxes, TIER.GOLD, 'apps'),
   def('most_apps', 'App Champion', 'Have a node hosting 10 or more apps', 'Get a node to 10+ apps', FiBox, TIER.SILVER, 'apps'),
   def('most_apps_mega', 'Mega Host', 'Have a node hosting 25 or more apps', 'Get a node to 25+ apps', LuWarehouse, TIER.GOLD, 'apps'),
+  // Issue #245. Genuinely rare: 4 nodes across 4 wallets out of 837 wallets on
+  // the network when this was added, hence platinum.
+  def('runs_fluxnode', 'Host With The Most', "You're running FluxNode itself on your own fleet — this very site, served by your hardware. Thank you for hosting the thing you're looking at.", 'Host the FluxNode app on one of your nodes', GrHostMaintenance, TIER.PLATINUM, 'apps'),
   // Fleet-wide total apps
   def('fleet_apps_10', 'App Farmer', 'Your fleet is collectively running 10 or more apps total', 'Run 10 apps across your fleet', FaSeedling, TIER.BRONZE, 'apps'),
   def('fleet_apps_50', 'App Mogul', 'Your fleet is collectively running 50 or more apps total', 'Run 50 apps across your fleet', FaFire, TIER.SILVER, 'apps'),
@@ -618,6 +623,7 @@ function computeStaticAchievements(gstore, walletNodes, walletPASummary, totalDo
     app_diversity: categorySet.size >= 4,
     most_apps: maxAppCount >= 10,
     most_apps_mega: maxAppCount >= 25,
+    runs_fluxnode: hostsFluxnodeApp(walletNodes),
     fleet_apps_10: totalFleetApps >= 10,
     fleet_apps_50: totalFleetApps >= 50,
     fleet_apps_100: totalFleetApps >= 100,

@@ -21,6 +21,9 @@ import {
   resolveHydrationTarget
 } from 'wallet/addressInput';
 import { sumEnterpriseScore } from 'wallet/enterpriseScore';
+import { hostsFluxnodeApp } from 'main/Gamification/fluxnodeApp';
+import { shouldThankHost, hasBeenThanked, markThanked } from 'main/Gamification/hostThanks';
+import { HostThanksToaster } from 'components/HostThanksToaster';
 import { DashboardCells } from 'main/Header';
 import { ParallelAssets } from 'main/ParallelAssets';
 import { PayoutTimer } from 'main/PayoutTimer';
@@ -28,7 +31,7 @@ import { WalletNodes } from 'main/WalletNodes';
 import { BestUptime } from 'main/BestUptime';
 import { MostHosted } from './MostHosted';
 
-import { Button, Icon, InputGroup, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
+import { Button, Icon, InputGroup, Intent, Menu, MenuItem, mergeRefs, Spinner, Switch } from '@blueprintjs/core';
 import { Popover2, Tooltip2 } from '@blueprintjs/popover2';
 
 import { Observable } from 'rxjs';
@@ -266,6 +269,32 @@ class MainApp extends React.Component {
 
 
 
+  /*
+   * A quiet thank-you for the handful of operators running FluxNode itself
+   * (issue #245).
+   *
+   * Deliberately understated: arrives from the top, clears itself after a few
+   * seconds, carries no button, and is shown ONCE PER WALLET on this browser.
+   * The achievement is the lasting reward; this is just the moment of noticing.
+   */
+  _maybeThankHost(address, nodes) {
+    const show = shouldThankHost({
+      address,
+      hostsApp: hostsFluxnodeApp(nodes),
+      alreadyThanked: hasBeenThanked(address),
+      nodesLoaded: Array.isArray(nodes) && nodes.length > 0
+    });
+    if (!show) return;
+
+    markThanked(address);
+    HostThanksToaster.show({
+      message: "You're hosting FluxNode on your own fleet — this page is running on your hardware. Thank you.",
+      icon: 'heart',
+      intent: Intent.SUCCESS,
+      timeout: 7000
+    });
+  }
+
   async _getTotalScoreAgainstSearchedWallet(wallet) {
     const enterpriseNodesRaw = await getEnterpriseNodes();
     this.setState({
@@ -429,6 +458,7 @@ class MainApp extends React.Component {
     });
 
     walletView.processAddress(address, gstore, ({ highestRankedNode, bestUptimeNode, mostHostedNode, nodes, health }) => {
+      this._maybeThankHost(address, nodes);
       highestRankedNode && this.payoutTimer.receiveNode(highestRankedNode);
       bestUptimeNode && this.bestUptime.receiveNode(bestUptimeNode);
       mostHostedNode && this.mostHosted.receiveNode(mostHostedNode);
