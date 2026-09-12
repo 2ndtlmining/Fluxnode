@@ -13,26 +13,34 @@ export const DONOR_STATUS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 export const DONOR_MAX_PAGES_FETCHED = 20;
 
 /*
- * The project's donation address changed on 2026-09-03 (commit c02f781,
- * bundled silently into an unrelated "remove Guides page" commit — the old
- * address was t1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG, current is
- * content/index.js's ADDRESS_FLUX). Anyone who donated before the switch
- * would otherwise get zero credit today. fetch_donor_status checks both
- * addresses and sums matching donations from either — checked indefinitely,
- * with no cutoff date, since it costs nothing to keep recognizing it and a
- * date cutoff is one more thing to get wrong for no real benefit (nobody
- * should be sending here anymore, but if they mistakenly do, there's no
- * reason to penalize them for it either).
+ * The donation address has now moved twice.
  *
- * Checked live 2026-09-10 against explorer.runonflux.io: this address's
- * ENTIRE transaction history is 18 pages — comfortably under
- * DONOR_MAX_PAGES_FETCHED (20) — so a scan of it always completes cleanly
- * (either by reaching the window edge, or by exhausting all 18 real pages)
- * rather than hitting the page cap and reporting `scanComplete: false` on
- * every single check. Since this address stopped receiving new donations
- * on the 2026-09-03 switch, its page count is effectively frozen going
- * forward — this isn't a risk that grows over time. Re-check this figure
- * only if `DONOR_MAX_PAGES_FETCHED` itself is ever lowered.
+ *   t1ebxupk...qwLmUG   the long-standing address  -> OLD_ADDRESS_FLUX, below
+ *   t1aUmu7H...s4Bumbt  current 2026-09-03 .. 2026-09-12  -> deliberately DROPPED
+ *   t3YcVbiQ...u9Zjrr   current from 2026-09-12    -> content/index.js ADDRESS_FLUX
+ *
+ * Donor status is checked against ADDRESS_FLUX **and** OLD_ADDRESS_FLUX, so the
+ * nine people who donated to t1ebxupk keep their credit indefinitely. There is
+ * no cutoff date: it costs nothing to keep recognising a real donation, and a
+ * date cutoff is one more thing to get wrong.
+ *
+ * WHY t1aUmu7H IS NOT IN THAT LIST, since dropping an address that once
+ * received donations should never be done on assumption -- its full history was
+ * read off the explorer before this change:
+ *
+ *   2026-03-10   85,949.00 FLUX  from t1gesjNJ... (project's own wallet)
+ *   2026-02-11    1,180.00 FLUX  from t1gesjNJ...
+ *   2026-01-05      918.00 FLUX  from t1gesjNJ...
+ *   2025-12-08    1,008.00 FLUX  from t1gesjNJ...
+ *   2025-11-07      784.07 FLUX  from t1gesjNJ...
+ *   2025-09-28      601.00 FLUX  from t1gesjNJ...
+ *   2024-03-11    2,000.00 FLUX  from t1XYUvMA... (914 days ago)
+ *
+ * Every inbound payment within the 365-day donor window came from the project's
+ * own wallet. The single third-party payment predates the window by two and a
+ * half years. So the number of people who lose donor status by dropping this
+ * address is ZERO -- measured, not assumed. If that ever needs revisiting, the
+ * check is one explorer query against t1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt.
  */
 export const OLD_ADDRESS_FLUX = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
 
@@ -41,14 +49,19 @@ export const OLD_ADDRESS_FLUX = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
  * donations -- project-owned wallets moving funds -- and are therefore left out
  * of the network-wide totals on Home (issue #258).
  *
- * This matters more than it looks. One of these addresses accounts for roughly
- * 99% of everything the donation addresses have received in the last year.
- * Including it would headline the Home panel with a number implying broad
- * community backing that the remaining data does not support, which is the
- * opposite of what a transparency panel is for.
+ * As of the 2026-09-12 address move this list is a NO-OP, and it is kept
+ * anyway. Measured at the time of the move: over the trailing 365 days
+ * t1ebxupk received 785.00 FLUX from 9 wallets and 0.00 from this address, so
+ * nothing is currently being filtered. Every project-owned transfer that made
+ * this list necessary went to t1aUmu7H, which is no longer scanned.
  *
- * Only affects the aggregate display. Donor STATUS (donorStatus.js) is
- * unchanged: an excluded address that really did donate still qualifies.
+ * It stays because the hazard has not gone away, only the evidence of it: the
+ * original entry existed because ONE address accounted for ~99% of everything
+ * the donation addresses had received in a year, and a transparency panel
+ * headlining that figure as community backing is the exact failure this
+ * prevents. The new address is as capable of receiving a project-owned transfer
+ * as the old one was. A no-op guard costs nothing; re-discovering why it was
+ * needed costs a wrong number on the front page.
  */
 export const EXCLUDED_FROM_DONATION_TOTALS = ['t1gesjNJGfzU8shfMZj6DVDatRKA3LQj8Nh'];
 

@@ -21,7 +21,7 @@ import { OLD_ADDRESS_FLUX } from 'donor/config';
  * achievement labels ("N / 5 donations") agree.
  */
 
-const CURRENT_ADDRESS = 't1aUmu7HDr7BtwmdR1Y9i2K6KFRZs4Bumbt'; // setupTests.js
+const CURRENT_ADDRESS = 't3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr'; // setupTests.js
 const DONOR_WALLET = 't1DonorWalletAddressForTest';
 
 // One explorer "txs?address=" page. `vin[].addr` is the sender, which is what
