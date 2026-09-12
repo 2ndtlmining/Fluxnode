@@ -2,7 +2,6 @@ import React from 'react';
 import './Application.scss';
 
 import { initStore } from 'persistance/store';
-import reportWebVitals from './reportWebVitals';
 
 import { Spinner } from '@blueprintjs/core';
 import { FooterRendered } from 'components/Footer';
@@ -201,7 +200,3 @@ class Application extends React.Component {
 
 export default Application;
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();

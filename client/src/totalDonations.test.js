@@ -1,4 +1,3 @@
-import { fetch_total_donations } from './apidata';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
 
 /*
@@ -45,6 +44,25 @@ function mockExplorer(byAddress) {
   });
 }
 
+/*
+ * Re-imported per test rather than once at the top of the file.
+ *
+ * #314 gave the donation scan an in-flight + TTL cache at module scope, so a
+ * single module instance would carry one test's scan into the next and these
+ * would pass or fail depending on their order. Each test gets a clean module.
+ *
+ * Not a weakening: every assertion below is the one it always made. The only
+ * change is that each starts from an empty cache, which is the state a real
+ * page load starts from too.
+ */
+function freshFetchTotalDonations() {
+  let fn;
+  jest.isolateModules(() => {
+    ({ fetch_total_donations: fn } = require('./apidata'));
+  });
+  return fn;
+}
+
 afterEach(() => {
   jest.resetAllMocks();
 });
@@ -52,7 +70,7 @@ afterEach(() => {
 describe('fetch_total_donations', () => {
   it('counts donations made to the CURRENT address', async () => {
     mockExplorer({ [CURRENT_ADDRESS]: page(['a', 'b']) });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(2);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(2);
   });
 
   it('counts donations made to the OLD address too', async () => {
@@ -63,7 +81,7 @@ describe('fetch_total_donations', () => {
       [CURRENT_ADDRESS]: page([]),
       [OLD_ADDRESS_FLUX]: page(['old1', 'old2', 'old3']),
     });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(3);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(3);
   });
 
   it('sums donations across both addresses', async () => {
@@ -71,7 +89,7 @@ describe('fetch_total_donations', () => {
       [CURRENT_ADDRESS]: page(['new1']),
       [OLD_ADDRESS_FLUX]: page(['old1', 'old2']),
     });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(3);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(3);
   });
 
   it('does not double-count a txid that appears under both addresses', async () => {
@@ -81,7 +99,7 @@ describe('fetch_total_donations', () => {
       [CURRENT_ADDRESS]: page(['shared', 'new1']),
       [OLD_ADDRESS_FLUX]: page(['shared']),
     });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(2);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(2);
   });
 
   it('ignores transactions sent by a different wallet', async () => {
@@ -89,7 +107,7 @@ describe('fetch_total_donations', () => {
       [CURRENT_ADDRESS]: page(['x'], 't1SomeoneElse'),
       [OLD_ADDRESS_FLUX]: page(['y'], 't1SomeoneElse'),
     });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(0);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(0);
   });
 
   it('still counts the reachable address when the other scan fails', async () => {
@@ -103,11 +121,11 @@ describe('fetch_total_donations', () => {
         json: () => Promise.resolve(page(['new1', 'new2'])),
       });
     });
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(2);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(2);
   });
 
   it('resolves 0 rather than throwing when the explorer is unavailable', async () => {
     global.fetch = jest.fn(() => Promise.reject(new Error('explorer down')));
-    await expect(fetch_total_donations(DONOR_WALLET)).resolves.toBe(0);
+    await expect(freshFetchTotalDonations()(DONOR_WALLET)).resolves.toBe(0);
   });
 });
