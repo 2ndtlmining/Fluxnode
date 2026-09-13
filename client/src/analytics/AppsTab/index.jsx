@@ -7,6 +7,7 @@ import { AppEcosystemBreakdown } from 'components/AppEcosystemBreakdown';
 import { TopHostedApps } from 'components/TopHostedApps';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
+import { nodesRunningApps } from 'analytics/appsKpis';
 import { WorkhorsePanel } from 'home/WorkhorsePanel';
 import { rankNodeOperators, aggregateOwnerTotals, DEFAULT_TOP_N } from 'analytics/topOwners';
 import { FLUX_TEAM_OWNER_ZELIDS, computeTeamSponsoredShare } from 'analytics/teamSponsored';
@@ -470,6 +471,7 @@ export function AppsTab() {
   }
 
   const { owners, networkTotalInstances } = ownerTotals;
+  const nodesWithApps = nodesRunningApps(gstore);
   const distinctApps = Array.isArray(appSpecs?.rawSpecs) ? appSpecs.rawSpecs.length : 0;
   const appOwners = owners.length;
   const { sharePct } = computeTeamSponsoredShare(owners, networkTotalInstances);
@@ -493,7 +495,20 @@ export function AppsTab() {
           the mechanism rather than public by decision.
         */}
         <PanelGate panelKey="appsKpis" feature="App totals" preview="blur">
-          <KpiTile value={fmtNum(networkTotalInstances)} label="Ordered app instances" />
+          {/*
+            #339: was "Ordered app instances", summed from the specs. That is
+            what was asked for, not what is running -- and it sat directly
+            above APP ECOSYSTEM's running container total, two large numbers
+            in different units where the ordered one was the SMALLER of the
+            two. Replaced with a running figure that is not already on screen,
+            rather than with the container count, which would just repeat the
+            panel below.
+          */}
+          <KpiTile
+            value={fmtNum(nodesWithApps)}
+            label="Nodes running apps"
+            hint={`Nodes reporting at least one running container. The network's total node count is larger: a node with nothing deployed on it is not counted here.`}
+          />
         </PanelGate>
         <PanelGate panelKey="appsKpis" feature="App totals" preview="blur">
           <KpiTile value={fmtNum(distinctApps)} label="Distinct apps" />
