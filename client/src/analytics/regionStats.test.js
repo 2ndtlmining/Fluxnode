@@ -106,6 +106,54 @@ describe('aggregateRegions', () => {
     expect(Object.values(eu.appsByCategory).reduce((a, b) => a + b, 0)).toBe(3);
   });
 
+  /*
+   * Issue #344. appsByNode carries one entry per running CONTAINER, and a
+   * multi-component app runs several on ONE node: WordPress is an nginx
+   * container and a mysql container deployed together, as a single instance.
+   * Counting them separately overstated "hosted applications".
+   *
+   * Measured network-wide: 8,354 running containers against 7,104 real
+   * instances -- a 17.6% overstatement on a figure the Network tab headlines.
+   *
+   * The Donor tab's category tally had the identical bug and was fixed in the
+   * same issue; the two surfaces have to agree on what one app is.
+   */
+  it('counts a multi-component app on one node as ONE instance', () => {
+    const multiComponent = { '1.1.1.1:16137': ['wordpress', 'wordpress', 'presearchnode'] };
+
+    const agg = aggregateRegions({
+      nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE,
+      appsByNode: multiComponent, utilByNode: UTIL_BY_NODE, categoryOf: CATEGORY_OF,
+    });
+
+    // Three containers, two instances.
+    expect(agg.network.appInstances).toBe(2);
+  });
+
+  it('still counts the same app on two nodes as two instances', () => {
+    // Deduping is per node, so it never collapses a genuine second deployment.
+    const spread = { '1.1.1.1:16137': ['presearchnode'], '2.2.2.2:16137': ['presearchnode'] };
+
+    const agg = aggregateRegions({
+      nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE,
+      appsByNode: spread, utilByNode: UTIL_BY_NODE, categoryOf: CATEGORY_OF,
+    });
+
+    expect(agg.network.appInstances).toBe(2);
+  });
+
+  it('keeps the category tally consistent with the instance count', () => {
+    const multiComponent = { '1.1.1.1:16137': ['wordpress', 'wordpress'] };
+
+    const agg = aggregateRegions({
+      nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: CAP_BY_NODE,
+      appsByNode: multiComponent, utilByNode: UTIL_BY_NODE, categoryOf: CATEGORY_OF,
+    });
+
+    const summed = Object.values(agg.network.appsByCategory).reduce((a, b) => a + b, 0);
+    expect(summed).toBe(agg.network.appInstances);
+  });
+
   it('puts everything in "other" when no categoriser is supplied, rather than quietly using a different one', () => {
     const agg = aggregateRegions({ nodes: NODES, geoByHost: GEO_BY_HOST, capByNode: {}, appsByNode: APPS_BY_NODE });
     expect(agg.network.appsByCategory).toEqual({ other: 3 });

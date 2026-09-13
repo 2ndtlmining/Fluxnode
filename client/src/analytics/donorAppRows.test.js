@@ -144,11 +144,17 @@ describe('buildDonorAppRows', () => {
 });
 
 describe('tallyRowCategories', () => {
-  it('counts rows by category, descending', () => {
+  /*
+   * Rows carry nodeAddress and name because the tally now counts INSTANCES,
+   * and an instance is (app, node). The original fixture was three bare
+   * `{ category }` objects -- a shape buildDonorAppRows cannot produce, and
+   * one that silently collapses to a single instance once deduping exists.
+   */
+  it('counts instances by category, descending', () => {
     const rows = [
-      { category: 'computing' },
-      { category: 'web' },
-      { category: 'computing' },
+      { category: 'computing', name: 'folding1', nodeAddress: '1.1.1.1:16127' },
+      { category: 'web', name: 'wp1', nodeAddress: '1.1.1.1:16127' },
+      { category: 'computing', name: 'folding1', nodeAddress: '2.2.2.2:16127' },
     ];
 
     expect(tallyRowCategories(rows)).toEqual({
@@ -282,5 +288,81 @@ describe('instance counts (#344)', () => {
     expect(rows[0].ordered).toBeNull();
     expect(rows[0].networkInstances).toBe(1);
     expect(rows[0].yours).toBe(1);
+  });
+});
+
+/*
+ * WHAT COUNTS AS ONE APP (#344).
+ *
+ * A multi-component app runs several containers on ONE node: WordPress is an
+ * nginx container and a mysql container, deployed together, as one instance.
+ * The table shows a row per container -- that is what is actually running and
+ * collapsing it would hide what a node filter is for -- but every COUNT on the
+ * screen must agree that this is one app, not two.
+ *
+ * It did not. The instances column said 1 while the category tally said 2, on
+ * the same screen, for the same app. Measured network-wide: 8,354 running
+ * containers against 7,104 real instances, so counting containers as apps
+ * overstates by 17.6%.
+ *
+ * Category is taken from the SPEC, not the component, so both of WordPress's
+ * rows already carry WordPress's single category -- the tally was never split
+ * between "database" and "proxy". The error was only in how many times it
+ * counted.
+ */
+describe('an app instance is one deployment on one node, everywhere (#344)', () => {
+  const nodesByIp = {
+    '1.2.3.4:16127': { containerAppNames: ['wp1', 'wp1', 'folding1'], containerComponents: ['nginx', 'mysql', null] },
+    '1.2.3.4:16137': { containerAppNames: ['wp1', 'wp1'], containerComponents: ['nginx', 'mysql'] },
+  };
+  const addresses = ['1.2.3.4:16127', '1.2.3.4:16137'];
+
+  it('tallies WordPress once per node, not once per container', () => {
+    const rows = buildDonorAppRows(nodesByIp, addresses, specIndex);
+    const tally = tallyRowCategories(rows);
+
+    // Four wp1 rows across two nodes, but two instances.
+    expect(rows.filter((r) => r.name === 'wp1')).toHaveLength(4);
+    expect(tally.categories.find((c) => c.category === 'web').count).toBe(2);
+  });
+
+  it('agrees with the instances column on the same screen', () => {
+    const rows = buildDonorAppRows(nodesByIp, addresses, specIndex);
+    const tally = tallyRowCategories(rows);
+
+    const wpYours = rows.find((r) => r.name === 'wp1').yours;
+    const wpTally = tally.categories.find((c) => c.category === 'web').count;
+
+    expect(wpTally).toBe(wpYours);
+  });
+
+  it('counts totalApps as instances, not containers', () => {
+    // Two wp1 instances + one folding1 = 3, from 5 containers.
+    const tally = tallyRowCategories(buildDonorAppRows(nodesByIp, addresses, specIndex));
+
+    expect(tally.totalApps).toBe(3);
+  });
+
+  it('still counts two single-component apps on one node as two', () => {
+    // Deduping is on (app, node), not on node -- a node running two DIFFERENT
+    // apps is running two instances.
+    const twoApps = {
+      '1.2.3.4:16127': { containerAppNames: ['folding1', 'ent1'], containerComponents: [null, null] },
+    };
+
+    const tally = tallyRowCategories(buildDonorAppRows(twoApps, ['1.2.3.4:16127'], specIndex));
+
+    expect(tally.totalApps).toBe(2);
+  });
+
+  it('counts the same app on two nodes as two instances', () => {
+    const spread = {
+      '1.2.3.4:16127': { containerAppNames: ['folding1'], containerComponents: [null] },
+      '5.6.7.8:16127': { containerAppNames: ['folding1'], containerComponents: [null] },
+    };
+
+    const tally = tallyRowCategories(buildDonorAppRows(spread, ['1.2.3.4:16127', '5.6.7.8:16127'], specIndex));
+
+    expect(tally.totalApps).toBe(2);
   });
 });

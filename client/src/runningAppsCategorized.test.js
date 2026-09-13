@@ -32,9 +32,26 @@ const aggregate = {
     'minecraft1\u0000': 1,
     'unknownApp\u0000': 2,
   },
+  /*
+   * Every node behind the tallies above, not a sample of them (#344).
+   *
+   * The app-level counts are now derived from HERE rather than from
+   * nameCounts, because one app on one node is one instance however many
+   * containers it takes. That makes an aggregate whose nodesByIp disagrees
+   * with its nameCounts an impossible shape -- a real one has both from the
+   * same scan -- so the fixture carries all eight containers.
+   *
+   * unknownApp's two containers sit on two DIFFERENT nodes, so they are
+   * genuinely two instances and still total 8.
+   */
   nodesByIp: {
     '1.2.3.4:16127': { containerAppNames: ['streamr1', 'FoldingAtRunOnFlux1'], containerComponents: [null, null] },
     '5.6.7.8:16127': { containerAppNames: ['Presearch'], containerComponents: [null] },
+    '6.6.6.6:16127': { containerAppNames: ['FoldingAtRunOnFlux2'], containerComponents: [null] },
+    '7.7.7.7:16127': { containerAppNames: ['wordpress123'], containerComponents: [null] },
+    '8.8.8.8:16127': { containerAppNames: ['minecraft1'], containerComponents: [null] },
+    '9.9.9.9:16127': { containerAppNames: ['unknownApp'], containerComponents: [null] },
+    '9.9.9.10:16127': { containerAppNames: ['unknownApp'], containerComponents: [null] },
   },
 };
 
@@ -47,7 +64,8 @@ describe('categorizeRunningApps', () => {
   it('falls back to an "other" bucket for a running app whose spec is missing, without throwing', () => {
     const { runningCategoryMap, totalRunningApps } = categorizeRunningApps(aggregate, specIndex);
     expect(runningCategoryMap.other).toBeGreaterThanOrEqual(2); // unknownApp's 2 containers land somewhere, not dropped
-    expect(totalRunningApps).toBe(8); // sum of every nameCounts value, unknownApp included
+    // Eight instances across seven nodes, unknownApp's two included.
+    expect(totalRunningApps).toBe(8);
   });
 
   /*
@@ -192,10 +210,30 @@ describe('categorizeRunningApps with a multi-component (compose) app', () => {
     });
   });
 
-  it('still counts every container toward the app-level category total', () => {
+  /*
+   * Issue #344. This asserted 3, and 3 was wrong -- in direct contradiction
+   * with the test directly above it, which already says a 3-container
+   * deployment is ONE WordPress instance.
+   *
+   * The header renders this figure as "Total Running Apps instances", so it
+   * has to mean instances. Measured network-wide: 8,354 running containers
+   * against 7,104 real instances -- a 17.6% overstatement on the dashboard's
+   * most prominent app number.
+   *
+   * The same bug was in the Donor tab's category tally and the Network tab's
+   * appInstances, both fixed in this issue. All three now agree that one app
+   * on one node is one instance, however many containers it takes.
+   */
+  it('counts a 3-container deployment on one node as ONE instance', () => {
     const { runningCategoryMap, totalRunningApps } = categorizeRunningApps(composeAggregate, composeIndex);
-    expect(runningCategoryMap.web).toBe(3); // category stays app-level, unchanged by this fix
-    expect(totalRunningApps).toBe(3);
+    expect(runningCategoryMap.web).toBe(1);
+    expect(totalRunningApps).toBe(1);
+  });
+
+  it('keeps the category map reconciling with the total', () => {
+    const { runningCategoryMap, totalRunningApps } = categorizeRunningApps(composeAggregate, composeIndex);
+    const summed = Object.values(runningCategoryMap).reduce((a, b) => a + b, 0);
+    expect(summed).toBe(totalRunningApps);
   });
 
   it('detects streamr on the component that actually runs it, not just compose[0]', () => {

@@ -86,7 +86,25 @@ function addNode(bucket, node, cap, apps, categoryOf, util) {
     }
   }
 
-  for (const appName of apps || []) {
+  /*
+   * ONE COUNT PER INSTANCE, NOT PER CONTAINER (issue #344).
+   *
+   * `apps` is this node's running CONTAINERS, and a multi-component app runs
+   * several of them on one node -- WordPress is an nginx container and a mysql
+   * container, deployed together as a single instance. Counting each container
+   * overstated "hosted applications", which this figure headlines.
+   *
+   * Measured network-wide: 8,354 running containers against 7,104 real
+   * instances, a 17.6% overstatement.
+   *
+   * Deduping is WITHIN this node only, which is exactly right: the same app on
+   * two nodes is two deployments and must still count twice. addNode is called
+   * once per node, so a Set per call cannot collapse across them.
+   *
+   * The Donor tab's tallyRowCategories had the identical bug and is fixed in
+   * the same issue -- the two surfaces have to agree on what one app is.
+   */
+  for (const appName of new Set(apps || [])) {
     const category = categoryOf(appName);
     bucket.appsByCategory[category] = (bucket.appsByCategory[category] || 0) + 1;
     bucket.appInstances += 1;

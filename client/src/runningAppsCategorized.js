@@ -52,7 +52,38 @@ export function categorizeRunningApps(aggregate, specIndex) {
   const categoryImages = {}; // [category][repotagOrName] -> count, feeds buildCategoryTop
   let totalRunningApps = 0;
 
-  for (const [name, count] of Object.entries(nameCounts)) {
+  /*
+   * App-level counts are per INSTANCE, not per container (issue #344).
+   *
+   * nameCounts holds one entry per running CONTAINER, and a multi-component
+   * app runs several on ONE node -- WordPress is nginx + mysql + operator
+   * deployed together, as a single instance. The header renders this total as
+   * "Total Running Apps instances", so it has to mean instances.
+   *
+   * Measured network-wide: 8,354 running containers against 7,104 real
+   * instances -- a 17.6% overstatement on the dashboard's most prominent app
+   * figure. This file already knew the right answer for wordpressCount ("one
+   * WordPress instance for a 3-container deployment, not three") while getting
+   * it wrong here, in the same module.
+   *
+   * Counting from nodesByIp instead: distinct app names per node, summed
+   * across nodes, which is the same unit streamr/presearch already use below.
+   *
+   * FALLS BACK to the container tally when nodesByIp is absent. A v5 cached
+   * aggregate has no nodesByIp and fluxinfo.js drops those rather than serving
+   * them, so this should not arise -- but showing zero apps would be a far
+   * worse failure than showing a slightly high count.
+   */
+  const nodes = Object.values(aggregate?.nodesByIp || {});
+  const instanceCounts = {};
+  for (const node of nodes) {
+    for (const name of new Set(node?.containerAppNames || [])) {
+      instanceCounts[name] = (instanceCounts[name] || 0) + 1;
+    }
+  }
+  const appCounts = nodes.length > 0 ? instanceCounts : nameCounts;
+
+  for (const [name, count] of Object.entries(appCounts)) {
     totalRunningApps += count;
 
     const spec = index[name];
