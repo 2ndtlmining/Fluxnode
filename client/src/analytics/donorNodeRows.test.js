@@ -48,7 +48,42 @@ describe('buildDonorNodeRows', () => {
     expect(rows.map((r) => r.eps)).toEqual([512.4, 128]);
   });
 
-  it('matches a benchmark by HOST, since the reading is per-machine not per-port', () => {
+  /*
+   * Issue #344. This test previously asserted that two nodes on one host share
+   * one EPS reading, on the premise that a benchmark measures the MACHINE.
+   * Measured against the live feed, that is false for EPS specifically:
+   *
+   *     816 multi-node hosts carry an EPS reading
+   *       1 has every node reporting the same value
+   *     815 have nodes reporting DIFFERENT values
+   *
+   *     5.230.172.45  348 | 572 | 1408 | 2071 | 329 | 329 | 762 | 1406
+   *
+   * A 6x spread on one physical box. EPS is a score the node earns for its own
+   * allocation and its own moment, not a property of the hardware underneath.
+   * Keying by host kept whichever node was written last and showed that score
+   * for every node sharing the address -- wrong for seven of those eight, and
+   * silently so, because a plausible number appeared in every row.
+   */
+  it('matches a benchmark by ADDRESS, because EPS is per node not per machine', () => {
+    const twoNodesOneHost = [
+      { id: 'a', ip_display: '1.2.3.4:16127', tier: 'NIMBUS', rank: 1, last_confirmed_height: 2_941_900 },
+      { id: 'b', ip_display: '1.2.3.4:16137', tier: 'NIMBUS', rank: 2, last_confirmed_height: 2_941_900 },
+    ];
+    const perNode = [
+      { benchmark: { bench: { ipaddress: '1.2.3.4:16127', eps: 512.4 } } },
+      { benchmark: { bench: { ipaddress: '1.2.3.4:16137', eps: 2070.7 } } },
+    ];
+
+    const rows = buildDonorNodeRows(twoNodesOneHost, perNode, CURRENT_HEIGHT);
+
+    expect(rows.map((r) => r.eps)).toEqual([512.4, 2070.7]);
+  });
+
+  it('reports null for a co-hosted node with no reading of its own', () => {
+    // Rather than borrowing its neighbour's score, which is what host-keying
+    // did. A node that has not reported has not scored — the same reasoning
+    // the null-never-zero rule below rests on.
     const twoNodesOneHost = [
       { id: 'a', ip_display: '1.2.3.4:16127', tier: 'NIMBUS', rank: 1, last_confirmed_height: 2_941_900 },
       { id: 'b', ip_display: '1.2.3.4:16137', tier: 'NIMBUS', rank: 2, last_confirmed_height: 2_941_900 },
@@ -56,7 +91,7 @@ describe('buildDonorNodeRows', () => {
 
     const rows = buildDonorNodeRows(twoNodesOneHost, benchmarks, CURRENT_HEIGHT);
 
-    expect(rows.map((r) => r.eps)).toEqual([512.4, 512.4]);
+    expect(rows.map((r) => r.eps)).toEqual([512.4, null]);
   });
 
   it('reports EPS as null, never 0, when the node has no benchmark reading', () => {

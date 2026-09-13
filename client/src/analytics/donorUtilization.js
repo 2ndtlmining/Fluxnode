@@ -1,4 +1,4 @@
-import { hostOf, addressOf, fetch_node_benchmarks, fetch_node_resources } from 'networkNodes';
+import { addressOf, fetch_node_benchmarks, fetch_node_resources } from 'networkNodes';
 
 /*
  * Pure: sum the donor's own nodes' capacity and app-reserved utilisation,
@@ -6,26 +6,35 @@ import { hostOf, addressOf, fetch_node_benchmarks, fetch_node_resources } from '
  * for the Workhorse showcase (networkNodes.js:108-189) — filtered to the
  * donor's own addresses instead of ranked by app count.
  *
- * CAPACITY (cores/ram/ssd totals) is summed over the donor's UNIQUE HOSTS,
- * not per node address. A benchmark reading is per-machine, and a donor's
- * node list can include two nodes on one host (different ports) — summing
- * per address would double-count that host's capacity once per node
- * sharing it. Deduping to unique hosts before summing is what actually
- * prevents that (an earlier version of this function keyed the LOOKUP
- * table by host but still summed per address, which didn't fix anything —
- * the lookup was deduped, the summation wasn't).
+ * BOTH HALVES ARE SUMMED PER NODE ADDRESS (ip:port), never per host.
  *
- * UTILISATION (appsCpusLocked/appsRamLocked/appsHddLocked) stays summed
- * PER ADDRESS — app reservations are genuinely per-node-instance, even
- * when two instances share one host's underlying hardware, matching
- * buildWorkhorseNodes exactly.
+ * An earlier version summed capacity over unique HOSTS, on the premise that a
+ * benchmark reading describes the physical machine and would otherwise be
+ * double-counted once per node sharing it. Issue #344: that premise is wrong.
+ * A benchmark describes ONE NODE'S OWN ALLOCATION. Measured on the live feed:
+ *
+ *     5.230.172.45    8 nodes, each 4 cores / 7.7 GB / 220 GB
+ *     31.165.225.118  4c, 4c, 4c, 8c, 16c  -- Cumulus x3, Nimbus, Stratus
+ *
+ * Those are precisely the Flux tier allocations (Cumulus 4c/8GB/220GB, Nimbus
+ * 8c/32GB/440GB, Stratus 16c/64GB/880GB). A host running eight Cumulus nodes
+ * genuinely has 32 cores and each node truthfully reports its own 4.
+ *
+ * Host-deduping therefore kept whichever node was written last and discarded
+ * the others: 4 cores where the donor has 32. Across the whole feed -- 6,315
+ * nodes on 2,445 hosts, 816 multi-node -- a 44% undercount network-wide, 8x
+ * for a donor whose nodes share a host, and a utilisation percentage that could
+ * exceed 100% because the numerator was per-node while the denominator was not.
+ *
+ * The lookups stay keyed by ADDRESS, so a repeated entry in either feed, or a
+ * repeated donor address, still contributes once.
  */
 export function aggregateDonorUtilization(donorAddresses, benchmarks, resources) {
-  const benchByHost = {};
+  const benchByAddr = {};
   for (const entry of benchmarks || []) {
     const bench = entry?.benchmark?.bench;
-    const host = hostOf(bench?.ipaddress);
-    if (host) benchByHost[host] = bench;
+    const addr = addressOf(bench?.ipaddress);
+    if (addr) benchByAddr[addr] = bench;
   }
 
   const resByAddr = {};
@@ -34,28 +43,23 @@ export function aggregateDonorUtilization(donorAddresses, benchmarks, resources)
     if (addr) resByAddr[addr] = entry?.apps?.resources || null;
   }
 
-  // Capacity: one pass over the donor's UNIQUE hosts.
-  const uniqueHosts = [...new Set((donorAddresses || []).map((a) => hostOf(addressOf(a))).filter(Boolean))];
+  // One pass over the donor's own node addresses, deduped — the same unit for
+  // capacity and utilisation, which is the whole point of #344.
+  const uniqueAddresses = [...new Set((donorAddresses || []).map((a) => addressOf(a)).filter(Boolean))];
 
   let totalCores = 0, totalRamGB = 0, totalSsdGB = 0;
-  let hostsWithCapacity = 0;
+  let nodesWithCapacity = 0;
+  let utilizedCores = 0, utilizedRamGB = 0, utilizedSsdGB = 0;
 
-  for (const host of uniqueHosts) {
-    const bench = benchByHost[host];
+  for (const addr of uniqueAddresses) {
+    const bench = benchByAddr[addr];
     if (bench) {
-      hostsWithCapacity++;
+      nodesWithCapacity++;
       totalCores += bench.cores || 0;
       totalRamGB += bench.ram || 0;
       totalSsdGB += bench.totalstorage ?? bench.ssd ?? 0;
     }
-  }
 
-  // Utilisation: one pass over the donor's own node ADDRESSES — genuinely
-  // per-node, unlike capacity above.
-  let utilizedCores = 0, utilizedRamGB = 0, utilizedSsdGB = 0;
-
-  for (const rawAddr of donorAddresses || []) {
-    const addr = addressOf(rawAddr);
     const res = resByAddr[addr];
     if (res) {
       utilizedCores += res.appsCpusLocked || 0;
@@ -67,11 +71,10 @@ export function aggregateDonorUtilization(donorAddresses, benchmarks, resources)
   const pct = (used, total) => (total > 0 ? (used / total) * 100 : 0);
 
   return {
-    // Count of distinct HOSTS with a capacity reading, not a count of
-    // node addresses — see the capacity/utilisation split above. Only
-    // ever checked for === 0 by callers (an empty-state gate), never
-    // displayed as a number, so this semantic (hosts, not nodes) is safe.
-    nodesWithCapacity: hostsWithCapacity,
+    // Distinct node ADDRESSES with a capacity reading. It now means what its
+    // name always said — before #344 it counted hosts, which is why a donor
+    // with eight nodes on one machine was described as having one.
+    nodesWithCapacity,
     cores: { utilized: utilizedCores, total: totalCores, percentage: pct(utilizedCores, totalCores) },
     ram: { utilized: utilizedRamGB, total: totalRamGB, percentage: pct(utilizedRamGB, totalRamGB) },
     ssd: { utilized: utilizedSsdGB, total: totalSsdGB, percentage: pct(utilizedSsdGB, totalSsdGB) },

@@ -609,9 +609,33 @@
 }
 
 .dt-appstable-node {
-  width: 18%;
+  width: 16%;
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary) !important;
+}
+
+/*
+ * "yours / network-wide" (#344). The donor's own count carries the weight;
+ * the ordered total is context, so it sits smaller and dimmer -- a reader
+ * scanning the column is asking "how many do I run", not "how many exist".
+ */
+.dt-appstable-instances {
+  width: 9%;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.dt-appstable-of {
+  margin-left: 1px;
+  font-size: 0.85em;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.dt-appstable-loading {
+  /* Holds roughly the height a few rows would, so the panel does not jump
+     when the spec fetch lands (#342). */
+  min-height: 120px;
 }
 
 .dt-appstable-caption {

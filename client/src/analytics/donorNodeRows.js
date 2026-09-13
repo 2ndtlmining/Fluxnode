@@ -1,4 +1,4 @@
-import { hostOf, addressOf } from 'networkNodes';
+import { addressOf } from 'networkNodes';
 import { calc_mtn_window } from 'apidata';
 
 /*
@@ -10,23 +10,37 @@ import { calc_mtn_window } from 'apidata';
  * for the reward countdown; and the benchmark feed is the same shared one the
  * utilisation panel aggregates, so it is in memory by the time this runs.
  *
- * EPS is matched by HOST, not by address. A benchmark is a measurement of a
- * MACHINE -- when a donor runs two nodes on one box (different ports) both
- * genuinely have the same reading, and keying by address would leave the second
- * one blank. This is the same host/address distinction donorUtilization.js
- * makes for capacity, for the same reason.
+ * EPS is matched by ADDRESS (ip:port). It used to be matched by HOST, on the
+ * premise that a benchmark measures the MACHINE and co-hosted nodes therefore
+ * share one reading. Issue #344: measured against the live feed, that is false.
+ *
+ *     816 multi-node hosts carry an EPS reading
+ *       1 has every node reporting the same value
+ *     815 have nodes reporting DIFFERENT values
+ *
+ *     5.230.172.45  348 | 572 | 1408 | 2071 | 329 | 329 | 762 | 1406
+ *
+ * A 6x spread on one physical box. EPS is a score a node earns for its own
+ * allocation at its own moment, not a property of the hardware beneath it.
+ * Host-keying kept whichever node was written last and repeated that score
+ * across every node on the address -- wrong for seven of those eight, and
+ * invisibly so, since a plausible number appeared in every row.
+ *
+ * donorUtilization.js made the identical mistake for capacity and was fixed in
+ * the same issue. Geolocation remains the one thing that genuinely IS per-host
+ * -- see addressOf's own doc comment in networkNodes.js.
  */
 export function buildDonorNodeRows(nodes, benchmarks, currentBlockHeight) {
-  const epsByHost = {};
+  const epsByAddress = {};
   for (const entry of benchmarks || []) {
     const bench = entry?.benchmark?.bench;
-    const host = hostOf(bench?.ipaddress);
-    if (host && bench?.eps != null) epsByHost[host] = bench.eps;
+    const address = addressOf(bench?.ipaddress);
+    if (address && bench?.eps != null) epsByAddress[address] = bench.eps;
   }
 
   return (nodes || []).map((node) => {
-    const host = hostOf(addressOf(node.ip_display));
-    const eps = host != null ? epsByHost[host] : undefined;
+    const address = addressOf(node.ip_display);
+    const eps = address ? epsByAddress[address] : undefined;
 
     return {
       ...node,
