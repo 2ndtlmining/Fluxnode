@@ -9,6 +9,7 @@ import { FaGithub, FaDocker, FaLock } from 'react-icons/fa';
 import { LayoutContext } from 'contexts/LayoutContext';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
+import { applyCategoryFilter, toggleCategory, chipState } from './categoryFilter';
 import { categorizeAppSpec } from 'main/Gamification/appCategories';
 import { specResources } from 'appSpecs';
 import { fetch_global_app_specs } from 'apidata';
@@ -104,11 +105,28 @@ export function AppsSection({ walletNodes, gstore }) {
     return result;
   }, [walletNodes, specMap]);
 
-  const filteredRows = useMemo(() => {
+  /*
+   * #332. Empty means ALL -- see categoryFilter.js. Held separately from the
+   * text filter because the two are combined in a specific order below.
+   */
+  const [selectedCategories, setSelectedCategories] = useState(new Set());
+
+  const textFilteredRows = useMemo(() => {
     if (!filter) return rows;
     const lower = filter.toLowerCase();
     return rows.filter((r) => r.ip.toLowerCase().includes(lower) || r.appName.toLowerCase().includes(lower));
   }, [rows, filter]);
+
+  /*
+   * The table sees both filters; the CHIPS below are counted from
+   * textFilteredRows only. Counting them from this would make every
+   * unselected chip vanish the moment one was selected -- see
+   * categoryFilter.js for why that breaks multi-select outright.
+   */
+  const filteredRows = useMemo(
+    () => applyCategoryFilter(textFilteredRows, selectedCategories),
+    [textFilteredRows, selectedCategories]
+  );
 
   const toggleSort = (key) => {
     if (sortKey === key) {
@@ -139,34 +157,57 @@ export function AppsSection({ walletNodes, gstore }) {
   // must both count (GH #162).
   const categoryChips = useMemo(() => {
     const catMap = {};
-    for (const row of sortedRows) {
+    for (const row of textFilteredRows) {
       catMap[row.category] = (catMap[row.category] || 0) + 1;
     }
     return Object.entries(catMap)
       .map(([cat, count]) => ({ cat, count }))
       .sort((a, b) => b.count - a.count);
-  }, [sortedRows]);
+  }, [textFilteredRows]);
 
   const totalAppCount = sortedRows.length;
+  const unfilteredCount = textFilteredRows.length;
+  const isFiltered = selectedCategories.size > 0;
 
   const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
 
   return (
     <div className="apps-section">
       <div className="apps-summary">
-        <span className="apps-summary__title adp-text-muted">Apps ({totalAppCount}):</span>
+        {/*
+          #332: the count doubles as the reset, the same idiom the Donor tab
+          uses. A multi-select whose only way back to "all" is un-picking each
+          chip is a trap, and a separate "clear" control would be a second
+          thing to find.
+        */}
+        <button
+          type="button"
+          className={`apps-summary__title adp-text-muted${isFiltered ? ' apps-summary__title--resettable' : ''}`}
+          onClick={() => setSelectedCategories(new Set())}
+          disabled={!isFiltered}
+          title={isFiltered ? 'Show every category again' : undefined}
+        >
+          Apps ({isFiltered ? `${totalAppCount} / ${unfilteredCount}` : totalAppCount}):
+        </button>
         <div className="apps-summary__chips">
           {categoryChips.map(({ cat, count }) => {
             const meta = APP_CATEGORY_META[cat] || APP_CATEGORY_META.other;
             const CatIcon = meta.Icon || FiBox;
+            const state = chipState(cat, selectedCategories);
             return (
               <Tooltip2 key={cat} content={<CategoryTooltip category={cat} />} placement="top" hoverOpenDelay={200}>
-                <span className="apps-summary__chip" style={{ borderColor: `${meta.color}44` }}>
+                <button
+                  type="button"
+                  className={`apps-summary__chip apps-summary__chip--${state}`}
+                  style={{ borderColor: state === 'on' ? meta.color : `${meta.color}44` }}
+                  onClick={() => setSelectedCategories((prev) => toggleCategory(prev, cat))}
+                  aria-pressed={state === 'on'}
+                >
                   <IconContext.Provider value={{ size: '12px' }}>
                     <span style={{ color: meta.color }}><CatIcon /></span>
                   </IconContext.Provider>
                   {meta.label} <span className="apps-summary__chip-count">{count}</span>
-                </span>
+                </button>
               </Tooltip2>
             );
           })}

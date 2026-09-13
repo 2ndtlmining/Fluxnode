@@ -18,10 +18,34 @@
   flex-wrap: wrap;
 }
 
+/*
+ * A button now (#332): it resets the category selection. Styled as the plain
+ * label it has always been while there is nothing to reset, so it does not
+ * advertise an action that would do nothing.
+ */
 .apps-summary__title {
   font-size: 0.82rem;
   font-weight: 600;
   white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.apps-summary__title--resettable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--text-primary, inherit);
+  }
 }
 
 .apps-summary__chips {
@@ -30,6 +54,11 @@
   gap: 6px;
 }
 
+/*
+ * Chips are toggles (#332). Three states, not two: with nothing selected every
+ * category IS showing, so neither lighting them all nor dimming them all would
+ * be true -- `neutral` is the resting look the chips have always had.
+ */
 .apps-summary__chip {
   display: inline-flex;
   align-items: center;
@@ -41,10 +70,43 @@
   font-weight: 500;
   background: rgba(0, 0, 0, 0.02);
   white-space: nowrap;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity var(--transition-fast, 0.15s), background var(--transition-fast, 0.15s);
 
   @include rule-mode-dark() {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+
+    @include rule-mode-dark() {
+      background: rgba(255, 255, 255, 0.09);
+    }
+  }
+}
+
+// Selected: the category's own colour carries the border (set inline), and the
+// chip sits forward of the others.
+.apps-summary__chip--on {
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 700;
+
+  @include rule-mode-dark() {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+// Not selected WHILE a filter is running. Dimmed rather than hidden: it still
+// carries its count, and it is the control you click to add that category.
+.apps-summary__chip--off {
+  opacity: 0.45;
+
+  &:hover {
+    opacity: 0.75;
   }
 }
 
