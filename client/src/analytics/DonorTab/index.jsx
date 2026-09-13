@@ -10,6 +10,7 @@ import { fetch_donor_utilization_source, aggregateDonorUtilization } from 'analy
 import { buildDonorAppRows, tallyRowCategories } from 'analytics/donorAppRows';
 import { buildDonorNodeRows } from 'analytics/donorNodeRows';
 import { filterAppRows, utilizationAddresses } from 'analytics/donorFilters';
+import { usageLabel, usagePercent } from 'analytics/utilizationDisplay';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { tierMeta } from 'content/nodeTierMeta';
 import { fetch_wallet_tx_history } from 'analytics/walletTxFetch';
@@ -518,42 +519,55 @@ function DonorAppsTable({ rows, totalRows, filtered }) {
   );
 }
 
-// ── Utilization comparison ───────────────────────────────────────────────
+// ── Utilization ──────────────────────────────────────────────────────────
 
 const RESOURCE_ROWS = [
-  { key: 'cores', label: 'CPU Cores' },
-  { key: 'ram', label: 'RAM' },
-  { key: 'ssd', label: 'SSD' },
+  { key: 'cores', label: 'CPU Cores', unit: 'Cores' },
+  { key: 'ram', label: 'RAM', unit: 'GB' },
+  { key: 'ssd', label: 'SSD', unit: 'GB' },
 ];
 
-function UtilizationPanel({ donorUtil, networkPct, selectedNode }) {
+/*
+ * What this wallet's own capacity is doing (issue #335).
+ *
+ * The network-average comparison is gone deliberately. It answered "how do I
+ * rank", which is not the question an operator has about hardware they are
+ * paying for -- and it spent half of every row on a figure nobody acted on.
+ * What is left is the figure they do act on: how much of their own capacity is
+ * in use.
+ *
+ * Totals are SUMMED over the wallet, so ten Cumulus read as forty cores rather
+ * than as an average. One caveat that is easy to trip over: capacity is summed
+ * over unique HOSTS, not per node address -- two nodes on one machine share
+ * that machine's cores, and summing per address would count them twice (see
+ * donorUtilization.js, where an earlier version got exactly this wrong). So
+ * "ten Cumulus = forty cores" holds when they are on ten distinct machines.
+ *
+ * Selecting a node narrows every figure here to that node, which is what makes
+ * an idle node legible: "0 / 4 Cores (0%)".
+ */
+function UtilizationPanel({ donorUtil, selectedNode }) {
   return (
     <div className="hov-panel dt-util-panel">
       <div className="hov-header">
-        <span className="hov-header-title">UTILIZATION VS NETWORK AVERAGE</span>
-        {selectedNode && <span className="hov-header-badge">{selectedNode}</span>}
+        <span className="hov-header-title">UTILIZATION</span>
+        <span className="hov-header-badge">{selectedNode || 'All nodes'}</span>
       </div>
       {donorUtil.nodesWithCapacity === 0 ? (
         <div className="hov-empty">No capacity data available for your nodes</div>
       ) : (
         <div className="dt-util-list">
-          {RESOURCE_ROWS.map(({ key, label }) => {
-            const yours = donorUtil[key].percentage;
-            const net = networkPct[key] || 0;
+          {RESOURCE_ROWS.map(({ key, label, unit }) => {
+            const resource = donorUtil[key] || {};
+            const pct = usagePercent(resource.utilized, resource.total);
             return (
               <div key={key} className="dt-util-row">
-                <span className="dt-util-label">{label}</span>
-                <div className="dt-util-bars">
-                  <div className="dt-util-bar-wrap">
-                    <div className="dt-util-bar-fill dt-util-bar-fill--yours" style={{ width: `${Math.min(yours, 100)}%` }} />
-                  </div>
-                  <span className="dt-util-figure">{fmtPct(yours)} yours</span>
+                <div className="dt-util-head">
+                  <span className="dt-util-label">{label}</span>
+                  <span className="dt-util-figure">{usageLabel(resource, unit)}</span>
                 </div>
-                <div className="dt-util-bars">
-                  <div className="dt-util-bar-wrap">
-                    <div className="dt-util-bar-fill dt-util-bar-fill--network" style={{ width: `${Math.min(net, 100)}%` }} />
-                  </div>
-                  <span className="dt-util-figure">{fmtPct(net)} network avg</span>
+                <div className="dt-util-bar-wrap">
+                  <div className="dt-util-bar-fill" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -596,7 +610,6 @@ export function DonorTab() {
   const [utilSource, setUtilSource] = useState({ benchmarks: [], resources: [] });
   const [nodesByIp, setNodesByIp] = useState({});
   const [specIndex, setSpecIndex] = useState({});
-  const [networkPct, setNetworkPct] = useState({ cores: 0, ram: 0, ssd: 0 });
   /*
    * The loader already fetches the global store for utilisation and app
    * categories, but only kept derived slices of it. The reward-reduction
@@ -652,11 +665,6 @@ export function DonorTab() {
       setSpecIndex(buildSpecIndex(rawSpecs));
       setNodesByIp(fetchedStore.nodesByIp || {});
       setGstore(fetchedStore);
-      setNetworkPct({
-        cores: fetchedStore.utilized.cores_percentage,
-        ram: fetchedStore.utilized.ram_percentage,
-        ssd: fetchedStore.utilized.ssd_percentage,
-      });
 
       setLoading(false);
     })().catch((error) => {
@@ -737,7 +745,7 @@ export function DonorTab() {
           onSelect={setSelectedCategory}
           onReset={() => setSelectedCategory(null)}
         />
-        <UtilizationPanel donorUtil={utilization} networkPct={networkPct} selectedNode={selectedNode} />
+        <UtilizationPanel donorUtil={utilization} selectedNode={selectedNode} />
         <DonorAppsTable
           rows={appRows}
           totalRows={allAppRows.length}
