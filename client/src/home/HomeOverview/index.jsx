@@ -230,7 +230,7 @@ function DonationList({ rows }) {
   );
 }
 
-function CommunitySupportPanel({ donations, donationRows, donationsSettled, donationsFailed }) {
+function CommunitySupportPanel({ donations, donationRows, donationsSettled, donationsFailed, donationsStatus }) {
   if (!donationsSettled) {
     return (
       <div className="hov-panel hov-panel-center hov-panel--support">
@@ -254,7 +254,17 @@ function CommunitySupportPanel({ donations, donationRows, donationsSettled, dona
 
   return (
     <div className="hov-panel hov-panel--support">
-      <PanelHeader title="COMMUNITY SUPPORT" badge={uniqueDonors} />
+      {/*
+        Cached figures say so while the live scan runs (#341). Deliberately
+        quiet: these ARE real numbers from a real scan, just not this second's,
+        so the marker belongs beside the title rather than over the figures.
+        It clears itself when onRefresh lands.
+      */}
+      <PanelHeader
+        title="COMMUNITY SUPPORT"
+        badge={uniqueDonors}
+        right={donationsStatus === 'cached' ? <span className="hov-header-note">Updating…</span> : null}
+      />
 
       {donationCount === 0 ? (
         <div className="hov-empty">No donations recorded in the last year</div>
@@ -412,7 +422,8 @@ export function HomeOverview({
   donations,
   donationRows,
   donationsSettled,
-  donationsFailed
+  donationsFailed,
+  donationsStatus
 }) {
   return (
     <div className="home-overview">
@@ -422,6 +433,7 @@ export function HomeOverview({
           donationRows={donationRows}
           donationsSettled={donationsSettled}
           donationsFailed={donationsFailed}
+          donationsStatus={donationsStatus}
         />
         <RewardReductionBand gstore={gstore} />
       </div>

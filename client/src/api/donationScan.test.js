@@ -53,6 +53,26 @@ function freshModule() {
   return mod;
 }
 
+/*
+ * Each test starts with an empty PERSISTED cache too (issue #341).
+ *
+ * #341 gave the scan a localStorage layer on top of the module-level one these
+ * tests already isolate. jsdom's localStorage is real and survives
+ * jest.isolateModules, so without this an earlier test's successful scan is
+ * still on disk when the next one runs -- and the 429 test below, which asserts
+ * that a rate-limited scan produces a failure, would instead be served those
+ * stale-but-valid figures and pass or fail on test order.
+ *
+ * Not a weakening. An empty cache is the state a first-ever page load starts
+ * from, and the cached-serving behaviour that would otherwise leak in here has
+ * its own coverage in donationScanRevalidate.test.js.
+ */
+beforeEach(() => {
+  try {
+    localStorage.clear();
+  } catch {}
+});
+
 afterEach(() => {
   jest.resetAllMocks();
 });
