@@ -32,9 +32,18 @@
 
 .dt-payout-card     { grid-column: span 7; }
 .dt-impact-panel    { grid-column: span 5; }
-.dt-nodes-panel     { grid-column: span 4; }
-.dt-apps-panel      { grid-column: span 3; }
-.dt-util-panel      { grid-column: span 5; }
+/*
+ * #331: YOUR NODES runs to its 420px cap while APP CATEGORIES and UTILIZATION
+ * are ~270px each, so three-across left roughly 220px and 300px of dead space
+ * under the two short ones -- visible in the issue's screenshot.
+ *
+ * The tall panel now spans both rows and the two short ones stack beside it,
+ * which fills the column instead of leaving a hole. 270 + 270 + the gap comes
+ * out close to the node list's height, so the row bottoms out level.
+ */
+.dt-nodes-panel     { grid-column: span 4; grid-row: span 2; }
+.dt-apps-panel      { grid-column: span 8; }
+.dt-util-panel      { grid-column: span 8; }
 .dt-appstable-panel { grid-column: span 12; }
 .dt-activity-panel  { grid-column: span 12; }
 
@@ -43,7 +52,7 @@
 @media (max-width: 1400px) {
   .dt-payout-card     { grid-column: span 12; }
   .dt-impact-panel    { grid-column: span 12; }
-  .dt-nodes-panel     { grid-column: span 6; }
+  .dt-nodes-panel     { grid-column: span 6; grid-row: auto; }
   .dt-apps-panel      { grid-column: span 6; }
   .dt-util-panel      { grid-column: span 12; }
 }
@@ -656,40 +665,35 @@
   letter-spacing: 0.06em;
 }
 
-.dt-util-bars {
+// Label left, the figure right, the bar spanning underneath (#335). The
+// figure is the thing being read, so it gets the weight the old percentage-
+// beside-a-network-average pair never gave it.
+.dt-util-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .dt-util-bar-wrap {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: var(--surface-inset);
   overflow: hidden;
 }
 
 .dt-util-bar-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
+  background: var(--accent-green);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &--yours {
-    background: #ec4899;
-  }
-
-  &--network {
-    background: rgba(128, 128, 128, 0.5);
-  }
 }
 
 .dt-util-figure {
-  font-size: 0.68rem;
-  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
   white-space: nowrap;
-  width: 110px;
-  text-align: right;
 }
 
 // ── No-wallet empty state ────────────────────────────────────────────────
