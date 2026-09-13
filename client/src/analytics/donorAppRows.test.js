@@ -174,3 +174,66 @@ describe('tallyRowCategories', () => {
     expect(tallyRowCategories(rows).totalApps).toBe(3);
   });
 });
+
+/*
+ * Issue #344 (reported alongside the utilisation miscount): the apps table
+ * never said how many instances of an app the donor actually runs.
+ *
+ * One row per running CONTAINER was the right level for the table -- an app on
+ * three nodes should be visible as three things running -- but the reader was
+ * left to count rows, and for a multi-component app counting rows gives the
+ * wrong answer: a two-component app on one node is two rows and ONE instance.
+ *
+ * So a Flux app instance is one deployment on one NODE, and `yours` counts
+ * distinct node addresses. `instances` is the spec's own ordered count, which
+ * gives the row its context: three of seventy-five, not just three.
+ */
+describe('instance counts (#344)', () => {
+  const nodesByIp = {
+    '1.2.3.4:16127': { containerAppNames: ['folding1', 'wp1', 'wp1'], containerComponents: [null, 'nginx', 'mysql'] },
+    '1.2.3.4:16137': { containerAppNames: ['folding1'], containerComponents: [null] },
+    '5.6.7.8:16127': { containerAppNames: ['folding1'], containerComponents: [null] },
+  };
+  const addresses = ['1.2.3.4:16127', '1.2.3.4:16137', '5.6.7.8:16127'];
+
+  it('counts an app once per NODE, not once per container', () => {
+    const rows = buildDonorAppRows(nodesByIp, addresses, specIndex);
+
+    // wp1 is two containers on ONE node: one instance, not two.
+    const wp = rows.filter((r) => r.name === 'wp1');
+    expect(wp).toHaveLength(2);
+    expect(wp.every((r) => r.yours === 1)).toBe(true);
+
+    // folding1 runs on three nodes, including two that share a host.
+    const folding = rows.filter((r) => r.name === 'folding1');
+    expect(folding).toHaveLength(3);
+    expect(folding.every((r) => r.yours === 3)).toBe(true);
+  });
+
+  it('counts nodes on a shared host separately', () => {
+    // Two of folding1's three nodes are 1.2.3.4 on different ports. They are
+    // two instances -- the same ip:port-not-ip distinction that #344's
+    // utilisation miscount turned on.
+    const rows = buildDonorAppRows(nodesByIp, ['1.2.3.4:16127', '1.2.3.4:16137'], specIndex);
+
+    expect(rows.find((r) => r.name === 'folding1').yours).toBe(2);
+  });
+
+  it('carries the spec-wide ordered instance count for context', () => {
+    const withInstances = { ...specIndex, folding1: { ...specIndex.folding1, instances: 75 } };
+
+    const rows = buildDonorAppRows(nodesByIp, addresses, withInstances);
+
+    expect(rows.find((r) => r.name === 'folding1').instances).toBe(75);
+  });
+
+  it('leaves the network-wide count null when there is no spec to read it from', () => {
+    // An app running with no matching spec is real enough to list, but nothing
+    // about its size is knowable -- the same rule the resource columns follow.
+    const rows = buildDonorAppRows({ '1.2.3.4:16127': { containerAppNames: ['ghost'], containerComponents: [null] } }, ['1.2.3.4:16127'], {});
+
+    expect(rows[0].instances).toBeNull();
+    // The donor's own count is still known: it is running it right there.
+    expect(rows[0].yours).toBe(1);
+  });
+});

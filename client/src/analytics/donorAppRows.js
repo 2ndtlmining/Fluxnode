@@ -60,8 +60,37 @@ export function buildDonorAppRows(nodesByIp, donorAddresses, specIndex) {
         cpu: spec ? spec.cpuPerInst : null,
         ramGB: spec ? spec.ramGBPerInst : null,
         ssdGB: spec ? spec.ssdGBPerInst : null,
+        /*
+         * The spec's own ordered instance count, for context: three of
+         * seventy-five reads very differently from three. null when no spec
+         * matched -- the app is running, but nothing about its size is
+         * knowable, the same rule the resource columns follow.
+         */
+        instances: spec?.instances ?? null,
+        // Filled in below: needs every row before it can be counted.
+        yours: 0,
       });
     });
+  }
+
+  /*
+   * How many instances of each app the donor actually runs (issue #344).
+   *
+   * A Flux app instance is one deployment on one NODE, so this counts distinct
+   * node addresses -- NOT rows. Counting rows would be wrong for any
+   * multi-component app: WordPress is an nginx container and a mysql container
+   * on a single node, which is two rows and ONE instance.
+   *
+   * Nodes are distinguished by ip:port, so two nodes sharing a host count
+   * twice. They are two separate deployments, and collapsing them by IP is the
+   * same mistake that made the utilisation figure wrong in this issue.
+   */
+  const nodesPerApp = {};
+  for (const row of rows) {
+    (nodesPerApp[row.name] ||= new Set()).add(row.nodeAddress);
+  }
+  for (const row of rows) {
+    row.yours = nodesPerApp[row.name].size;
   }
 
   return rows;

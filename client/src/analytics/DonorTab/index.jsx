@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
+import { LayoutContext } from 'contexts/LayoutContext';
+import { maskNodeAddress } from 'analytics/privacy';
 import { PremiumUnlock } from 'donor/PremiumUnlock';
 import { fetch_global_stats, fetch_total_network_utils, fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
@@ -271,19 +273,33 @@ function RewardImpactPanel({ nodes, gstore }) {
  * "NEXT PAYOUT / 57 mins", is deleted rather than restyled: it was duplication,
  * not emphasis.
  */
+/*
+ * Privacy mode, for the three places this tab renders a node address (#343).
+ *
+ * A hook rather than a prop threaded through four component levels. The
+ * context can be absent in tests that mount a panel on its own, so it
+ * defaults to off rather than throwing.
+ */
+function usePrivacy() {
+  return useContext(LayoutContext)?.enablePrivacyMode || false;
+}
+
 function PayoutCard({ nextNode, lastPaidNode, currentBlock }) {
+  const privacy = usePrivacy();
   return (
     <div className="hov-panel dt-payout-card">
       <div className="dt-payout-stat">
         <span className="hov-header-title">LAST PAYOUT</span>
         <span className="dt-payout-value">{lastPaidNode ? lastPaidNode.last_reward : 'Never'}</span>
-        {lastPaidNode && <span className="dt-payout-caption">{lastPaidNode.ip_display}</span>}
+        {lastPaidNode && (
+          <span className="dt-payout-caption">{maskNodeAddress(lastPaidNode.ip_display, privacy)}</span>
+        )}
       </div>
       <div className="dt-payout-divider" />
       <div className="dt-payout-stat">
         <span className="hov-header-title">NEXT PAYOUT</span>
         <span className="dt-payout-value">{nextNode ? nextNode.next_reward : '—'}</span>
-        {nextNode && <span className="dt-payout-caption">{nextNode.ip_display}</span>}
+        {nextNode && <span className="dt-payout-caption">{maskNodeAddress(nextNode.ip_display, privacy)}</span>}
       </div>
       {/*
         RewardCountdown removes itself when no reduction is scheduled, so the
@@ -318,6 +334,7 @@ function fmtEps(eps) {
  * genuinely absent reading is called out, and as absent rather than as bad.
  */
 function DonorNodesList({ rows, selectedNode, onSelect, onReset }) {
+  const privacy = usePrivacy();
   const maxEps = rows.reduce((max, n) => (n.eps != null && n.eps > max ? n.eps : max), 0);
 
   return (
@@ -347,18 +364,25 @@ function DonorNodesList({ rows, selectedNode, onSelect, onReset }) {
           rows.map((n) => {
             const meta = tierMeta(n.tier);
             const selected = selectedNode === n.ip_display;
+            /*
+             * Display only. onSelect and the `selected` comparison above keep
+             * the REAL address -- masking the selection key would silently
+             * break node filtering whenever privacy is on, and the tooltip
+             * would offer to filter by an address that does not exist.
+             */
+            const shown = maskNodeAddress(n.ip_display, privacy);
             return (
               <button
                 type="button"
                 key={n.id}
                 className={`hov-ranked-row dt-node-row${selected ? ' dt-node-row--selected' : ''}`}
                 onClick={() => onSelect(n.ip_display)}
-                title={selected ? 'Selected — click the count to show all' : `Show only ${n.ip_display}`}
+                title={selected ? 'Selected — click the count to show all' : `Show only ${shown}`}
               >
                 <span className="dt-node-tier" style={{ color: meta.color, borderColor: `${meta.color}55` }}>
                   {meta.label}
                 </span>
-                <span className="hov-ranked-name" title={n.ip_display}>{n.ip_display}</span>
+                <span className="hov-ranked-name" title={shown}>{shown}</span>
                 <span className="dt-num dt-node-rank">{fmtNum(n.rank)}</span>
                 <span className={`dt-num dt-node-window${n.mtnWindow === 'Closed' ? ' dt-node-window--closed' : ''}`}>
                   {n.mtnWindow || '—'}
@@ -481,14 +505,26 @@ function ResCell({ value, digits = 1, unit }) {
  * hide exactly the thing a node filter is for. The repo column is the image of
  * the specific component this container is, not the app's primary image.
  */
-function DonorAppsTable({ rows, totalRows, filtered }) {
+function DonorAppsTable({ rows, totalRows, filtered, loading }) {
+  const privacy = usePrivacy();
+
   return (
     <div className="hov-panel dt-appstable-panel">
       <div className="hov-header">
         <span className="hov-header-title">APPS ON YOUR NODES</span>
         <span className="hov-header-badge">{filtered ? `${rows.length} / ${totalRows}` : rows.length}</span>
       </div>
-      {rows.length === 0 ? (
+      {loading ? (
+        /*
+         * #342: this table waits on globalappsspecifications (703 KB, measured
+         * 4.8-14.6s) while the rest of the tab does not. Without this it
+         * rendered "No running apps found" for those seconds -- stating
+         * something false rather than saying it was still looking.
+         */
+        <div className="hov-panel-center dt-appstable-loading">
+          <Spinner size={20} />
+        </div>
+      ) : rows.length === 0 ? (
         <div className="hov-empty">
           {totalRows === 0 ? 'No running apps found' : 'No apps match the current selection'}
         </div>
@@ -500,6 +536,7 @@ function DonorAppsTable({ rows, totalRows, filtered }) {
                 <th>Name</th>
                 <th>Repo</th>
                 <th>Node</th>
+                <th className="dt-num">Instances</th>
                 <th className="dt-num">CPU</th>
                 <th className="dt-num">RAM</th>
                 <th className="dt-num">SSD</th>
@@ -518,7 +555,30 @@ function DonorAppsTable({ rows, totalRows, filtered }) {
                     <td className="dt-appstable-repo" title={row.repotag || 'Image not published'}>
                       {row.repotag || '—'}
                     </td>
-                    <td className="dt-appstable-node" title={row.nodeAddress}>{row.nodeAddress}</td>
+                    <td className="dt-appstable-node" title={maskNodeAddress(row.nodeAddress, privacy)}>
+                      {maskNodeAddress(row.nodeAddress, privacy)}
+                    </td>
+                    {/*
+                      How many of this app the donor runs, and how many the
+                      spec orders network-wide (#344). "3 / 75" reads very
+                      differently from a bare 3, and counting rows by hand gave
+                      the wrong answer for multi-component apps anyway.
+                    */}
+                    <td className="dt-num dt-appstable-instances">
+                      <Tooltip2
+                        content={
+                          row.instances == null
+                            ? `${row.yours} on your nodes · no spec found, so the network-wide count is unknown`
+                            : `${row.yours} on your nodes of ${row.instances} ordered network-wide`
+                        }
+                        placement="left"
+                      >
+                        <span>
+                          {row.yours}
+                          <small className="dt-appstable-of">/{row.instances ?? '—'}</small>
+                        </span>
+                      </Tooltip2>
+                    </td>
                     <td className="dt-num"><ResCell value={row.cpu} /></td>
                     <td className="dt-num"><ResCell value={row.ramGB} unit="GB" /></td>
                     <td className="dt-num"><ResCell value={row.ssdGB} digits={0} unit="GB" /></td>
@@ -618,6 +678,13 @@ export function DonorTab() {
   const { donorWallet } = useDonorStatus();
 
   const [loading, setLoading] = useState(true);
+  /*
+   * The apps table waits on globalappsspecifications, which everything else
+   * does not (#342). Without its own flag it would render "No running apps
+   * found" while that fetch is still in flight -- asserting something false
+   * for the 5-15 seconds it takes.
+   */
+  const [appsLoading, setAppsLoading] = useState(true);
   const [nodes, setNodes] = useState([]);
   /*
    * The RAW utilisation feeds, not the summed result. Selecting a node
@@ -649,6 +716,7 @@ export function DonorTab() {
     }
 
     setLoading(true);
+    setAppsLoading(true);
     // A different wallet's node is not a selection that can survive.
     setSelectedNode(null);
     setSelectedCategory(null);
@@ -656,7 +724,29 @@ export function DonorTab() {
     let cancelled = false;
 
     (async () => {
-      const donorNodes = await fetch_donor_nodes(donorWallet);
+      /*
+       * EVERY INDEPENDENT FETCH IS ISSUED HERE, before anything is awaited
+       * (issue #342).
+       *
+       * This used to run as three sequential waves, which put the slowest call
+       * last: globalappsspecifications is 703 KB and measured 4.8-14.6s over
+       * three runs, and it took no arguments and depended on nothing, yet it
+       * did not start until two full waves had completed. Only ONE real data
+       * dependency exists in this whole effect -- fetch_total_network_utils
+       * needs stage1 -- so the critical path is two waves, not three.
+       *
+       * Starting the promises without awaiting them is the point: `await` on
+       * an already-running promise costs nothing, so the spec fetch now
+       * overlaps the ~3s of fluxinfo work instead of being added to it.
+       */
+      const nodesPromise = fetch_donor_nodes(donorWallet);
+      const sourcePromise = fetch_donor_utilization_source();
+      const stage1Promise = fetch_global_stats(null);
+      const specsPromise = fetch_global_app_specs_raw();
+
+      // The nodes table can paint as soon as its own fetch lands; it has no
+      // reason to wait on anything below.
+      const donorNodes = await nodesPromise;
       if (cancelled) return;
       setNodes(donorNodes);
 
@@ -664,31 +754,34 @@ export function DonorTab() {
       // internally and carries nodesByIp through onto its resolved gstore
       // (apidata.js's fetchTotalDeployedApps, Task 1) — read it from there
       // rather than fetching the ~726KB fluxinfo payload a second time.
-      const [source, stage1] = await Promise.all([
-        fetch_donor_utilization_source(),
-        fetch_global_stats(null),
-      ]);
+      const [source, stage1] = await Promise.all([sourcePromise, stage1Promise]);
       if (cancelled) return;
 
       setUtilSource(source);
+      // Nodes and utilisation are complete; the tab stops being a spinner here
+      // rather than waiting on the app specs.
+      setLoading(false);
 
       // Named distinctly from the `gstore` state above: shadowing it here
       // compiles and behaves correctly, but reads as though setGstore were
       // being handed the state variable rather than the fetched one.
       const [fetchedStore, rawSpecs] = await Promise.all([
         fetch_total_network_utils(stage1),
-        fetch_global_app_specs_raw(),
+        specsPromise,
       ]);
       if (cancelled) return;
 
       setSpecIndex(buildSpecIndex(rawSpecs));
       setNodesByIp(fetchedStore.nodesByIp || {});
       setGstore(fetchedStore);
-
-      setLoading(false);
+      setAppsLoading(false);
     })().catch((error) => {
       console.warn('[DonorTab] failed to load donor data:', error?.message);
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+        // A failed load must clear this too, or the apps table spins forever.
+        setAppsLoading(false);
+      }
     });
 
     return () => { cancelled = true; };
@@ -769,6 +862,7 @@ export function DonorTab() {
           rows={appRows}
           totalRows={allAppRows.length}
           filtered={!!(selectedNode || selectedCategory)}
+          loading={appsLoading}
         />
         <WalletActivityPanel walletAddress={donorWallet} />
       </div>

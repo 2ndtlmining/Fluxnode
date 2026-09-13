@@ -48,32 +48,86 @@ describe('aggregateDonorUtilization', () => {
     expect(result.nodesWithCapacity).toBe(0);
   });
 
-  it('does not double-count a host\'s capacity when the donor runs two nodes on it (different ports)', () => {
-    const sharedHostBenchmarks = [
-      { benchmark: { bench: { ipaddress: '1.2.3.4:16127', cores: 8, ram: 32, totalstorage: 440 } } },
-      { benchmark: { bench: { ipaddress: '1.2.3.4:16227', cores: 8, ram: 32, totalstorage: 440 } } },
-    ];
-    const sharedHostResources = [
-      { ip: '1.2.3.4:16127', apps: { resources: { appsCpusLocked: 2, appsRamLocked: 2048, appsHddLocked: 20 } } },
-      { ip: '1.2.3.4:16227', apps: { resources: { appsCpusLocked: 1, appsRamLocked: 1024, appsHddLocked: 10 } } },
-    ];
+  /*
+   * Issue #344. This test previously asserted the OPPOSITE, and the assertion
+   * was wrong.
+   *
+   * It assumed a benchmark reading describes the physical MACHINE, so two nodes
+   * sharing a host had to be deduped or that host's capacity would be
+   * double-counted. Measured against the live benchmark feed, the premise does
+   * not hold: a benchmark describes ONE NODE'S OWN ALLOCATION.
+   *
+   *     5.230.172.45    8 nodes, each 4 cores / 7.7 GB / 220 GB
+   *     31.165.225.118  4c, 4c, 4c, 8c, 16c  -- Cumulus x3, Nimbus, Stratus
+   *
+   * Those are exactly the Flux tier allocations (Cumulus 4c/8GB/220GB, Nimbus
+   * 8c/32GB/440GB, Stratus 16c/64GB/880GB). A host running eight Cumulus nodes
+   * really does have 32 cores, and each node truthfully reports its own 4.
+   *
+   * Deduping to unique hosts therefore kept ONE node's reading and threw the
+   * rest away: 4 cores where the donor has 32. Measured across the whole feed
+   * -- 6,315 nodes on 2,445 hosts, 816 of them multi-node -- that is a 44%
+   * undercount network-wide, and 8x for a donor whose nodes share a host.
+   */
+  it('sums EVERY node on a shared host, because a benchmark is per node not per machine', () => {
+    // Eight Cumulus nodes on one host: the commonest real multi-node shape.
+    const cumulus = (port) => ({
+      benchmark: { bench: { ipaddress: `1.2.3.4:${port}`, cores: 4, ram: 7.7, totalstorage: 220 } },
+    });
+    const ports = [16127, 16137, 16147, 16157, 16167, 16177, 16187, 16197];
+    const addresses = ports.map((p) => `1.2.3.4:${p}`);
 
     const result = aggregateDonorUtilization(
-      ['1.2.3.4:16127', '1.2.3.4:16227'],
-      sharedHostBenchmarks,
-      sharedHostResources
+      addresses,
+      ports.map(cumulus),
+      addresses.map((ip) => ({
+        ip,
+        apps: { resources: { appsCpusLocked: 1, appsRamLocked: 1024, appsHddLocked: 10 } },
+      }))
     );
 
-    // Capacity counted ONCE for the shared host, not once per node on it.
-    expect(result.nodesWithCapacity).toBe(1);
-    expect(result.cores.total).toBe(8);
-    expect(result.ram.total).toBe(32);
-    expect(result.ssd.total).toBe(440);
+    expect(result.cores.total).toBe(32);
+    expect(result.ram.total).toBeCloseTo(61.6, 5);
+    expect(result.ssd.total).toBe(1760);
+    expect(result.nodesWithCapacity).toBe(8);
 
-    // Utilisation IS per-node — both nodes' reservations still sum.
-    expect(result.cores.utilized).toBe(3);
-    expect(result.ram.utilized).toBe(3); // (2048+1024)/1024
-    expect(result.ssd.utilized).toBe(30);
+    // Utilisation was always per-node and stays so.
+    expect(result.cores.utilized).toBe(8);
+    expect(result.ram.utilized).toBe(8);
+    expect(result.ssd.utilized).toBe(80);
+
+    // The figure the panel actually shows. Host-deduping reported 200%.
+    expect(result.cores.percentage).toBeCloseTo(25, 5);
+  });
+
+  it('sums mixed tiers on one host at their own allocations', () => {
+    // 31.165.225.118's real shape: three Cumulus, one Nimbus, one Stratus.
+    const benchmarks = [
+      { benchmark: { bench: { ipaddress: '5.6.7.8:16127', cores: 4, ram: 7.7, totalstorage: 240 } } },
+      { benchmark: { bench: { ipaddress: '5.6.7.8:16137', cores: 4, ram: 7.7, totalstorage: 240 } } },
+      { benchmark: { bench: { ipaddress: '5.6.7.8:16147', cores: 4, ram: 7.7, totalstorage: 240 } } },
+      { benchmark: { bench: { ipaddress: '5.6.7.8:16167', cores: 8, ram: 31, totalstorage: 440 } } },
+      { benchmark: { bench: { ipaddress: '5.6.7.8:16177', cores: 16, ram: 62, totalstorage: 880 } } },
+    ];
+    const addresses = ['5.6.7.8:16127', '5.6.7.8:16137', '5.6.7.8:16147', '5.6.7.8:16167', '5.6.7.8:16177'];
+
+    const result = aggregateDonorUtilization(addresses, benchmarks, []);
+
+    // 4 + 4 + 4 + 8 + 16. Host-deduping reported whichever node happened to
+    // be written last — 16 here, or 4 on a different feed ordering.
+    expect(result.cores.total).toBe(36);
+    expect(result.ssd.total).toBe(2040);
+  });
+
+  it('counts a node once even if the donor list repeats it', () => {
+    // Per-ADDRESS deduping is still needed: one address must not contribute
+    // its capacity twice.
+    const dup = { benchmark: { bench: { ipaddress: '9.9.9.9:16127', cores: 4, ram: 8, totalstorage: 220 } } };
+
+    const result = aggregateDonorUtilization(['9.9.9.9:16127', '9.9.9.9:16127'], [dup], []);
+
+    expect(result.cores.total).toBe(4);
+    expect(result.nodesWithCapacity).toBe(1);
   });
 });
 
