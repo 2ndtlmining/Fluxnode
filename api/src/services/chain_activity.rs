@@ -42,7 +42,6 @@ pub const TEAM_TX_FILE: &str = "chain_activity_team_tx.json";
 pub const UTILITY_BLOCKS_FILE: &str = "chain_activity_utility_blocks.json";
 pub const CHECKPOINT_FILE: &str = "chain_activity_checkpoint.json";
 pub const SCAN_STATUS_FILE: &str = "chain_activity_scan_status.json";
-pub const APP_FEE_FILE: &str = "chain_activity_app_fee.json";
 
 /*
  * A POOL, not a single host. Confirmed 2026-09-11: explorer.runonflux.io was
@@ -766,34 +765,6 @@ pub fn save_scan_status(status: &ScanStatus) -> std::io::Result<()> {
     write_json_atomic(Path::new(DATA_DIR), SCAN_STATUS_FILE, status)
 }
 
-/*
- * The app fee rate persists between cycles so a cycle whose fee lookup failed
- * keeps reporting the last good rate rather than dropping the figure off the
- * screen. A flat fee that has held for 300 consecutive payments does not become
- * unknowable because one request 429'd.
- */
-pub fn load_app_fee_rate() -> Option<AppFeeRate> {
-    read_json_or_default::<Option<AppFeeRate>>(Path::new(DATA_DIR), APP_FEE_FILE)
-}
-
-pub fn save_app_fee_rate(rate: &AppFeeRate) -> std::io::Result<()> {
-    write_json_atomic(Path::new(DATA_DIR), APP_FEE_FILE, rate)
-}
-
-/*
- * ONE request per cycle, page 0 only.
- *
- * The payment address has 4,777 pages of history. Walking it would cost more
- * explorer budget than the block scan itself, against an API that already
- * rate-limits this scanner hard enough to be the reason the screen looks empty.
- * A flat fee needs no history: the ten most recent payments establish the
- * current rate, and a change would show up within a cycle.
- */
-pub async fn fetch_app_fee_rate(client: &Client) -> Option<AppFeeRate> {
-    let res = explorer_get(client, &format!("/txs?address={}", APP_PAYMENT_ADDRESS)).await?;
-    let parsed: TxsPageResponse = res.json().await.ok()?;
-    derive_app_fee_rate(&parsed.txs)
-}
 
 pub fn unix_now() -> i64 {
     std::time::SystemTime::now()
@@ -859,92 +830,6 @@ pub fn count_deployments_by_height(heights: Vec<i64>) -> HashMap<i64, u32> {
         *counts.entry(h).or_insert(0) += 1;
     }
     counts
-}
-
-/*
- * The app deployment fee, read off the chain rather than assumed (issue #346).
- *
- * Every app registration or update pays a flat fee to APP_PAYMENT_ADDRESS.
- * Measured over 300 consecutive payments spanning three days: every one exactly
- * 9.0 FLUX, paid alike by a 2-instance Valheim and a 100-instance SoftEther
- * VPN. It is a message fee, not a resource-scaled hosting cost.
- *
- * WHY DERIVE IT INSTEAD OF WRITING 9.0. A literal would become quietly wrong on
- * every deployment row the day Flux changes the fee, and nothing would fail --
- * no test, no build, no alert. The screen would simply state a false number.
- * Reading the current rate back off the chain each cycle costs ONE request and
- * removes that whole failure mode.
- *
- * WHY THIS LICENSES A PER-ROW FIGURE. Attributing a specific payment to a
- * specific app is NOT possible: amounts are identical and deployments cluster
- * around payments -- three consecutive deployments sat 0, 5 and 23 blocks after
- * the same one. But a flat fee needs no attribution. "This deployment cost 9
- * FLUX" is true of every deployment without pointing at any transaction. That
- * is why `uniform` matters: the moment payments stop agreeing, the premise
- * fails and the UI must say so rather than average over it.
- *
- * This is the opposite direction from #270, which starts from a donor's
- * outgoing transaction and asks whether it was an app payment. That is still
- * unanswerable without the v9 memo, and nothing here weakens it.
- */
-pub const APP_PAYMENT_ADDRESS: &str = "t3ZQQsd8hJNw6UQKYLwfofdL3ntPmgkwofH";
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct AppFeeRate {
-    /// FLUX per deployment, the most common amount observed.
-    pub flux: f64,
-    /// How many payments the figure was derived from.
-    pub samples: u32,
-    /// Whether EVERY sample agreed. False means the flat-fee premise no longer holds.
-    pub uniform: bool,
-}
-
-pub fn derive_app_fee_rate(txs: &[RawTx]) -> Option<AppFeeRate> {
-    let mut amounts: Vec<f64> = Vec::new();
-
-    for tx in txs {
-        // A coinbase pays block rewards, never app fees.
-        if tx.is_coin_base {
-            continue;
-        }
-        // Sum only the outputs paying the app address; the payer's change leg
-        // rides in the same transaction and is not a fee.
-        let paid: f64 = tx
-            .vout
-            .iter()
-            .filter(|o| {
-                o.script_pub_key
-                    .as_ref()
-                    .and_then(|s| s.addresses.as_ref())
-                    .is_some_and(|a| a.iter().any(|addr| addr == APP_PAYMENT_ADDRESS))
-            })
-            .filter_map(|o| o.value.parse::<f64>().ok())
-            .sum();
-        if paid > 0.0 {
-            amounts.push(paid);
-        }
-    }
-
-    if amounts.is_empty() {
-        return None;
-    }
-
-    /*
-     * The mode, not the mean. Averaging would produce a figure no app actually
-     * paid -- and with a flat fee the mode IS the fee. Keyed on satoshis so
-     * float equality never decides this.
-     */
-    let mut tally: HashMap<i64, u32> = HashMap::new();
-    for a in &amounts {
-        *tally.entry((a * 1e8).round() as i64).or_insert(0) += 1;
-    }
-    let (sats, count) = tally.iter().max_by_key(|(sats, n)| (**n, -**sats))?;
-
-    Some(AppFeeRate {
-        flux: *sats as f64 / 1e8,
-        samples: amounts.len() as u32,
-        uniform: *count as usize == amounts.len(),
-    })
 }
 
 /*
@@ -1292,11 +1177,6 @@ pub async fn run_scan_cycle() {
     );
 
     let deployment_heights = fetch_deployment_heights(&client).await;
-    // #346: the deployment fee, read off the chain rather than hardcoded. A
-    // failed lookup keeps whatever the last cycle stored.
-    if let Some(rate) = fetch_app_fee_rate(&client).await {
-        let _ = save_app_fee_rate(&rate);
-    }
     let mut daily = load_daily_rollup();
     let mut team_txs = load_team_txs();
     let mut utility_blocks = load_utility_blocks();
@@ -2213,97 +2093,5 @@ mod tests {
         assert_eq!(rec.deployment_count, 0);
         assert!(rec.transfers.is_empty());
         assert!(rec.deployments.is_empty());
-    }
-
-    // ── #346: the app deployment fee, observed rather than assumed ───────────
-
-    fn payment(amount: &str, to: &str) -> RawTx {
-        RawTx {
-            txid: "pay".into(),
-            is_coin_base: false,
-            vin: vec![RawVin { addr: Some("t1Payer".into()) }],
-            vout: vec![RawVout {
-                value: amount.to_string(),
-                script_pub_key: Some(RawScriptPubKey { addresses: Some(vec![to.to_string()]) }),
-            }],
-            time: Some(1_700_000_000),
-        }
-    }
-
-    /*
-     * Measured on the live chain: 300 consecutive payments to
-     * APP_PAYMENT_ADDRESS, every one exactly 9.0 FLUX, across apps from 2 to
-     * 100 instances. It is a flat message fee, not a resource-scaled cost.
-     *
-     * THE RATE IS DERIVED, NEVER HARDCODED. A literal 9.0 in the source becomes
-     * quietly wrong on every row the day Flux changes the fee, and nothing
-     * would fail -- the screen would simply lie. Reading it back off the chain
-     * each cycle means the number follows reality.
-     */
-    #[test]
-    fn derives_the_fee_from_observed_payments() {
-        let txs: Vec<RawTx> = (0..8).map(|_| payment("9.00000000", APP_PAYMENT_ADDRESS)).collect();
-
-        let rate = derive_app_fee_rate(&txs).expect("a rate");
-
-        assert_eq!(rate.flux, 9.0);
-        assert_eq!(rate.samples, 8);
-        assert!(rate.uniform);
-    }
-
-    #[test]
-    fn follows_the_chain_when_the_fee_changes() {
-        // The whole point of deriving it. A different rate must come through
-        // without a code change.
-        let txs: Vec<RawTx> = (0..5).map(|_| payment("12.50000000", APP_PAYMENT_ADDRESS)).collect();
-
-        assert_eq!(derive_app_fee_rate(&txs).unwrap().flux, 12.5);
-    }
-
-    /*
-     * If payments ever stop being uniform, the flat-rate premise is wrong and
-     * "this deployment cost X" stops being true. The UI needs to know that
-     * rather than average over it and present a confident wrong figure.
-     */
-    #[test]
-    fn reports_that_payments_disagree_rather_than_averaging_them() {
-        let txs = vec![
-            payment("9.00000000", APP_PAYMENT_ADDRESS),
-            payment("9.00000000", APP_PAYMENT_ADDRESS),
-            payment("40.00000000", APP_PAYMENT_ADDRESS),
-        ];
-
-        let rate = derive_app_fee_rate(&txs).expect("a rate");
-
-        assert!(!rate.uniform);
-        // The most common value still wins, so the figure stays the best
-        // available answer -- it is simply flagged as not universal.
-        assert_eq!(rate.flux, 9.0);
-    }
-
-    #[test]
-    fn ignores_outputs_paying_anybody_else() {
-        // The payer's own change leg shares the transaction and is not a fee.
-        let mut tx = payment("9.00000000", APP_PAYMENT_ADDRESS);
-        tx.vout.push(RawVout {
-            value: "250.00000000".into(),
-            script_pub_key: Some(RawScriptPubKey { addresses: Some(vec!["t1Payer".into()]) }),
-        });
-
-        assert_eq!(derive_app_fee_rate(&[tx]).unwrap().flux, 9.0);
-    }
-
-    #[test]
-    fn returns_none_when_there_are_no_payments_to_read() {
-        assert!(derive_app_fee_rate(&[]).is_none());
-        assert!(derive_app_fee_rate(&[payment("5.0", "t1SomebodyElse")]).is_none());
-    }
-
-    #[test]
-    fn ignores_a_coinbase() {
-        let mut cb = payment("9.00000000", APP_PAYMENT_ADDRESS);
-        cb.is_coin_base = true;
-
-        assert!(derive_app_fee_rate(&[cb]).is_none());
     }
 }

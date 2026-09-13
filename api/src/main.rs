@@ -283,17 +283,6 @@ pub mod api_v1 {
              * the rail must show nothing rather than a placeholder.
              */
             busiest_block_24h: Option<services::chain_activity::UtilityBlockRecord>,
-            /*
-             * The app deployment fee, as observed on chain (issue #346).
-             *
-             * None until a scan has read the payment address at least once. It
-             * is derived rather than hardcoded so the figure follows Flux
-             * rather than a literal in our source -- see derive_app_fee_rate.
-             * `uniform: false` means payments have stopped agreeing and the
-             * flat-fee premise no longer holds, which the UI must surface
-             * rather than quietly average over.
-             */
-            app_fee: Option<services::chain_activity::AppFeeRate>,
         }
 
         // Synchronous read of whatever the background scanner has already
@@ -314,7 +303,6 @@ pub mod api_v1 {
                 team_txs: services::chain_activity::load_team_txs(),
                 last_scanned_height: checkpoint_height,
                 busiest_block_24h: busiest,
-                app_fee: services::chain_activity::load_app_fee_rate(),
                 last_attempt_at: scan_status.last_attempt_at,
                 last_success_at: scan_status.last_success_at,
                 scan_start_height: scan_status.scan_start_height,
@@ -339,7 +327,17 @@ pub mod api_v1 {
         use axum::extract::Query;
 
         const DEFAULT_LIMIT: usize = 50;
-        const MAX_LIMIT: usize = 200;
+        /*
+         * Raised from 200 for #346, where the retained blocks became the page
+         * rather than a drilldown. 200 covered barely two days of deployments
+         * against a measured 37-185 per day, so the panels would have silently
+         * shown a fraction of the 8-day window.
+         *
+         * Still a cap, and still clamped: a utility block carrying transfers
+         * and deployments is a few hundred bytes, so 500 is a low-hundreds-of-KB
+         * response at worst -- bounded, where the full retained set is not.
+         */
+        const MAX_LIMIT: usize = 500;
 
         #[derive(Debug, Deserialize)]
         pub struct BlocksQuery {

@@ -50,37 +50,47 @@ readable resources and **390 (26.7%)** are enterprise, where resources are
 encrypted but name, owner, instances and expire remain readable. Deploy volume
 runs **37–185 per day**.
 
-### 2. App fees are on chain, at a flat rate
+### 2. Deployment cost is NOT available — corrected mid-build
 
-`t3ZQQsd8hJNw6UQKYLwfofdL3ntPmgkwofH` is the app payment address — 4,777 pages
-of history. Sampling 30 pages:
+**This section originally claimed the opposite, and was wrong.** It is kept
+here because the mistake is instructive and the wrong conclusion was
+convincing.
+
+The claim was that `t3ZQQsd8hJNw6UQKYLwfofdL3ntPmgkwofH` is the app payment
+address, evidenced by 300 consecutive payments to it over three days, every one
+exactly 9.0 FLUX. A flat fee needs no attribution, so a per-row cost looked
+honest. The feature was built on that basis.
+
+It fell over the first time a test parsed a **real** captured response rather
+than a hand-built fixture. The transactions carry `isCoinBase: true`, and their
+outputs are:
 
 ```
-300 payments across 3.0 days (heights 2,937,838 .. 2,946,350)
-distinct amounts: 1
-        9.0 FLUX  x300
-total: 2,700 FLUX
+0.5  -> t3hPu1YDeGUCp8m7BQCnnNUmRMJBa5RadyA   (DEV_FUND_ADDRESS, in our own code)
+1.0  -> ...                                    (Cumulus,  7.14%)
+3.5  -> ...                                    (Nimbus,   25%)
+9.0  -> t3ZQQsd8hJNw6UQKYLwfofdL3ntPmgkwofH    (Stratus,  64.28%)
+                                               ---------------------
+                                               14.0 = the block reward
 ```
 
-Every payment is **exactly 9.0 FLUX**, across a 2-instance Valheim and a
-100-instance SoftEther VPN alike. It is a flat message fee, not a
-resource-scaled hosting cost. Roughly 100/day against 37–185 deploys/day.
+`t3ZQQsd8` is a **Stratus node collecting block rewards**. The uniformity that
+made the flat-fee story so persuasive is precisely what should have given it
+away: 9.0 is 64.28% of a 14 FLUX block reward, the Stratus share, and ~100/day
+is how often that node wins a block.
 
-**What this does and does not license.** Because the fee is flat, "this
-deployment cost 9 FLUX" is simply true and needs no attribution. What is *not*
-possible is saying "*this* txid paid for *that* app": amounts are identical and
-deployments cluster around payments — three consecutive deployments sat 0, 5
-and 23 blocks after the same payment. So the screen reports the **rate** and
-the **aggregate**, and never points a specific transaction at a specific app.
+Checking the remaining Foundation addresses found no uniform per-deployment
+fee anywhere — only coinbase income and varied treasury movements.
 
-This is the opposite direction from #270, which starts from a donor's outgoing
-transaction and asks whether it was an app payment. That remains unanswerable
-without the v9 memo. Starting from a known deployment is a different and easier
-question, and nothing here weakens #270's reasoning.
+**So #270's original reasoning stands and was never actually contradicted.**
+Per-app cost needs the v9 payment memo. The deployments panel ships without a
+cost column and gains one under #270.
 
-**The rate is derived, never hardcoded.** If Flux changes the fee, a hardcoded
-9 becomes quietly wrong on every row. The scanner records observed payment
-amounts and the UI reports what was actually paid.
+**The lesson, for the next time this comes up:** the earlier analysis summed
+`vout` values paying an address and never checked `isCoinBase`. Money arriving
+at an address is not a payment *to* that address by anybody — on this chain it
+is most often the protocol paying a node. Any future "payments to X" analysis
+must exclude coinbase transactions before drawing a single conclusion.
 
 ### 3. The explorer link needs the block hash, which the scanner already has
 
@@ -110,12 +120,12 @@ must strip it, or every block link ships broken.
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ COVERAGE  8 days · 23,040 blocks     (catching up: "207 of 2,880 today")   │
-│ Utility 8 │ Empty 199 │ Transfers 12 │ Deploys 80 │ Moved 1,204 ⚡ │ Fees 720 ⚡ │
+│ Utility 8 │ Empty 199 │ Transfers 12 │ Deploys 80 │ Moved 1,204 ⚡ │ Team 0 │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ ▁▃▂▅▇▃▂▄   eight sparkline bars; click a day to filter everything below     │
 ├───────────────────────────────────────────┬────────────────────────────────┤
 │ APP DEPLOYMENTS                  80    ⌕  │ P2P TRANSFERS          12   ⌕  │
-│ name  cat  owner  inst  repo  res  fee  # │ #  txid  from → to  amount  $  │
+│ name  owner  inst  image  resources    #  │ #  txid  from → to  amount  $  │
 │ … fills the height, no nested scrollbar   │ …                              │
 └───────────────────────────────────────────┴────────────────────────────────┘
 ```
@@ -132,7 +142,7 @@ Four changes carry the work:
 4. **Empty states stop costing a panel.** Flux team transactions collapses to a
    line in the band unless there is something to show.
 
-Split 60/40: deployments needs ~1,020px of columns, transfers ~560px.
+Split 60/40: deployments needs ~950px of columns, transfers ~560px.
 
 ### Layout under constraint
 
@@ -157,7 +167,6 @@ of the window is complete.
 - Widen `AppSpec` to `{ name, owner, instances, expire, height, enterprise, compose[] }`.
 - Add `deployments: Vec<DeploymentRecord>` to `UtilityBlockRecord`.
 - Add `hash: Option<String>` to `UtilityBlockRecord`, from the existing `resolve_block_hash`.
-- Scan the app payment address; expose observed fee amounts.
 
 **`#[serde(default)] on every new field is load-bearing, not decoration.**
 The file is already on disk in every running deployment without these fields. A

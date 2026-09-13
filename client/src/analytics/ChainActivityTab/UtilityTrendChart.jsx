@@ -33,14 +33,28 @@ const CHROME = {
   },
 };
 
-export function UtilityTrendChart({ daily, theme }) {
+/*
+ * `compact` is the Chain Activity strip (issue #346).
+ *
+ * The chart used to BE the page -- 200px of chrome rendering two numbers that
+ * the stat band above now states outright, and with the scanner behind it drew
+ * a single rectangle. In compact mode it keeps the one thing a chart is better
+ * at than a number (shape across the window) and drops the rest: no Y axis, no
+ * legend, tighter margins.
+ *
+ * The height must be passed to ResponsiveContainer rather than set in CSS. It
+ * measures its own box and renders to that number, so a hardcoded 200 inside a
+ * 120px strip does not shrink -- it OVERFLOWS, and the legend lands on top of
+ * whatever follows. That is exactly what happened on the first attempt here.
+ */
+export function UtilityTrendChart({ daily, theme, compact = false }) {
   const data = buildTrendSeries(daily);
   const chrome = CHROME[theme] || CHROME.dark;
 
   return (
     <div className="ca-trend-chart" role="img" aria-label="Daily utility and empty block counts across the retained window">
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart accessibilityLayer data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={compact ? 116 : 200}>
+        <BarChart accessibilityLayer data={data} margin={compact ? { top: 4, right: 4, left: 4, bottom: 0 } : { top: 4, right: 4, left: -20, bottom: 0 }}>
           <CartesianGrid stroke={chrome.grid} vertical={false} />
           <XAxis
             dataKey="label"
@@ -48,7 +62,15 @@ export function UtilityTrendChart({ daily, theme }) {
             axisLine={{ stroke: chrome.grid }}
             tickLine={false}
           />
+          {/*
+            `hide`, NOT removed. The band above already states utility and empty
+            outright, so the ticks are redundant -- but dropping the YAxis
+            element takes the numeric scale with it, and the stacked bars then
+            render at zero height. The compact strip came out completely empty
+            the first time for exactly this reason.
+          */}
           <YAxis
+            hide={compact}
             tick={{ fill: chrome.axis, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -65,7 +87,8 @@ export function UtilityTrendChart({ daily, theme }) {
             labelStyle={{ color: chrome.tooltipText, fontWeight: 600 }}
             itemStyle={{ color: chrome.tooltipText }}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: chrome.axis }} />
+          {/* Green is utility, red is empty, and the tooltip names both. */}
+          {!compact && <Legend wrapperStyle={{ fontSize: 11, color: chrome.axis }} />}
           <Bar dataKey="utility" name="Utility" stackId="blocks" fill={BAR_UTILITY} />
           <Bar dataKey="empty" name="Empty" stackId="blocks" fill={BAR_EMPTY} radius={[3, 3, 0, 0]} />
         </BarChart>
