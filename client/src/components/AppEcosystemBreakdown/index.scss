@@ -109,13 +109,37 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  &--hero {
+  /*
+   * Chained onto the base class on purpose -- `&.hov-header-badge--hero`, not
+   * `&--hero` (issue #317).
+   *
+   * `.hov-header-badge` is defined in SEVEN stylesheets, all loaded into the
+   * same /analytics chunk. `&--hero` compiles to `.hov-header-badge--hero`,
+   * which ties the plain `.hov-header-badge` on specificity, and in dark mode
+   * `.app-mode-dark .hov-header-badge--hero` ties
+   * `.app-mode-dark .hov-header-badge` -- so whichever file happened to load
+   * last won, and six of the seven are not this one.
+   *
+   * The cascade resolves per PROPERTY, which is what made the failure so
+   * strange to look at: the losing rule still supplied
+   * `-webkit-text-fill-color: transparent` (nothing else sets that property),
+   * while the base rule supplied the background. Transparent text painted with
+   * a flat grey pill instead of the gradient meant for it: the figure rendered,
+   * occupied space, was present in innerText, and was completely invisible.
+   *
+   * Chaining makes these (0,2,0) and (0,3,0), which no `.hov-header-badge`
+   * rule can reach.
+   */
+  &.hov-header-badge--hero {
     font-size: 1.4rem;
     letter-spacing: -0.02em;
     padding: 0 2px;
     background: none;
     border-radius: 0;
     color: var(--text-primary);
+    // Belt and braces: if the gradient below is ever lost again, the text
+    // falls back to a real colour rather than to invisible.
+    -webkit-text-fill-color: currentColor;
 
     @include rule-mode-dark() {
       background: linear-gradient(135deg, #60a5fa, #a78bfa);
