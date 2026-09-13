@@ -17,7 +17,13 @@ import { DONOR_WINDOW_DAYS, OLD_ADDRESS_FLUX, EXCLUDED_FROM_DONATION_TOTALS } fr
 
 const WINDOW_SEC = DONOR_WINDOW_DAYS * 24 * 60 * 60;
 
-function donationAddresses() {
+/*
+ * Exported for api/donationScanCache.js (#341), which drops outputs that pay
+ * nobody here before persisting a scan. That trim and paidToDonationAddress
+ * below MUST agree on what counts as a donation address, so they read the same
+ * function rather than each building their own list.
+ */
+export function donationAddresses() {
   // Read at call time, not module load: window.gContent is populated by
   // public/runtime/app-content.js, which the container entrypoint rewrites.
   const current = (typeof window !== 'undefined' && window.gContent?.ADDRESS_FLUX) || null;

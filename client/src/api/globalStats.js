@@ -31,6 +31,7 @@ import { categorizeRunningApps } from 'runningAppsCategorized';
 import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
 import { aggregateDonations, buildDonationRows } from 'donor/donationTotals';
+import { readDonationScanCache, writeDonationScanCache } from 'api/donationScanCache';
 import { richListRank } from 'wallet/richList';
 import {
   fetch_node_benchmarks,
@@ -281,7 +282,18 @@ async function scanDonationAddress(address) {
  * helps when callers overlap, and Home's two callers fire at different moments
  * (one on mount, one once a wallet address is entered).
  */
-const DONATION_SCAN_TTL_MS = 60 * 1000;
+/*
+ * Raised from 60s to 5 minutes (issue #341), matching RAW_APP_SPECS_CACHE_TTL
+ * in api/specs.js.
+ *
+ * The old value was scoped to #314's problem -- three callers scanning on ONE
+ * page load -- and a minute was plenty for that. It does nothing for a
+ * REMOUNT: Home is a class component, so Home -> Nodes -> Home past the TTL
+ * pays all 19 requests again with the panel on its spinner throughout. Five
+ * minutes covers the ordinary round trip outright; the persisted cache below
+ * covers everything longer, including reloads.
+ */
+const DONATION_SCAN_TTL_MS = 5 * 60 * 1000;
 
 let _donationScanInFlight = null;
 let _donationScanCache = null;
@@ -315,11 +327,82 @@ async function scanBothDonationAddresses() {
     if (!scans.every((txs) => txs === null)) {
       _donationScanCache = scans;
       _donationScanAt = Date.now();
+      // Same answer, same guard, one layer down (#341). writeDonationScanCache
+      // re-applies the all-null check itself rather than trusting this caller.
+      writeDonationScanCache(scans);
     }
     return scans;
   } finally {
     _donationScanInFlight = null;
   }
+}
+
+/*
+ * The scan as it stands RIGHT NOW, plus a way to find out what it becomes
+ * (issue #341).
+ *
+ * Stale-while-revalidate, and only fetch_donation_totals uses it. Returns
+ * either a live scan with nothing pending, or a persisted one with the live
+ * scan still in flight:
+ *
+ *   { scans, status: 'live',   fetchedAt, refresh: null }
+ *   { scans, status: 'cached', fetchedAt, refresh: Promise<scans|null> }
+ *
+ * The persisted branch deliberately does NOT await the network. That is the
+ * whole point: Home gets figures to render before the 19 requests have even
+ * been issued, and corrects them when they land.
+ */
+function donationScansCachedFirst() {
+  if (_donationScanCache && Date.now() - _donationScanAt < DONATION_SCAN_TTL_MS) {
+    return { scans: _donationScanCache, status: 'live', fetchedAt: _donationScanAt, refresh: null };
+  }
+
+  const cached = readDonationScanCache();
+  if (!cached) {
+    return scanBothDonationAddresses().then((scans) => ({
+      scans,
+      status: 'live',
+      fetchedAt: Date.now(),
+      refresh: null
+    }));
+  }
+
+  /*
+   * Started, not awaited. The rejection handler is attached here rather than
+   * left to the caller because an unhandled rejection on a promise nobody is
+   * blocking on would surface as a console error with no user-visible cause.
+   * A failed refresh resolves null and the cached figures simply stand -- see
+   * fetch_donation_totals, which does not downgrade a good display to an error
+   * on a failed background pass.
+   */
+  const refresh = scanBothDonationAddresses().catch((error) => {
+    console.warn('[donations] background refresh failed:', error?.message);
+    return null;
+  });
+
+  return { scans: cached.scans, status: 'cached', fetchedAt: cached.timestamp, refresh };
+}
+
+/** The shared reduction, so the cached and live passes cannot compute differently. */
+function donationTotalsFrom(scans, status, fetchedAt) {
+  if (!Array.isArray(scans) || scans.every((txs) => txs === null)) {
+    return { ok: false, totals: null, rows: [], status, fetchedAt };
+  }
+
+  const txs = scans.filter(Boolean).flat();
+  /*
+   * Rows are rebuilt here, never cached (#341). buildDonationRows applies a
+   * ROLLING window against nowMs; persisting derived rows would freeze that
+   * window and keep listing donations that have since aged out of it. The
+   * cache stores transactions precisely so this stays live.
+   */
+  return {
+    ok: true,
+    totals: aggregateDonations(txs),
+    rows: buildDonationRows(txs),
+    status,
+    fetchedAt
+  };
 }
 
 /*
@@ -332,11 +415,7 @@ async function scanBothDonationAddresses() {
  * Resolves { ok: false } when BOTH addresses were unreadable, so the panel can
  * say "could not load" instead of rendering a confident and wrong zero.
  */
-export async function fetch_donation_totals() {
-  const scans = await scanBothDonationAddresses();
-  if (scans.every((txs) => txs === null)) return { ok: false, totals: null, rows: [] };
-
-  const txs = scans.filter(Boolean).flat();
+export async function fetch_donation_totals({ onRefresh } = {}) {
   /*
    * `rows` rides along rather than getting its own fetch (issue #315). The
    * individual donations were always in these bytes and were being reduced to
@@ -344,7 +423,26 @@ export async function fetch_donation_totals() {
    * second scan. Given #314, adding a fourth caller to the explorer would have
    * undone the fix that made this panel affordable in the first place.
    */
-  return { ok: true, totals: aggregateDonations(txs), rows: buildDonationRows(txs) };
+  const pending = donationScansCachedFirst();
+  const { scans, status, fetchedAt, refresh } = pending instanceof Promise ? await pending : pending;
+
+  const result = donationTotalsFrom(scans, status, fetchedAt);
+  if (!refresh) return result;
+
+  /*
+   * Resolve on the cached figures immediately; correct them out of band.
+   *
+   * A failed refresh says nothing rather than reporting failure: the panel is
+   * already showing real numbers, and replacing them with "couldn't load"
+   * because a background pass hit a 429 would be a downgrade the user can see,
+   * for no gain. The cached scan also stays on disk for the next visit.
+   */
+  refresh.then((fresh) => {
+    if (!onRefresh || !fresh || fresh.every((txs) => txs === null)) return;
+    onRefresh(donationTotalsFrom(fresh, 'live', Date.now()));
+  });
+
+  return result;
 }
 
 /*

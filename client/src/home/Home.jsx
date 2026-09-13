@@ -85,6 +85,10 @@ class Home extends React.Component {
       donationRows: [],
       donationsSettled: false,
       donationsFailed: false,
+      // 'cached' while showing last-known figures from a previous visit,
+      // 'live' once this session's scan has landed (#341).
+      donationsStatus: 'live',
+      donationsFetchedAt: null,
     };
 
     this._refreshInterval = null;
@@ -207,6 +211,9 @@ class Home extends React.Component {
   }
 
   componentWillUnmount() {
+    // #341: the donation refresh resolves out of band, after its own promise
+    // has already settled, so it can land on an unmounted Home.
+    this._unmounted = true;
     this._stopAutoRefresh();
     if (this.methodCallSubscription) this.methodCallSubscription.unsubscribe();
   }
@@ -256,9 +263,38 @@ class Home extends React.Component {
 
     // #258: community donation totals. Network-wide, so it belongs here with
     // the other panels that describe the network rather than the wallet.
-    fetch_donation_totals()
-      .then(({ ok, totals, rows }) =>
-        this.setState({ donations: totals, donationRows: rows || [], donationsSettled: true, donationsFailed: !ok })
+    /*
+     * Cached-first (#341). The scan behind this is 19 sequential explorer
+     * requests, and Home is a class component, so every return from /nodes used
+     * to remount straight onto a spinner while they ran again. fetch_donation_totals
+     * now answers from the persisted scan when it has one and calls onRefresh
+     * with the live figures once they land.
+     *
+     * The unmount guard matters here in a way it does not for a plain fetch:
+     * onRefresh fires AFTER this promise has already resolved, so it can easily
+     * outlive the component that asked for it.
+     */
+    fetch_donation_totals({
+      onRefresh: ({ ok, totals, rows, status }) => {
+        if (this._unmounted) return;
+        this.setState({
+          donations: totals,
+          donationRows: rows || [],
+          donationsSettled: true,
+          donationsFailed: !ok,
+          donationsStatus: status
+        });
+      }
+    })
+      .then(({ ok, totals, rows, status, fetchedAt }) =>
+        this.setState({
+          donations: totals,
+          donationRows: rows || [],
+          donationsSettled: true,
+          donationsFailed: !ok,
+          donationsStatus: status,
+          donationsFetchedAt: fetchedAt
+        })
       )
       .catch(() => this.setState({ donationsSettled: true, donationsFailed: true }));
   }
@@ -678,6 +714,8 @@ class Home extends React.Component {
                 donationRows={this.state.donationRows}
                 donationsSettled={this.state.donationsSettled}
                 donationsFailed={this.state.donationsFailed}
+                donationsStatus={this.state.donationsStatus}
+                donationsFetchedAt={this.state.donationsFetchedAt}
               />
             </>
           );

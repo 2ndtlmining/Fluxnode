@@ -174,6 +174,26 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * "Updating…" beside a panel title while cached figures are on screen (#341).
+ *
+ * Sized and coloured to sit BELOW the title in the reading order -- the
+ * figures under it are real, from a real scan, just not this second's. A
+ * louder treatment would tell the reader to distrust numbers that are almost
+ * always about to be confirmed unchanged.
+ *
+ * `margin-left: auto` pushes it to the badge's left edge; the header is a flex
+ * row with the badge last.
+ */
+.hov-header-note {
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  opacity: 0.75;
+}
+
 .hov-header-badge {
   font-size: 0.75rem;
   font-weight: 700;
