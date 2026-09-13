@@ -66,6 +66,19 @@ export function buildSpecIndex(rawSpecs) {
       ...specResources(spec),
       category: categorizeAppSpec(spec),
       instances: spec.instances || 1,
+      /*
+       * The app's paid term, for issue #351's hosted-application list.
+       *
+       * `expire` is a DURATION IN BLOCKS measured from `height`, not an
+       * absolute height and not a timestamp -- so both are needed and neither
+       * means anything alone. See expiryFromHeight in analytics/networkAppRows.
+       *
+       * Defaulted to 0 rather than left undefined: expiryFromHeight reads 0 as
+       * "cannot say" and returns null, where undefined would work by accident
+       * until something did arithmetic with it.
+       */
+      height: spec.height || 0,
+      expire: spec.expire || 0,
       // Per-component repotags, for consumers that need the EXACT image a
       // specific running container is (not just the spec's primary/first
       // one) — see repotagForComponent below. Only the name/repotag pairs are

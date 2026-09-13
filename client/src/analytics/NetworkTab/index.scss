@@ -661,3 +661,192 @@
   display: block;
   width: 100%;
 }
+
+/* ── #351: the applications behind the category counts ──────────────────── */
+
+.nt-apps-panel {
+  margin-top: 12px;
+}
+
+/*
+ * The active category, as a dismissible chip beside the title. The card that
+ * sets it can be scrolled out of view, and a filtered list with no visible
+ * reason why reads as missing data rather than as a filter.
+ */
+.nt-apps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--brand-primary, #4d9bf5);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--brand-primary, #4d9bf5) 14%, transparent);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.nt-apps-chip-x {
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.nt-apps-search {
+  flex: 0 1 240px;
+  min-width: 0;
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+
+  &:focus {
+    outline: none;
+    border-color: var(--brand-primary, #4d9bf5);
+  }
+}
+
+/*
+ * Capped rather than page-length. A whole-network selection is ~7,000 rows;
+ * letting that run would bury Top Dogs under a mile of table.
+ */
+.nt-apps-scroll {
+  max-height: 460px;
+  overflow: auto;
+}
+
+.nt-apps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+
+  th,
+  td {
+    padding: 5px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-elevated);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.nt-apps-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-secondary);
+  }
+}
+
+.nt-apps-node {
+  width: 15%;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.nt-apps-name {
+  width: 22%;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.nt-apps-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.nt-apps-repo {
+  width: 28%;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* Absent, not zero — an encrypted or unknown value, never a measurement. */
+.nt-apps-muted {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.nt-apps-expired {
+  color: #e05263;
+}
+
+/* Amber for a term nearly up: informative, not an error. */
+.nt-apps-soon {
+  color: #d9a03a;
+}
+
+/*
+ * A category row in the card above, when it filters the table below.
+ */
+.nt-app-row--button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+}
+
+.nt-app-row--selected {
+  background: color-mix(in srgb, var(--brand-primary, #4d9bf5) 16%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--brand-primary, #4d9bf5) 22%, transparent);
+  }
+}
+
+.nt-apps-note {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-secondary);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 900px) {
+  .nt-apps-search {
+    flex-basis: 140px;
+  }
+}
