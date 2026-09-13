@@ -1,0 +1,103 @@
+import { explorerBlockUrl, explorerTxUrl } from './explorerLinks';
+import { EXPLORER_HOSTS, __resetExplorerHealth, __explorerHealth } from './explorer';
+
+/*
+ * Issue #347: block numbers should open the block in the explorer.
+ *
+ * TWO THINGS MAKE THIS LESS TRIVIAL THAN IT LOOKS.
+ *
+ * 1. The explorer's UI path takes a HASH, not a height. Verified against the
+ *    live host:
+ *
+ *        404  https://explorer.runonflux.io/block/2946401
+ *        200  https://explorer.runonflux.io/api/block-index/2946401
+ *
+ *    So a height alone cannot produce a link, and a caller without a hash must
+ *    get null rather than a URL that 404s.
+ *
+ * 2. EXPLORER_HOSTS entries END IN /api, because everything else in the app
+ *    uses them for JSON. explorerUrl() therefore yields …/api/block/<hash> --
+ *    the API path, not the page a person should land on. Every link would be
+ *    broken, and invisibly so, because nothing checks a URL until it is
+ *    clicked.
+ *
+ * The host choice reuses explorer.js's health tracking, which is the point:
+ * #347 notes "sometimes the explorer looses block synch", and the pool already
+ * benches a host that has been failing.
+ */
+
+beforeEach(() => {
+  __resetExplorerHealth();
+});
+
+const HASH = '4de770137e6a9b357ef3eab793781e5293a05f87f121490643e1c63e4b8c5a5b';
+
+describe('explorerBlockUrl', () => {
+  it('builds a UI block URL from a hash', () => {
+    expect(explorerBlockUrl(HASH)).toBe(`https://explorer.runonflux.io/block/${HASH}`);
+  });
+
+  /*
+   * The regression this file exists for. /api/block/<hash> is not a page.
+   */
+  it('does NOT point at the API path', () => {
+    expect(explorerBlockUrl(HASH)).not.toContain('/api/');
+  });
+
+  it('returns null without a hash, rather than a URL that 404s', () => {
+    // Records written before the scanner stored hashes have none. A row must
+    // render as plain text in that case, which it can only do if it is told.
+    for (const missing of [null, undefined, '', 0]) {
+      expect(explorerBlockUrl(missing)).toBeNull();
+    }
+  });
+
+  it('refuses anything that is not a block hash', () => {
+    // A height is the obvious thing to pass by mistake, and it 404s.
+    expect(explorerBlockUrl(2946401)).toBeNull();
+    expect(explorerBlockUrl('2946401')).toBeNull();
+    expect(explorerBlockUrl('not a hash')).toBeNull();
+    expect(explorerBlockUrl(HASH.slice(0, 40))).toBeNull();
+  });
+
+  it('accepts an upper-case hash', () => {
+    expect(explorerBlockUrl(HASH.toUpperCase())).toContain(HASH.toUpperCase());
+  });
+
+  /*
+   * #347 names both hosts, in this order, for exactly this reason.
+   */
+  it('falls back to the second host when the first is benched', () => {
+    __explorerHealth()[EXPLORER_HOSTS[0]].benchedUntil = Date.now() + 60_000;
+
+    expect(explorerBlockUrl(HASH)).toBe(`https://explorer.app.runonflux.io/block/${HASH}`);
+  });
+
+  it('still returns a link when every host is benched', () => {
+    // A benched host is one that failed recently, not one known to be gone. A
+    // dead link is worse than an unlinked number, but no link at all when the
+    // explorer is merely rate-limited would be worse still -- the page is
+    // almost certainly fine for a human clicking it.
+    for (const host of EXPLORER_HOSTS) {
+      __explorerHealth()[host].benchedUntil = Date.now() + 60_000;
+    }
+
+    expect(explorerBlockUrl(HASH)).toBe(`https://explorer.runonflux.io/block/${HASH}`);
+  });
+});
+
+describe('explorerTxUrl', () => {
+  /*
+   * Deliberately NOT used on Home: #322 removed donor transaction links from
+   * the donation list on purpose. This exists for Chain Activity's transfer
+   * rows, which are network-wide chain events rather than anybody's donation.
+   */
+  it('builds a UI transaction URL', () => {
+    expect(explorerTxUrl(HASH)).toBe(`https://explorer.runonflux.io/tx/${HASH}`);
+  });
+
+  it('returns null without a txid', () => {
+    expect(explorerTxUrl(null)).toBeNull();
+    expect(explorerTxUrl('')).toBeNull();
+  });
+});

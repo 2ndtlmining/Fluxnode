@@ -327,7 +327,17 @@ pub mod api_v1 {
         use axum::extract::Query;
 
         const DEFAULT_LIMIT: usize = 50;
-        const MAX_LIMIT: usize = 200;
+        /*
+         * Raised from 200 for #346, where the retained blocks became the page
+         * rather than a drilldown. 200 covered barely two days of deployments
+         * against a measured 37-185 per day, so the panels would have silently
+         * shown a fraction of the 8-day window.
+         *
+         * Still a cap, and still clamped: a utility block carrying transfers
+         * and deployments is a few hundred bytes, so 500 is a low-hundreds-of-KB
+         * response at worst -- bounded, where the full retained set is not.
+         */
+        const MAX_LIMIT: usize = 500;
 
         #[derive(Debug, Deserialize)]
         pub struct BlocksQuery {

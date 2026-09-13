@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_META } from 'live/categoryMeta';
 import { useBlockPulse } from './useBlockPulse';
+import { BlockLink } from 'components/BlockLink';
 import './index.scss';
 
 /*
@@ -86,7 +87,7 @@ function Tile({ particle, index, size, still }) {
 }
 
 export function BlockPulse() {
-  const { status, height, composition } = useBlockPulse();
+  const { status, height, hash, composition } = useBlockPulse();
   const reduced = prefersReducedMotion();
 
   // Remount the grid on every new block so the entrance animation replays.
@@ -188,9 +189,14 @@ export function BlockPulse() {
         </dl>
       </div>
 
+      {/*
+        The height opens the block in the explorer (#347). BlockLink degrades to
+        plain text without a hash, so a poll that returned a height but no hash
+        still renders a caption rather than a dead link.
+      */}
       <p className="bp-caption">
-        Block {height?.toLocaleString()} carried {total.toLocaleString()}{' '}
-        {total === 1 ? 'event' : 'events'}
+        Block <BlockLink height={height} hash={hash}>{height?.toLocaleString()}</BlockLink> carried{' '}
+        {total.toLocaleString()} {total === 1 ? 'event' : 'events'}
         {capped ? ` — showing ${(total - hidden).toLocaleString()}` : ''}
       </p>
     </div>

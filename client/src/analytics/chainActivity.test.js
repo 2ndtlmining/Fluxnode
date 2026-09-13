@@ -268,6 +268,15 @@ describe('fetch_chain_activity_blocks', () => {
       // #282. Empty here because this fixture's payload predates the field --
       // which is also the shape a real pre-#282 record deserializes to.
       transfers: [],
+      /*
+       * #346/#347, and the same story one version later: this fixture predates
+       * these fields too, so it exercises exactly what a record written by an
+       * older scanner deserializes to. `hash: null` is what makes the block
+       * height render as plain text rather than a link that cannot work.
+       */
+      deploymentCount: 0,
+      hash: null,
+      deployments: [],
     });
   });
 

@@ -271,6 +271,14 @@ export async function fetch_chain_activity_blocks(limit = 50) {
             isP2p: !!b.is_p2p,
             isDapp: !!b.is_dapp,
             transferCount: b.transfer_count || 0,
+            deploymentCount: b.deployment_count || 0,
+            /*
+             * #347: the explorer's block page takes a HASH, not a height
+             * (/block/2946401 returns 404). Absent on records written before
+             * the scanner stored it -- those render as plain text rather than
+             * a link that cannot work, and refill as the scanner moves on.
+             */
+            hash: b.hash || null,
             // #282: the block's own transfers, capped server-side. transferCount
             // stays the TRUE total, so the two can legitimately disagree -- see
             // blockTransfersState below.
@@ -280,6 +288,28 @@ export async function fetch_chain_activity_blocks(limit = 50) {
                   from: t.from || null,
                   to: t.to,
                   amount: typeof t.amount === 'number' ? t.amount : 0,
+                }))
+              : [],
+            /*
+             * #346: the deployments themselves, not just how many. Capped
+             * server-side at MAX_STORED_DEPLOYMENTS, so deploymentCount stays
+             * the TRUE total and the two can legitimately disagree -- the same
+             * arrangement #282 made for transfers.
+             */
+            deployments: Array.isArray(b.deployments)
+              ? b.deployments.map((d) => ({
+                  name: d.name || '',
+                  owner: d.owner || '',
+                  instances: d.instances || 0,
+                  repotag: d.repotag || '',
+                  cpu: typeof d.cpu === 'number' ? d.cpu : 0,
+                  ram: typeof d.ram === 'number' ? d.ram : 0,
+                  hdd: typeof d.hdd === 'number' ? d.hdd : 0,
+                  enterprise: !!d.enterprise,
+                  // False means the resources are encrypted, NOT that the app
+                  // uses none. The UI must not render 0 for this.
+                  resourcesKnown: !!d.resources_known,
+                  expire: d.expire || 0,
                 }))
               : [],
           }))

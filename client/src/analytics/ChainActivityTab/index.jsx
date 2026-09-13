@@ -2,6 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { fetch_chain_activity, summarizeDaily, relativeTimeAgo, scanProgressPct, blocksRemainingInScan, BLOCKS_PER_DAY, RETENTION_DAYS, todaysUtilityBlocks, fetch_chain_activity_blocks, blockCategoryLabel, blockTransfersState, shouldPollSync, SYNC_POLL_INTERVAL_MS } from 'analytics/chainActivity';
 import { shouldFetchDrilldown, stateAfterCancel } from './drilldownState';
+import { DeploymentsPanel, TransfersPanel } from './ActivityPanels';
+import { deploymentRows, transferRows, coverageSummary } from './activityRows';
+import { BlockLink } from 'components/BlockLink';
 import './index.scss';
 
 /*
@@ -34,6 +37,15 @@ const UtilityTrendChart = lazy(() =>
  * (caught_up) — this is a "something to know about" banner, not a
  * permanent status fixture.
  */
+/*
+ * How many retained blocks the panels ask for.
+ *
+ * Matches the endpoint's MAX_LIMIT. Utility blocks are a small fraction of all
+ * blocks (4% in the reported window), so this reaches back across most of the
+ * 8-day retention while keeping the response in the low hundreds of KB.
+ */
+const BLOCKS_REQUESTED = 500;
+
 const SYNC_STATUS_COPY = {
   api_unreachable: {
     tone: 'error',
@@ -172,9 +184,9 @@ function BlockTransfers({ state, transfers }) {
   );
 }
 
-function fmtNum(n) {
+function fmtNum(n, decimals = 0) {
   if (!n && n !== 0) return '—';
-  return n.toLocaleString();
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
 function pct(n, total) {
@@ -394,6 +406,60 @@ function TeamTxList({ teamTxs, lastScannedHeight }) {
   );
 }
 
+/*
+ * What was actually scanned, and what was in it (issue #346).
+ *
+ * THE HEADLINE USED TO OVERSTATE ITSELF. #346's screenshot read "8 UTILITY
+ * BLOCKS TODAY" from 199 empty + 8 utility = 207 blocks. A Flux day is 2,880,
+ * so that was 7% of a day presented as the day. The sync banner underneath
+ * explained the shortfall, but the number above it did not inherit the caveat,
+ * and a number is what people read.
+ *
+ * So coverage leads, and every figure beside it is explicitly "in what we
+ * read" rather than "on the chain". Once the window is complete the coverage
+ * chip simply states the window and stops qualifying anything.
+ */
+function StatBand({ daily, deployments, transfers, fluxPrice, teamTxCount, lastScannedHeight }) {
+  const coverage = coverageSummary(daily);
+  const { utilityBlocks, emptyBlocks } = summarizeDaily(daily);
+  const fluxMoved = transfers.reduce((sum, t) => sum + t.amount, 0);
+
+  return (
+    <div className="ca-band">
+      <div className={`ca-band-coverage${coverage.partial ? ' ca-band-coverage--partial' : ''}`}>
+        <span className="ca-band-coverage-label">Coverage</span>
+        <span className="ca-band-coverage-value">
+          {coverage.partial
+            ? `${fmtNum(coverage.blocksScanned)} of ${fmtNum(coverage.blocksExpected)} blocks scanned`
+            : `${coverage.days} days · ${fmtNum(coverage.blocksScanned)} blocks`}
+        </span>
+        {lastScannedHeight > 0 && (
+          <span className="ca-band-coverage-tip">
+            to <BlockLink height={lastScannedHeight} hash={null} />
+          </span>
+        )}
+      </div>
+
+      <dl className="ca-band-stats">
+        <div className="ca-band-stat"><dt>Utility</dt><dd>{fmtNum(utilityBlocks)}</dd></div>
+        <div className="ca-band-stat"><dt>Empty</dt><dd>{fmtNum(emptyBlocks)}</dd></div>
+        <div className="ca-band-stat"><dt>Transfers</dt><dd>{fmtNum(transfers.length)}</dd></div>
+        <div className="ca-band-stat"><dt>Deployments</dt><dd>{fmtNum(deployments.length)}</dd></div>
+        <div className="ca-band-stat">
+          <dt>FLUX moved</dt>
+          <dd>{fmtNum(fluxMoved, 2)}{fluxPrice ? <span className="ca-fee-usd"> ${fmtNum(fluxMoved * fluxPrice, 0)}</span> : null}</dd>
+        </div>
+        {/*
+          Team transactions were a full bordered panel rendering one line of
+          "none" (#346). At zero they belong in the band; the list below only
+          earns a panel when there is something in it.
+        */}
+        <div className="ca-band-stat"><dt>Team txs</dt><dd>{fmtNum(teamTxCount)}</dd></div>
+      </dl>
+    </div>
+  );
+}
+
 export function ChainActivityTab({ theme = 'dark' }) {
   const [data, setData] = useState({
     daily: [],
@@ -406,9 +472,21 @@ export function ChainActivityTab({ theme = 'dark' }) {
     syncStatus: 'never_run',
   });
   const [loading, setLoading] = useState(true);
-  // Lifted out of UtilitySummary so the hero above can open the same panel.
-  const [drilldownOpen, setDrilldownOpen] = useState(false);
-  const toggleDrilldown = () => setDrilldownOpen((v) => !v);
+  /*
+   * The retained blocks, loaded WITH the tab rather than when a drilldown is
+   * opened (issue #346).
+   *
+   * The events are the page now, so there is nothing left to open -- and that
+   * removes the whole open/close fetch-gating dance this component used to
+   * need. Worth noting what that dance cost: keeping `state.status` in the
+   * effect's dependency array drove idle -> loading -> cleanup -> idle and
+   * fired ~290,000 requests in a few seconds (#253). An unconditional load on
+   * mount cannot reproduce that class of bug at all.
+   *
+   * It is one extra call to OUR api, which reads from disk -- not to the
+   * explorer, whose budget #314 and the scanner both have to respect.
+   */
+  const [blocks, setBlocks] = useState({ ok: false, blocks: [] });
 
   /*
    * Mirrors the latest sync status for the interval below to read (issue #280).
@@ -425,10 +503,16 @@ export function ChainActivityTab({ theme = 'dark' }) {
     let cancelled = false;
 
     const load = async () => {
-      const result = await fetch_chain_activity();
+      const [result, blockData] = await Promise.all([
+        fetch_chain_activity(),
+        // Concurrent, not sequential: they have no dependency on each other,
+        // and #342 is open on exactly this mistake elsewhere in analytics.
+        fetch_chain_activity_blocks(BLOCKS_REQUESTED),
+      ]);
       if (cancelled) return;
       syncStatusRef.current = result.syncStatus;
       setData(result);
+      setBlocks(blockData);
       setLoading(false);
     };
 
@@ -463,40 +547,15 @@ export function ChainActivityTab({ theme = 'dark' }) {
     );
   }
 
-  const { utilityBlocks, emptyBlocks } = summarizeDaily(data.daily);
-  const hasBlocks = utilityBlocks + emptyBlocks > 0;
+  const deployments = deploymentRows(blocks.blocks);
+  const transfers = transferRows(blocks.blocks);
+  const fluxPrice = window.gstore?.flux_price_usd || null;
+  // The endpoint caps what it returns; say so rather than implying the lists
+  // are the whole retained window.
+  const truncated = blocks.blocks.length >= BLOCKS_REQUESTED;
 
   return (
     <div className="chain-activity-tab">
-      {/*
-        * The hero is the biggest thing on the tab and the first thing anyone
-        * tries to click, but it did nothing -- the only way into the block
-        * drill-down was a small caret on a stat line below the chart, which
-        * reads as decoration (issue #253). It opens the same panel now.
-        *
-        * Only interactive when there are blocks to show: a button that does
-        * nothing is worse than a plain figure.
-        */}
-      {hasBlocks ? (
-        <button
-          type="button"
-          className={`ca-tab-hero ca-tab-hero--button${drilldownOpen ? ' ca-tab-hero--open' : ''}`}
-          onClick={toggleDrilldown}
-          aria-expanded={drilldownOpen}
-          aria-controls="ca-utility-drilldown"
-        >
-          <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
-          <span className="ca-tab-hero-label">
-            Utility blocks today
-            <span className="ca-tab-hero-hint">{drilldownOpen ? 'Hide blocks' : 'Show blocks'}</span>
-          </span>
-        </button>
-      ) : (
-        <div className="ca-tab-hero">
-          <span className="ca-tab-hero-value">{fmtNum(todaysUtilityBlocks(data.daily))}</span>
-          <span className="ca-tab-hero-label">Utility blocks today</span>
-        </div>
-      )}
       <SyncStatusBanner
         syncStatus={data.syncStatus}
         lastSuccessAt={data.lastSuccessAt}
@@ -504,14 +563,41 @@ export function ChainActivityTab({ theme = 'dark' }) {
         scanStartHeight={data.scanStartHeight}
         scanTargetHeight={data.scanTargetHeight}
       />
-      <UtilitySummary
+
+      <StatBand
         daily={data.daily}
-        syncStatus={data.syncStatus}
-        theme={theme}
-        drilldownOpen={drilldownOpen}
-        onToggleDrilldown={toggleDrilldown}
+        deployments={deployments}
+        transfers={transfers}
+        fluxPrice={fluxPrice}
+        teamTxCount={data.teamTxs.length}
+        lastScannedHeight={data.lastScannedHeight}
       />
-      <TeamTxList teamTxs={data.teamTxs} lastScannedHeight={data.lastScannedHeight} />
+
+      {/*
+        The trend, as a strip rather than the page's centrepiece (#346).
+        Eight days is eight bars; it was rendering ~400px to say "96% empty",
+        and with the scanner behind it drew a single rectangle. The numbers it
+        carries are in the band above, so its job here is shape over time.
+      */}
+      <div className="ca-trend-strip">
+        <Suspense fallback={<div className="ca-trend-chart-loading" aria-label="Loading chart" />}>
+          <UtilityTrendChart daily={data.daily} theme={theme} compact />
+        </Suspense>
+      </div>
+
+      <div className="ca-panels">
+        <DeploymentsPanel rows={deployments} fluxPrice={fluxPrice} truncated={truncated} />
+        <TransfersPanel rows={transfers} fluxPrice={fluxPrice} capped={truncated} />
+      </div>
+
+      {/*
+        Only when there is something to show (#346). An empty "Flux team
+        transactions" panel was spending a full bordered box on one line of
+        "none"; the count lives in the band instead.
+      */}
+      {data.teamTxs.length > 0 && (
+        <TeamTxList teamTxs={data.teamTxs} lastScannedHeight={data.lastScannedHeight} />
+      )}
     </div>
   );
 }

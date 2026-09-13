@@ -170,9 +170,53 @@ struct RecentBlocksResponse {
     blocks: Vec<RecentBlock>,
 }
 
-#[derive(Debug, Deserialize)]
+/*
+ * An app specification, as much of it as Chain Activity reports (issue #346).
+ *
+ * This used to parse `height` ALONE out of a 703 KB payload that already
+ * carried everything below -- name, owner, instances, expire, the compose
+ * components with their repo tags and resources. Widening it costs NOTHING:
+ * the request was always being made and the bytes always arrived. #346 asked
+ * for detail the scanner was already downloading and discarding.
+ *
+ * Every field but `height` is optional or defaulted. The spec format has
+ * versions (v8 is current, v9 lands ~19 Oct per #206) and enterprise apps omit
+ * `compose` entirely, so a strict struct would fail the whole parse on one
+ * unusual app and report zero deployments for the cycle.
+ */
+#[derive(Debug, Deserialize, Clone)]
 struct AppSpec {
     height: i64,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    owner: Option<String>,
+    #[serde(default)]
+    instances: Option<u32>,
+    #[serde(default)]
+    expire: Option<i64>,
+    /*
+     * Present and non-empty on enterprise apps, whose resources are encrypted.
+     * 390 of 1,462 live specs (26.7%) measured. Their name, owner and instance
+     * count are still readable, so they are reported with those and an
+     * enterprise marker rather than dropped or shown as using no resources.
+     */
+    #[serde(default)]
+    enterprise: Option<String>,
+    #[serde(default)]
+    compose: Option<Vec<AppComposeComponent>>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+struct AppComposeComponent {
+    #[serde(default)]
+    repotag: Option<String>,
+    #[serde(default)]
+    cpu: Option<f64>,
+    #[serde(default)]
+    ram: Option<f64>,
+    #[serde(default)]
+    hdd: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -234,7 +278,7 @@ pub struct TxTransfer {
     pub amount: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BlockScanResult {
     pub height: i64,
     pub is_utility: bool,
@@ -253,6 +297,12 @@ pub struct BlockScanResult {
     // Capped at MAX_STORED_TRANSFERS; transfer_count above stays the true
     // total (issue #282).
     pub transfers: Vec<TxTransfer>,
+    // Capped at MAX_STORED_DEPLOYMENTS; deployment_count above stays the true
+    // total, for the same reason (issue #346).
+    pub deployments: Vec<DeploymentRecord>,
+    // Already resolved to fetch the block's transactions, and previously
+    // discarded. The explorer's block page takes a hash, not a height (#347).
+    pub hash: String,
 }
 
 /*
@@ -265,7 +315,7 @@ pub struct BlockScanResult {
  * is ~3,900 records over the 8-day window: a few hundred KB, in a data
  * directory that is rebuilt from the explorer on every restart anyway.
  */
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct UtilityBlockRecord {
     pub height: i64,
     pub date: String,
@@ -294,6 +344,58 @@ pub struct UtilityBlockRecord {
      */
     #[serde(default)]
     pub transfers: Vec<TxTransfer>,
+    /*
+     * The deployments attributed to this block, not merely how many (#346).
+     *
+     * `serde(default)` for the third time in this struct, and for the third
+     * time it is load-bearing rather than decoration: the file is already on
+     * disk in every running deployment without this field, and a missing-field
+     * error fails the WHOLE read -- discarding the retained window and forcing
+     * a ~23,040-block rescan on upgrade. Records written before this change
+     * report an empty list, which is honest, and refill as the scanner moves
+     * on. deployment_count above stays as the authoritative count; this list
+     * is capped, that number is not.
+     */
+    #[serde(default)]
+    pub deployments: Vec<DeploymentRecord>,
+    /*
+     * The block hash, for linking to the explorer (issue #347).
+     *
+     * The explorer's block page takes a hash, not a height -- /block/2946401
+     * returns 404 -- and resolve_block_hash already fetches this while
+     * scanning, then threw it away. Optional and defaulted for the same reason
+     * as the fields above; a record without one renders as plain text rather
+     * than a link that cannot work.
+     */
+    #[serde(default)]
+    pub hash: Option<String>,
+}
+
+/*
+ * One app deployment attributed to a block (issue #346).
+ *
+ * Resources are the SUM across compose components, which is what the app
+ * actually consumes per instance; the per-component breakdown is not carried
+ * because nothing on the screen reads it and it would multiply the stored size
+ * for no gain. `instances` is separate so a reader can see both.
+ *
+ * `resources_known` distinguishes "this app uses no resources" -- which is not
+ * a thing -- from "this app is enterprise, so its resources are encrypted and
+ * we genuinely cannot say". Rendering 0 for the latter would be a confident
+ * wrong number, the failure mode this codebase keeps designing against.
+ */
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct DeploymentRecord {
+    pub name: String,
+    pub owner: String,
+    pub instances: u32,
+    pub repotag: String,
+    pub cpu: f64,
+    pub ram: f64,
+    pub hdd: f64,
+    pub enterprise: bool,
+    pub resources_known: bool,
+    pub expire: i64,
 }
 
 // ── Persisted shapes ──────────────────────────────────────────────────────────
@@ -576,6 +678,8 @@ pub fn fold_contiguous_results(
                         transfer_count: r.transfer_count,
                         deployment_count: r.deployment_count,
                         transfers: r.transfers.clone(),
+                        deployments: r.deployments.clone(),
+                        hash: Some(r.hash.clone()),
                     });
                 }
                 checkpoint = height;
@@ -661,6 +765,7 @@ pub fn save_scan_status(status: &ScanStatus) -> std::io::Result<()> {
     write_json_atomic(Path::new(DATA_DIR), SCAN_STATUS_FILE, status)
 }
 
+
 pub fn unix_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -689,6 +794,14 @@ pub async fn fetch_tip_height(client: &Client) -> Option<i64> {
  * nobody's benefit.
  */
 pub const MAX_STORED_TRANSFERS: usize = 25;
+/*
+ * Same job as MAX_STORED_TRANSFERS, same reason (issue #346): one pathological
+ * block must not be able to grow the retained file without bound. Measured
+ * deploy volume is 37-185 PER DAY across ~2,880 blocks, so a block with more
+ * than this many is already far outside anything observed -- the cap is a
+ * guard, not a routine path. deployment_count stays the true total.
+ */
+pub const MAX_STORED_DEPLOYMENTS: usize = 25;
 
 /*
  * The transfers to persist for a block.
@@ -717,6 +830,76 @@ pub fn count_deployments_by_height(heights: Vec<i64>) -> HashMap<i64, u32> {
         *counts.entry(h).or_insert(0) += 1;
     }
     counts
+}
+
+/*
+ * The deployments themselves, per block height (issue #346).
+ *
+ * Sits alongside count_deployments_by_height rather than replacing it, because
+ * the two answer different questions and must not be derived from each other:
+ * this list is CAPPED and that count is not. A block with more deployments
+ * than the cap reports the true number and a truncated list, exactly as #282
+ * arranged for transfers.
+ *
+ * Resources are summed across compose components -- what the app consumes per
+ * instance. Taking the first component alone would understate every
+ * multi-container app, and those are common.
+ */
+fn to_deployment_record(spec: AppSpec) -> DeploymentRecord {
+    let components = spec.compose.unwrap_or_default();
+    let is_enterprise = spec.enterprise.as_deref().is_some_and(|e| !e.is_empty());
+
+    /*
+     * An enterprise app encrypts its resources, so `compose` arrives empty.
+     * Summing that gives 0, which would render as "this app uses no CPU" --
+     * a confident wrong number rather than an absent one. resources_known
+     * carries the difference so the UI can show a marker instead of zeros.
+     * Measured: 390 of 1,462 live specs (26.7%).
+     */
+    let resources_known = !is_enterprise && !components.is_empty();
+
+    DeploymentRecord {
+        name: spec.name.unwrap_or_default(),
+        owner: spec.owner.unwrap_or_default(),
+        instances: spec.instances.unwrap_or(0),
+        repotag: components
+            .iter()
+            .filter_map(|c| c.repotag.clone())
+            .collect::<Vec<_>>()
+            .join(", "),
+        cpu: components.iter().filter_map(|c| c.cpu).sum(),
+        ram: components.iter().filter_map(|c| c.ram).sum(),
+        hdd: components.iter().filter_map(|c| c.hdd).sum(),
+        enterprise: is_enterprise,
+        resources_known,
+        expire: spec.expire.unwrap_or(0),
+    }
+}
+
+/*
+ * Both answers about deployments, from one parse of one payload.
+ *
+ * `counts` is uncapped and authoritative; `records` is capped for storage. They
+ * travel together because every caller that wants one wants the other in the
+ * same breath, and threading two maps through scan_range and scan_one_block
+ * separately invites passing the wrong one.
+ */
+#[derive(Debug, Default, Clone)]
+pub struct DeploymentIndex {
+    pub counts: HashMap<i64, u32>,
+    pub records: HashMap<i64, Vec<DeploymentRecord>>,
+}
+
+fn deployments_by_height(specs: Vec<AppSpec>) -> HashMap<i64, Vec<DeploymentRecord>> {
+    let mut by_height: HashMap<i64, Vec<DeploymentRecord>> = HashMap::new();
+    for spec in specs {
+        let entry = by_height.entry(spec.height).or_default();
+        if entry.len() >= MAX_STORED_DEPLOYMENTS {
+            continue;
+        }
+        entry.push(to_deployment_record(spec));
+    }
+    by_height
 }
 
 /*
@@ -771,19 +954,23 @@ pub fn busiest_block_in_window(
  * field is already the real, stable answer to "was a deploy attributed to
  * this block."
  */
-pub async fn fetch_deployment_heights(client: &Client) -> HashMap<i64, u32> {
+pub async fn fetch_deployment_heights(client: &Client) -> DeploymentIndex {
     let res = match get_with_backoff(client, APP_SPECS_URL).await {
         Some(r) => r,
-        None => return HashMap::new(),
+        None => return DeploymentIndex::default(),
     };
     let parsed: AppSpecsResponse = match res.json().await {
         Ok(p) => p,
-        Err(_) => return HashMap::new(),
+        Err(_) => return DeploymentIndex::default(),
     };
     if parsed.status == "error" {
-        return HashMap::new();
+        return DeploymentIndex::default();
     }
-    count_deployments_by_height(parsed.data.unwrap_or_default().into_iter().map(|s| s.height).collect())
+    let specs = parsed.data.unwrap_or_default();
+    DeploymentIndex {
+        counts: count_deployments_by_height(specs.iter().map(|s| s.height).collect()),
+        records: deployments_by_height(specs),
+    }
 }
 
 async fn resolve_block_hash(client: &Client, height: i64) -> Option<String> {
@@ -819,17 +1006,17 @@ async fn fetch_all_block_txs(client: &Client, block_hash: &str) -> Option<Vec<Ra
     Some(all_txs)
 }
 
-pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &HashMap<i64, u32>) -> Option<BlockScanResult> {
+pub async fn scan_one_block(client: &Client, height: i64, deployments: &DeploymentIndex) -> Option<BlockScanResult> {
     let hash = resolve_block_hash(client, height).await?;
     let txs = fetch_all_block_txs(client, &hash).await?;
     let transfers = extract_p2p_transfers(&txs);
     // The two categories, kept rather than collapsed. is_utility stays exactly
     // `is_p2p || is_dapp`, so every existing is_block_utility test still holds.
     let is_p2p = !transfers.is_empty();
-    let deployment_count = deployment_heights.get(&height).copied().unwrap_or(0);
+    let deployment_count = deployments.counts.get(&height).copied().unwrap_or(0);
     let is_dapp = deployment_count > 0;
     let transfer_count = transfers.len() as u32;
-    let is_utility = is_block_utility(height, &transfers, deployment_heights);
+    let is_utility = is_block_utility(height, &transfers, &deployments.counts);
     let team_txs = extract_team_txs(height, &transfers);
     // After transfer_count is taken above, so the count stays true.
     let stored_transfers = cap_transfers(transfers);
@@ -843,7 +1030,10 @@ pub async fn scan_one_block(client: &Client, height: i64, deployment_heights: &H
         .or_else(|| txs.first().and_then(|t| t.time))
         .unwrap_or(0);
     let date = unix_to_utc_date(block_time);
-    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, deployment_count, date, team_txs, transfers: stored_transfers })
+    // Cloned rather than moved: the index is shared across every block in the
+    // concurrent scan, so this block cannot take ownership of its own slice.
+    let block_deployments = deployments.records.get(&height).cloned().unwrap_or_default();
+    Some(BlockScanResult { height, is_utility, is_p2p, is_dapp, transfer_count, deployment_count, date, team_txs, transfers: stored_transfers, deployments: block_deployments, hash })
 }
 
 /*
@@ -858,7 +1048,7 @@ async fn scan_range(
     client: &Client,
     start_height: i64,
     tip_height: i64,
-    deployment_heights: &HashMap<i64, u32>,
+    deployments: &DeploymentIndex,
     daily: &mut Vec<DailyCount>,
     team_txs: &mut Vec<TeamTx>,
     utility_blocks: &mut Vec<UtilityBlockRecord>,
@@ -869,7 +1059,7 @@ async fn scan_range(
 
     let heights: Vec<i64> = (start_height + 1..=tip_height).collect();
     let mut fetches = stream::iter(heights.into_iter().map(|h| async move {
-        (h, scan_one_block(client, h, deployment_heights).await)
+        (h, scan_one_block(client, h, deployments).await)
     }))
     .buffer_unordered(SCAN_CONCURRENCY);
 
@@ -1462,6 +1652,7 @@ mod tests {
             transfer_count: transfers,
             deployment_count: deployments,
             transfers: vec![],
+            ..Default::default()
         }
     }
 
@@ -1476,6 +1667,7 @@ mod tests {
             transfers: vec![],
             date: date.into(),
             team_txs: vec![],
+            ..Default::default()
         }
     }
 
@@ -1543,9 +1735,9 @@ mod tests {
     #[test]
     fn trim_utility_blocks_drops_everything_below_the_window_edge() {
         let mut blocks = vec![
-            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
-            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
-            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![] },
+            UtilityBlockRecord { height: 100, date: "a".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![], ..Default::default() },
+            UtilityBlockRecord { height: 200, date: "b".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![], ..Default::default() },
+            UtilityBlockRecord { height: 300, date: "c".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![], ..Default::default() },
         ];
         trim_utility_blocks(&mut blocks, 200);
         // Boundary is inclusive, matching trim_team_txs: a block exactly at the
@@ -1559,10 +1751,10 @@ mod tests {
         // total -- overlapping "any P2P" / "any Dapp" counts would not add up
         // and would read as a bug on screen.
         let blocks = vec![
-            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3, deployment_count: 0, transfers: vec![] },
-            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![] },
-            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![] },
-            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2, deployment_count: 1, transfers: vec![] },
+            UtilityBlockRecord { height: 1, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 3, deployment_count: 0, transfers: vec![], ..Default::default() },
+            UtilityBlockRecord { height: 2, date: "d".into(), is_p2p: true, is_dapp: false, transfer_count: 1, deployment_count: 0, transfers: vec![], ..Default::default() },
+            UtilityBlockRecord { height: 3, date: "d".into(), is_p2p: false, is_dapp: true, transfer_count: 0, deployment_count: 1, transfers: vec![], ..Default::default() },
+            UtilityBlockRecord { height: 4, date: "d".into(), is_p2p: true, is_dapp: true, transfer_count: 2, deployment_count: 1, transfers: vec![], ..Default::default() },
         ];
         let p2p_only = blocks.iter().filter(|b| b.is_p2p && !b.is_dapp).count();
         let dapp_only = blocks.iter().filter(|b| !b.is_p2p && b.is_dapp).count();
@@ -1728,5 +1920,178 @@ mod tests {
             last_attempt_at: 200, last_success_at: 100, last_outcome: ScanOutcome::InProgress,
             scan_start_height: 500, scan_target_height: 1000,
         });
+    }
+
+    // ── #346: deployments carry their detail, not just a count ───────────────
+
+    /*
+     * The payload these are built from was ALWAYS being downloaded. AppSpec
+     * parsed `height` alone out of 703 KB that already carried name, owner,
+     * instances, expire, and the compose components with their repo tags and
+     * resources. These cover keeping it.
+     */
+    fn spec(height: i64, name: &str) -> AppSpec {
+        AppSpec {
+            height,
+            name: Some(name.to_string()),
+            owner: Some("1CkN6E5wWTUgMFhB93uNpE9mDUqX5LWbJF".to_string()),
+            instances: Some(3),
+            expire: Some(22000),
+            enterprise: None,
+            compose: Some(vec![AppComposeComponent {
+                repotag: Some("siomiz/softethervpn:9799-alpine".to_string()),
+                cpu: Some(0.1),
+                ram: Some(100.0),
+                hdd: Some(1.0),
+            }]),
+        }
+    }
+
+    #[test]
+    fn keeps_the_spec_detail_that_was_being_discarded() {
+        let map = deployments_by_height(vec![spec(100, "softethervpn")]);
+        let d = &map.get(&100).unwrap()[0];
+
+        assert_eq!(d.name, "softethervpn");
+        assert_eq!(d.owner, "1CkN6E5wWTUgMFhB93uNpE9mDUqX5LWbJF");
+        assert_eq!(d.instances, 3);
+        assert_eq!(d.repotag, "siomiz/softethervpn:9799-alpine");
+        assert_eq!(d.expire, 22000);
+        assert!(d.resources_known);
+        assert!(!d.enterprise);
+    }
+
+    /*
+     * Resources are summed across compose components, because that is what the
+     * app consumes per instance. Reporting only the first component would
+     * understate every multi-container app.
+     */
+    #[test]
+    fn sums_resources_across_compose_components() {
+        let mut s = spec(100, "multi");
+        s.compose = Some(vec![
+            AppComposeComponent { repotag: Some("a:1".into()), cpu: Some(0.5), ram: Some(512.0), hdd: Some(5.0) },
+            AppComposeComponent { repotag: Some("b:2".into()), cpu: Some(1.5), ram: Some(1024.0), hdd: Some(10.0) },
+        ]);
+
+        let map = deployments_by_height(vec![s]);
+        let d = &map.get(&100).unwrap()[0];
+
+        assert_eq!(d.cpu, 2.0);
+        assert_eq!(d.ram, 1536.0);
+        assert_eq!(d.hdd, 15.0);
+        // The repo tags of every component, so a reader can see what actually runs.
+        assert_eq!(d.repotag, "a:1, b:2");
+    }
+
+    /*
+     * 390 of 1,462 live specs (26.7%) are enterprise: resources encrypted,
+     * compose empty. Reporting 0 cpu / 0 ram would be a confident wrong number
+     * -- no app uses nothing -- so resources_known says we cannot tell, and the
+     * UI shows a marker instead of zeros.
+     */
+    #[test]
+    fn marks_an_enterprise_app_as_unknown_rather_than_zero() {
+        let mut s = spec(100, "valheim1789258602926");
+        s.enterprise = Some("E4WrpsmVzCIzEjOf/90m71ft90laLMxcKig9OYbCPkuSSXz2".into());
+        s.compose = Some(vec![]);
+
+        let map = deployments_by_height(vec![s]);
+        let d = &map.get(&100).unwrap()[0];
+
+        assert!(d.enterprise);
+        assert!(!d.resources_known);
+        assert_eq!(d.cpu, 0.0);
+        // Everything readable is still reported.
+        assert_eq!(d.name, "valheim1789258602926");
+        assert_eq!(d.instances, 3);
+    }
+
+    #[test]
+    fn groups_several_deployments_at_the_same_height() {
+        let map = deployments_by_height(vec![spec(100, "a"), spec(100, "b"), spec(250, "c")]);
+
+        assert_eq!(map.get(&100).unwrap().len(), 2);
+        assert_eq!(map.get(&250).unwrap().len(), 1);
+    }
+
+    /*
+     * Same reason MAX_STORED_TRANSFERS exists: one pathological block must not
+     * be able to grow the retained file without bound. deployment_count stays
+     * the true number.
+     */
+    #[test]
+    fn caps_the_stored_deployments_per_block() {
+        let specs: Vec<AppSpec> = (0..(MAX_STORED_DEPLOYMENTS + 30))
+            .map(|i| spec(100, &format!("app{}", i)))
+            .collect();
+
+        let map = deployments_by_height(specs);
+
+        assert_eq!(map.get(&100).unwrap().len(), MAX_STORED_DEPLOYMENTS);
+    }
+
+    #[test]
+    fn survives_a_spec_missing_everything_optional() {
+        let bare = AppSpec { height: 100, name: None, owner: None, instances: None, expire: None, enterprise: None, compose: None };
+
+        let map = deployments_by_height(vec![bare]);
+        let d = &map.get(&100).unwrap()[0];
+
+        assert_eq!(d.instances, 0);
+        assert!(!d.resources_known);
+    }
+
+    /*
+     * The count and the list answer different questions, so they must not be
+     * derived from each other. A block with more deployments than the cap
+     * reports the true count and a truncated list.
+     */
+    #[test]
+    fn the_count_is_not_capped_even_though_the_list_is() {
+        let n = MAX_STORED_DEPLOYMENTS + 30;
+        let heights: Vec<i64> = (0..n).map(|_| 100i64).collect();
+
+        assert_eq!(count_deployments_by_height(heights).get(&100), Some(&(n as u32)));
+    }
+
+    // ── #346/#347: new record fields must not break records already on disk ──
+
+    /*
+     * THE FAILURE MODE THIS GUARDS IS SILENT AND EXPENSIVE. Every running
+     * deployment has utility-block records on disk written before these fields
+     * existed. Without serde(default), a missing field fails the WHOLE read,
+     * which discards the retained window and triggers a ~23,040-block rescan
+     * against an explorer that rate-limits aggressively. Nothing errors; the
+     * screen just empties and stays empty for a long time.
+     *
+     * This is the third time the same hazard has been hit in this file
+     * (deployment_count, transfers), which is why it gets a test rather than
+     * only a comment.
+     */
+    #[test]
+    fn reads_a_record_written_before_deployments_and_hash_existed() {
+        let old = r#"{
+            "height": 2923431, "date": "2026-09-05", "is_p2p": true, "is_dapp": false,
+            "transfer_count": 1, "deployment_count": 0, "transfers": []
+        }"#;
+
+        let rec: UtilityBlockRecord = serde_json::from_str(old).expect("must still parse");
+
+        assert_eq!(rec.height, 2923431);
+        assert!(rec.deployments.is_empty());
+        assert_eq!(rec.hash, None);
+    }
+
+    #[test]
+    fn reads_a_record_written_before_any_of_the_optional_fields_existed() {
+        // Older still: before deployment_count and transfers, too.
+        let ancient = r#"{"height": 1, "date": "2026-09-01", "is_p2p": false, "is_dapp": false, "transfer_count": 0}"#;
+
+        let rec: UtilityBlockRecord = serde_json::from_str(ancient).expect("must still parse");
+
+        assert_eq!(rec.deployment_count, 0);
+        assert!(rec.transfers.is_empty());
+        assert!(rec.deployments.is_empty());
     }
 }

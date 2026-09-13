@@ -552,3 +552,284 @@
 .ca-tab-hero--open .ca-tab-hero-hint {
   opacity: 1;
 }
+
+/* ── #346: the detail becomes the page ──────────────────────────────────────
+ *
+ * The tab used to run a 400px chart above a ~200px nested scroll window, with
+ * roughly a third of the viewport empty below it. The two panels now take that
+ * height and the chart becomes a strip.
+ */
+
+.ca-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-secondary);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+}
+
+/*
+ * Coverage leads the band because the headline it replaces overstated itself:
+ * "8 utility blocks today" was 8 out of 207 blocks read, of a 2,880-block day.
+ */
+.ca-band-coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 24px;
+  border-right: 1px solid var(--border-secondary);
+}
+
+.ca-band-coverage-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.ca-band-coverage-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Amber, not red: a scan still running is normal, not a fault. */
+.ca-band-coverage--partial .ca-band-coverage-value { color: #d9a03a; }
+
+.ca-band-coverage-tip {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
+.ca-band-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin: 0;
+}
+
+.ca-band-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  dt {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+}
+
+.ca-fee-usd {
+  margin-left: 4px;
+  font-size: 0.75em;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.ca-trend-strip {
+  /*
+   * Matches the compact chart's own height. Recharts renders to the number it
+   * is given, not to its CSS box, so these two must agree -- a shorter strip
+   * does not clip the chart, it lets the chart spill over whatever is below.
+   */
+  height: 116px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-secondary);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 4px 8px 0;
+}
+
+/*
+ * 60/40: deployments carries seven columns against transfers' five, and its
+ * image and resources cells are the widest things on the tab.
+ */
+.ca-panels {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.ca-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-secondary);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  overflow: hidden;
+}
+
+.ca-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.ca-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.ca-panel-count {
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: rgba(120, 120, 120, 0.14);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+.ca-panel-search {
+  flex: 0 1 220px;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+
+  &:focus {
+    outline: none;
+    border-color: var(--brand-primary, #4d9bf5);
+  }
+}
+
+.ca-panel-note {
+  margin: 0;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.ca-panel-note-hint {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+.ca-table { display: flex; flex-direction: column; min-width: 0; }
+
+/*
+ * Column widths, not flex: the columns must line up between the header and
+ * every row, and auto sizing would let a long image tag shift the block column
+ * on one row only.
+ */
+.ca-table--deployments .ca-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 96px 52px minmax(0, 1.8fr) minmax(0, 1.4fr) 96px;
+}
+
+.ca-table--transfers .ca-row {
+  display: grid;
+  grid-template-columns: 104px 92px 92px minmax(0, 1fr) 92px;
+}
+
+.ca-row {
+  gap: 10px;
+  align-items: center;
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  border-bottom: 1px solid var(--border-secondary);
+
+  > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:last-child { border-bottom: none; }
+}
+
+.ca-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-elevated);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.ca-col-head {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover { color: var(--text-secondary); }
+}
+
+.ca-col-head--active { color: var(--text-primary); }
+
+/*
+ * The lists are the page, so they get real height rather than the ~200px
+ * window the drilldown used. Capped so the two panels stay side by side
+ * instead of one running the page length.
+ */
+.ca-rows {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.ca-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ca-cell-strong { color: var(--text-primary); font-weight: 500; }
+.ca-cell-dim { color: var(--text-secondary); }
+/* Absent rather than zero: an encrypted or unknown value, not a measurement. */
+.ca-cell-muted { color: var(--text-tertiary); font-style: italic; }
+
+.ca-empty {
+  padding: 28px 14px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+/* Stacked below the point where seven columns stop fitting side by side. */
+@media (max-width: 1100px) {
+  .ca-panels { grid-template-columns: 1fr; }
+  .ca-band-coverage { border-right: none; padding-right: 0; }
+}
