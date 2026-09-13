@@ -1,0 +1,35 @@
+/*
+ * A linked block height (issue #347).
+ *
+ * Underlined only on hover. These appear in dense lists -- a column of
+ * permanently underlined numbers reads as noise, and the cursor plus the
+ * colour shift is enough signal once the reader is over one.
+ *
+ * The plain variant is the SAME size and weight as the link, so a row whose
+ * hash the scanner has not stored yet does not visibly differ in rhythm from
+ * the rows around it.
+ */
+
+.block-link {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: 2px;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--brand-primary, #4d9bf5);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-primary, #4d9bf5);
+    outline-offset: 2px;
+  }
+}
+
+.block-link--plain {
+  color: var(--text-primary);
+  cursor: default;
+}

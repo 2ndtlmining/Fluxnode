@@ -98,6 +98,10 @@ export function useBlockPulse({ enabled = true } = {}) {
         setState({
           status: 'ready',
           height: target.height,
+          // Carried through for the caption's explorer link (#347). Already in
+          // hand from /blocks?limit=2 -- the explorer's block page takes a
+          // hash, not a height, so without this the caption cannot link.
+          hash: target.hash,
           at: target.at,
           truncated: fetched.truncated,
           composition: composeBlock({ txs: fetched.txs }),
