@@ -33,8 +33,22 @@ import './index.scss';
  * ordinary blocks a 54px smudge in a 537px panel: technically correct, and far
  * too timid for the one thing on Home that is supposed to feel alive.
  */
-const GRID_HEIGHT = 104;
-const TILE_MAX = 20;
+/*
+ * RESIZED IN #354, and the numbers are measured, not chosen.
+ *
+ * #292 sized this against ~157px of slack measured at a 1386px viewport --
+ * before the donation list landed in the panel beside it and made the row much
+ * taller. Measured again: the reward band is 496px tall and 751px wide, and
+ * its content (timer 125, delta 19, pulse 120) is 264px. 232px -- 47% of the
+ * panel -- was empty, which is what the report is about.
+ *
+ * At GRID_HEIGHT 220 the band's content reaches roughly 412px against the
+ * 496px the support panel beside it already sets, so the pulse takes the slack
+ * rather than adding page height. Exported so the sizing test asserts against
+ * these rather than a second copy of the numbers.
+ */
+export const GRID_HEIGHT = 220;
+export const TILE_MAX = 34;
 const TILE_MIN = 3;
 const GAP = 3;
 

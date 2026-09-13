@@ -2,6 +2,10 @@ import { Tooltip2 } from '@blueprintjs/popover2';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
 import { tierMeta } from 'content/nodeTierMeta';
+// Shared with the Donor tab's utilisation rows (#355). It had its own copy of
+// this, identical to that one -- which is the arrangement NODE_TIER_META's
+// comment describes drifting apart for tier colours.
+import { formatStorage } from 'analytics/utilizationDisplay';
 
 /*
  * The three region-scoped cards beside the Network map (issue #254).
@@ -18,11 +22,6 @@ function fmtNum(n, decimals = 0) {
   return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
-/** TB where it helps, GB where TB would read as 0.0. */
-function fmtStorage(gb) {
-  if (!gb) return '—';
-  return gb >= 1024 ? `${(gb / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 })} TB` : `${fmtNum(gb)} GB`;
-}
 
 export function TotalNetworkCard({ stats, label }) {
   const t = stats?.tiers || {};
@@ -100,8 +99,8 @@ export function NetworkResourcesCard({ stats, label }) {
 
   const rows = [
     { key: 'cores', label: 'CPU cores', used: stats?.usedCores, total: stats?.cores, format: fmtNum, color: '#6366f1' },
-    { key: 'ram', label: 'RAM', used: stats?.usedRam, total: stats?.ram, format: fmtStorage, color: '#3b82f6' },
-    { key: 'ssd', label: 'SSD', used: stats?.usedSsd, total: stats?.ssd, format: fmtStorage, color: '#2686d0' }
+    { key: 'ram', label: 'RAM', used: stats?.usedRam, total: stats?.ram, format: formatStorage, color: '#3b82f6' },
+    { key: 'ssd', label: 'SSD', used: stats?.usedSsd, total: stats?.ssd, format: formatStorage, color: '#2686d0' }
   ];
 
   return (
