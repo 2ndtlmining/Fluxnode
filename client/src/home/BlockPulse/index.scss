@@ -19,9 +19,33 @@
   padding-top: 14px;
   margin-top: 14px;
   border-top: 1px solid var(--border-secondary);
-  // Holds its ground when the panel beside it is short, so the strip does not
-  // collapse to nothing on a wallet with no donations.
-  min-height: 120px;
+  /*
+   * Takes the panel's leftover height rather than leaving it empty (#354).
+   *
+   * Measured: the band is 496px tall and its content was 264px, so 232px --
+   * 47% of the panel -- was dead space below the caption. The countdown above
+   * has a fixed size and nothing to gain from more room; the block grid is the
+   * one element that reads better larger, so it absorbs the slack and centres
+   * within it.
+   *
+   * flex-grow rather than a taller fixed height: the row's height is set by
+   * whichever panel is tallest, so a fixed value would be wrong at every
+   * viewport but the one it was measured at.
+   */
+  flex: 1;
+  /*
+   * Enough to hold a full-size grid, not merely enough to avoid collapsing.
+   *
+   * tileSizeFor sizes tiles against the GRID_HEIGHT CONSTANT, not the box it
+   * actually lands in -- so a panel shorter than the grid would not shrink the
+   * tiles, it would overflow them onto whatever sits below. 220 grid + gap +
+   * caption + the top padding and rule is ~262px, and that is the floor.
+   *
+   * Making the tile size track the real container instead would need a
+   * ResizeObserver, and would earn its complexity only if this panel's height
+   * varied for some reason other than the row it is in.
+   */
+  min-height: 262px;
 }
 
 .bp-grid {

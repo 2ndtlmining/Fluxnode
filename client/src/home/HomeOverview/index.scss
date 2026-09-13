@@ -56,7 +56,14 @@
   // row it is a panel like any other.
   .hov-panel--reward-band {
     margin-bottom: 0;
-    justify-content: center;
+    /*
+     * flex-start, not center (#354). The block pulse inside now grows to take
+     * the leftover height, so there is no free space left for the band to
+     * centre -- and with `center` still set, a short pulse would push the
+     * countdown down while the bottom stayed empty, which is the layout the
+     * report is about.
+     */
+    justify-content: flex-start;
   }
 }
 

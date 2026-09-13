@@ -1,4 +1,4 @@
-import { usageLabel, usagePercent } from './utilizationDisplay';
+import { usageLabel, usagePercent, formatStorage } from './utilizationDisplay';
 
 /*
  * Issue #335. The panel showed percentages and a network-average comparison.
@@ -49,8 +49,15 @@ describe('usageLabel', () => {
     expect(usageLabel({ utilized: 0.5, total: 4 }, 'Cores')).toBe('0.5 / 4 Cores (13%)');
   });
 
-  it('groups thousands, because SSD totals get large quickly', () => {
-    expect(usageLabel({ utilized: 1200, total: 8800 }, 'GB')).toBe('1,200 / 8,800 GB (14%)');
+  /*
+   * This asserted "1,200 / 8,800 GB" until #355. Its intent -- SSD totals get
+   * large quickly and must stay readable -- is right, and thousands separators
+   * turned out to be the wrong answer to it: 27,060 GB is readable in the
+   * sense that the digits are grouped and unreadable in the sense that nobody
+   * can size it. Scaling to TB serves the same intent properly.
+   */
+  it('groups thousands while the figure is still in GB', () => {
+    expect(usageLabel({ utilized: 200, total: 1000 }, 'GB')).toBe('200 / 1,000 GB (20%)');
   });
 
   it('says so when there is no capacity reading at all', () => {
@@ -63,5 +70,75 @@ describe('usageLabel', () => {
     for (const input of [null, undefined, {}, { utilized: null, total: null }]) {
       expect(usageLabel(input, 'Cores')).toBe('No capacity reported');
     }
+  });
+});
+
+/*
+ * Issue #355, reported on Discord: "SSD needs to be measured in TB (not GB)".
+ *
+ * The panel read "1,555 / 27,060 GB (6%)". Twenty-seven thousand gigabytes is
+ * a five-digit number nobody can size at a glance, and the Network tab was
+ * already showing the same quantity as TB two tabs away -- so the site
+ * disagreed with itself about how to write a storage figure.
+ *
+ * THE UNIT IS CHOSEN FROM THE TOTAL AND APPLIED TO BOTH HALVES. Picking per
+ * value would produce "1,555 GB / 26.4 TB", where the ratio is unreadable
+ * because the two numbers are in different units.
+ *
+ * A donor with one Cumulus node has 220 GB and must still see GB -- "0.2 TB"
+ * would be worse, not better -- so this scales rather than converting
+ * unconditionally.
+ */
+describe('storage units scale with the total (#355)', () => {
+  it('reports the reported case in TB', () => {
+    expect(usageLabel({ utilized: 1555, total: 27060 }, 'GB')).toBe('1.5 / 26.4 TB (6%)');
+  });
+
+  it('keeps a single small node in GB', () => {
+    // One Cumulus node: 220 GB. "0.2 TB" would read as nothing at all.
+    expect(usageLabel({ utilized: 20, total: 220 }, 'GB')).toBe('20 / 220 GB (9%)');
+  });
+
+  it('switches at 1024 GB, not before', () => {
+    expect(usageLabel({ utilized: 0, total: 1023 }, 'GB')).toContain('GB');
+    expect(usageLabel({ utilized: 0, total: 1024 }, 'GB')).toContain('TB');
+  });
+
+  /*
+   * Both halves in ONE unit. The whole point: a reader compares the two
+   * numbers, and they cannot if the units differ.
+   */
+  it('never mixes units across the two halves', () => {
+    const label = usageLabel({ utilized: 8, total: 27060 }, 'GB');
+
+    expect(label).toBe('0 / 26.4 TB (0%)');
+    expect(label).not.toContain('GB');
+  });
+
+  it('leaves Cores alone', () => {
+    // Not a storage quantity; 492 cores is 492 cores.
+    expect(usageLabel({ utilized: 50.8, total: 492 }, 'Cores')).toBe('50.8 / 492 Cores (10%)');
+  });
+
+  it('still says nothing was measured rather than 0 TB', () => {
+    expect(usageLabel({ utilized: 0, total: 0 }, 'GB')).toBe('No capacity reported');
+  });
+});
+
+/*
+ * Exported so analytics/NetworkTab/regionCards.jsx can stop keeping its own
+ * copy. That copy and this one already agreed; a third would be the point at
+ * which they start to drift, which is exactly what NODE_TIER_META's own
+ * comment describes happening with tier colours.
+ */
+describe('formatStorage', () => {
+  it('uses TB above the threshold and GB below it', () => {
+    expect(formatStorage(27060)).toBe('26.4 TB');
+    expect(formatStorage(220)).toBe('220 GB');
+  });
+
+  it('renders nothing measured as a dash, not 0 GB', () => {
+    expect(formatStorage(0)).toBe('—');
+    expect(formatStorage(null)).toBe('—');
   });
 });
