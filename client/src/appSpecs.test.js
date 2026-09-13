@@ -74,4 +74,28 @@ describe('repotagForComponent', () => {
     expect(repotagForComponent(undefined, 'wp')).toBe('');
     expect(repotagForComponent(null, null)).toBe('');
   });
+
+  /*
+   * Issue #351: the hosted-application list needs an app's paid term, and
+   * `expire` is a DURATION IN BLOCKS measured from `height` -- so it needs
+   * both, and the index carried neither. Additive: every existing consumer
+   * reads named fields, so nothing sees these unless it asks.
+   */
+  it('carries the height and expire a term calculation needs', () => {
+    const index = buildSpecIndex([
+      { name: 'app1', height: 2_900_000, expire: 19506, compose: [{ name: 'c', repotag: 'x:1', cpu: 1, ram: 1024, hdd: 5 }] },
+    ]);
+
+    expect(index.app1.height).toBe(2_900_000);
+    expect(index.app1.expire).toBe(19506);
+  });
+
+  it('defaults a spec with no term to zero rather than undefined', () => {
+    // expiryFromHeight treats 0 as "cannot say" and returns null; undefined
+    // would work by accident and break the moment anything did arithmetic.
+    const index = buildSpecIndex([{ name: 'bare', compose: null }]);
+
+    expect(index.bare.height).toBe(0);
+    expect(index.bare.expire).toBe(0);
+  });
 });

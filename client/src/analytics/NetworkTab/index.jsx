@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
 import { FiCpu, FiHardDrive, FiDownload, FiUpload } from 'react-icons/fi';
 import { FaTrophy } from 'react-icons/fa';
@@ -16,6 +16,8 @@ import { fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
 import { isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
 import { TotalNetworkCard, NetworkResourcesCard, HostedApplicationsCard } from './regionCards';
+import { HostedAppsTable } from './HostedAppsTable';
+import { buildNetworkAppRows } from 'analytics/networkAppRows';
 import { fetch_global_performance_rankings, fetch_global_stats, fetch_gpu_prices } from 'apidata';
 import { CC_COLLATERAL_CUMULUS, CC_COLLATERAL_NIMBUS, CC_COLLATERAL_STRATUS } from 'content';
 import { fluxos_version_string, daemon_version_string } from 'main/flux_version';
@@ -312,6 +314,17 @@ export function NetworkTab() {
   const [loading, setLoading] = useState(true);
   const [agg, setAgg] = useState(null);
   const [scope, setScope] = useState({ level: 'network' });
+  /*
+   * The inputs behind the aggregate, kept so the detail list can be built for
+   * whatever scope is selected (issue #351).
+   *
+   * aggregateRegions reduces these to counts, and a count cannot be expanded
+   * back into the apps behind it. Holding them costs memory but not a request
+   * -- they are the same bytes the cards above were already built from.
+   */
+  const [appSource, setAppSource] = useState(null);
+  // Which category the card's rows have selected, or null for all.
+  const [appCategory, setAppCategory] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -441,10 +454,39 @@ export function NetworkTab() {
       };
 
       setAgg(aggregateRegions({ nodes, geoByHost, capByNode, appsByNode, utilByNode, categoryOf }));
+      setAppSource({ nodes, geoByHost, appsByNode, specIndex });
     })().catch(() => {});
 
     return () => { cancelled = true; };
   }, []);
+
+  /*
+   * The detail rows for whatever is selected (issue #351).
+   *
+   * Scoped HERE rather than in regionStats, which reduces to counts and cannot
+   * be expanded back. The geo join is by HOST -- a machine has one location,
+   * however many nodes it runs -- which is the one place the ip:port rule from
+   * #344 legitimately does not apply. See addressOf's doc comment.
+   */
+  const appRows = useMemo(() => {
+    if (!appSource) return [];
+
+    const inScope =
+      scope.level === 'network'
+        ? appSource.nodes
+        : appSource.nodes.filter((n) => {
+            const geo = appSource.geoByHost[(n?.ip || '').split(':')[0]];
+            if (!geo) return false;
+            return scope.level === 'country' ? geo.countryCode === scope.country : geo.continent === scope.continent;
+          });
+
+    return buildNetworkAppRows({
+      nodes: inScope,
+      appsByNode: appSource.appsByNode,
+      specIndex: appSource.specIndex,
+      tipHeight: gstore?.current_block_height || 0,
+    });
+  }, [appSource, scope, gstore]);
 
   if (loading) {
     return (
@@ -467,6 +509,7 @@ export function NetworkTab() {
       : scope.level === 'continent'
         ? scope.continent
         : 'Whole network';
+
 
   return (
     <div className="network-tab">
@@ -536,7 +579,12 @@ export function NetworkTab() {
                 <NetworkResourcesCard stats={stats} label={scopeLabel} />
               </PanelGate>
               <PanelGate panelKey="hostedApplications" feature="Hosted Applications" preview="blur">
-                <HostedApplicationsCard stats={stats} label={scopeLabel} />
+                <HostedApplicationsCard
+                  stats={stats}
+                  label={scopeLabel}
+                  selectedCategory={appCategory}
+                  onSelectCategory={setAppCategory}
+                />
               </PanelGate>
             </>
           ) : (
@@ -546,6 +594,26 @@ export function NetworkTab() {
           )}
         </div>
       </div>
+
+      {/*
+        Between the map and Top Dogs, as #351 asks. The map and the cards above
+        are the controls; this is what they control, so it belongs directly
+        under them rather than at the foot of the page.
+
+        Gated with the card whose categories drive it -- showing the detail to
+        someone who cannot see the tally it expands would be an odd half-view,
+        and the rows name node addresses.
+      */}
+      {appSource && (
+        <PanelGate panelKey="hostedApplications" feature="Hosted Applications" preview="blur">
+          <HostedAppsTable
+            rows={appRows}
+            scopeLabel={scopeLabel}
+            selectedCategory={appCategory}
+            onClearCategory={() => setAppCategory(null)}
+          />
+        </PanelGate>
+      )}
 
       <PanelGate panelKey="topDogs" feature="Top Dogs">
         <TopDogsPanel globalRankings={globalRankings} />

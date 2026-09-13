@@ -132,7 +132,12 @@ export function NetworkResourcesCard({ stats, label }) {
   );
 }
 
-export function HostedApplicationsCard({ stats, label }) {
+/*
+ * `selectedCategory` / `onSelectCategory` drive the detail list below the map
+ * (issue #351). Optional: the card still renders as a plain read-only tally
+ * when no handler is passed, which is what the locked preview shows.
+ */
+export function HostedApplicationsCard({ stats, label, selectedCategory, onSelectCategory }) {
   const entries = Object.entries(stats?.appsByCategory || {}).sort((a, b) => b[1] - a[1]);
   const total = stats?.appInstances || 0;
 
@@ -164,13 +169,37 @@ export function HostedApplicationsCard({ stats, label }) {
                 hoverOpenDelay={200}
                 popoverClassName="hov-cat-tooltip"
               >
-                <div className="hov-kv-row nt-app-row">
-                  <span className="hov-kv-label">
-                    {Icon && <Icon size={11} style={{ color: meta.color }} className="nt-app-icon" />}
-                    {meta?.label || category}
-                  </span>
-                  <span className="hov-kv-value">{fmtNum(count)}</span>
-                </div>
+                {/*
+                  A button only when something listens (#351). A row that looks
+                  clickable and does nothing is worse than a plain row, and the
+                  locked preview renders this card with no handler.
+                */}
+                {onSelectCategory ? (
+                  <button
+                    type="button"
+                    className={`hov-kv-row nt-app-row nt-app-row--button${
+                      selectedCategory === category ? ' nt-app-row--selected' : ''
+                    }`}
+                    // Clicking the selected category clears it, so the row is
+                    // its own "show all" without a second control.
+                    onClick={() => onSelectCategory(selectedCategory === category ? null : category)}
+                    aria-pressed={selectedCategory === category}
+                  >
+                    <span className="hov-kv-label">
+                      {Icon && <Icon size={11} style={{ color: meta.color }} className="nt-app-icon" />}
+                      {meta?.label || category}
+                    </span>
+                    <span className="hov-kv-value">{fmtNum(count)}</span>
+                  </button>
+                ) : (
+                  <div className="hov-kv-row nt-app-row">
+                    <span className="hov-kv-label">
+                      {Icon && <Icon size={11} style={{ color: meta.color }} className="nt-app-icon" />}
+                      {meta?.label || category}
+                    </span>
+                    <span className="hov-kv-value">{fmtNum(count)}</span>
+                  </div>
+                )}
               </Tooltip2>
             );
           })}
