@@ -655,3 +655,9 @@
     padding: 10px 12px;
   }
 }
+
+/* Same Tooltip2 wrapper consideration as the Donor tab's category rows (#333). */
+.nt-apps-list > .bp4-popover2-target {
+  display: block;
+  width: 100%;
+}

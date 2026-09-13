@@ -925,3 +925,13 @@
   color: var(--text-tertiary);
   padding-top: 8px;
 }
+
+/*
+ * Blueprint's Tooltip2 wraps its target in a span (#334). Inside a flex column
+ * that span becomes the flex child, so it has to carry the full width or the
+ * category rows collapse to their content and stop lining up.
+ */
+.dt-apps-list > .bp4-popover2-target {
+  display: block;
+  width: 100%;
+}

@@ -114,26 +114,78 @@ export function BlockPulse() {
   const size = tileSizeFor(particles.length);
   const columns = columnsFor(particles.length);
 
-  const summary = [
-    counts.reward ? `${counts.reward} rewards` : null,
-    counts.confirm ? `${counts.confirm} confirmations` : null,
-    counts.p2p ? `${counts.p2p} transfers` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  /*
+   * #330: a category with zero events is omitted rather than shown as
+   * "0 transfers". Measured, P2P is zero in most blocks, so a permanent
+   * greyed-out row would end up the most visually prominent thing in a panel
+   * that is mostly about the other two.
+   */
+  const legend = [
+    {
+      key: 'reward',
+      count: counts.reward,
+      label: counts.reward === 1 ? 'reward' : 'rewards',
+      /*
+       * Four swatches, not one. A reward particle is always one of four tiers
+       * and each is a different colour -- picking any single one to stand for
+       * the row would be telling the reader the wrong thing about three of the
+       * tiles they can see.
+       */
+      swatches: ['CUMULUS', 'NIMBUS', 'STRATUS', 'DEVFUND']
+        .map((tier) => CATEGORY_META[tier]?.color)
+        .filter(Boolean),
+    },
+    {
+      key: 'confirm',
+      count: counts.confirm,
+      label: counts.confirm === 1 ? 'confirmation' : 'confirmations',
+      swatches: [CATEGORY_META.CONFIRM?.color],
+    },
+    {
+      key: 'p2p',
+      count: counts.p2p,
+      label: counts.p2p === 1 ? 'transfer' : 'transfers',
+      swatches: [CATEGORY_META.P2P?.color],
+    },
+  ].filter((row) => row.count > 0);
+
+  const summary = legend.map((row) => `${row.count} ${row.label}`).join(', ');
 
   return (
     <div className="bp">
-      <div
-        key={flightKey}
-        className="bp-grid"
-        style={{ gridTemplateColumns: `repeat(${columns}, ${size}px)`, gap: GAP }}
-        role="img"
-        aria-label={`Block ${height} contains ${total} events: ${summary}`}
-      >
-        {particles.map((p, i) => (
-          <Tile key={p.key} particle={p} index={i} size={size} still={reduced} />
-        ))}
+      <div className="bp-body">
+        <div
+          key={flightKey}
+          className="bp-grid"
+          style={{ gridTemplateColumns: `repeat(${columns}, ${size}px)`, gap: GAP }}
+          role="img"
+          aria-label={`Block ${height} contains ${total} events: ${summary}`}
+        >
+          {particles.map((p, i) => (
+            <Tile key={p.key} particle={p} index={i} size={size} still={reduced} />
+          ))}
+        </div>
+
+        {/*
+          The legend is aria-hidden: the grid above already carries the whole
+          composition in its aria-label, and repeating it would make a screen
+          reader read the block out twice.
+        */}
+        <dl className="bp-legend" aria-hidden="true">
+          {legend.map((row) => (
+            <div key={row.key} className="bp-legend-row">
+              <dt>
+                <span className="bp-legend-swatches">
+                  {row.swatches.map((colour) => (
+                    <i key={colour} style={{ background: colour }} />
+                  ))}
+                </span>
+                {row.label}
+              </dt>
+              <dd>{row.count.toLocaleString()}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <p className="bp-caption">

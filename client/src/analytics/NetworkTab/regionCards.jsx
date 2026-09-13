@@ -1,4 +1,6 @@
+import { Tooltip2 } from '@blueprintjs/popover2';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { CategoryTooltip } from 'components/CategoryTooltip';
 import { tierMeta } from 'content/nodeTierMeta';
 
 /*
@@ -149,13 +151,27 @@ export function HostedApplicationsCard({ stats, label }) {
             const meta = APP_CATEGORY_META[category] || APP_CATEGORY_META.other;
             const Icon = meta?.Icon;
             return (
-              <div key={category} className="hov-kv-row">
-                <span className="hov-kv-label">
-                  {Icon && <Icon size={11} style={{ color: meta.color }} className="nt-app-icon" />}
-                  {meta?.label || category}
-                </span>
-                <span className="hov-kv-value">{fmtNum(count)}</span>
-              </div>
+              /*
+                #333: the row was a label and a number with no way to find out
+                what is in the category. Same tooltip the Apps tab, the
+                ecosystem panel and the Workhorse showcase already use, so the
+                explanation is written once in CATEGORY_TOOLTIPS.
+              */
+              <Tooltip2
+                key={category}
+                content={<CategoryTooltip category={category} />}
+                placement="top"
+                hoverOpenDelay={200}
+                popoverClassName="hov-cat-tooltip"
+              >
+                <div className="hov-kv-row nt-app-row">
+                  <span className="hov-kv-label">
+                    {Icon && <Icon size={11} style={{ color: meta.color }} className="nt-app-icon" />}
+                    {meta?.label || category}
+                  </span>
+                  <span className="hov-kv-value">{fmtNum(count)}</span>
+                </div>
+              </Tooltip2>
             );
           })}
         </div>

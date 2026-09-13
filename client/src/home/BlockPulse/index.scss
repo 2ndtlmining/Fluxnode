@@ -87,3 +87,71 @@
     animation: none;
   }
 }
+
+/* ── Legend (issue #330) ─────────────────────────────────────────────────── */
+
+/*
+ * Grid and legend side by side. The panel is ~537px and the grid is square-ish
+ * and centred (89px for a typical block), so the legend fits beside it without
+ * making the strip any taller -- which matters, because the strip exists to
+ * fill space rather than create it.
+ */
+.bp-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.bp-legend {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.bp-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.74rem;
+}
+
+.bp-legend-row dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.bp-legend-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/*
+ * One swatch per colour the row actually stands for. Rewards carry four, so
+ * they render as a tight strip rather than a single square claiming to
+ * represent tiles of three other colours.
+ */
+.bp-legend-swatches {
+  display: inline-flex;
+  gap: 1px;
+  flex-shrink: 0;
+
+  i {
+    display: block;
+    width: 7px;
+    height: 10px;
+    border-radius: 1px;
+  }
+
+  i:first-child { border-radius: 2px 1px 1px 2px; }
+  i:last-child  { border-radius: 1px 2px 2px 1px; }
+}

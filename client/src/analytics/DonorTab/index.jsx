@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@blueprintjs/core';
+import { Tooltip2 } from '@blueprintjs/popover2';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
 import { PremiumUnlock } from 'donor/PremiumUnlock';
@@ -11,6 +12,7 @@ import { buildDonorAppRows, tallyRowCategories } from 'analytics/donorAppRows';
 import { buildDonorNodeRows } from 'analytics/donorNodeRows';
 import { filterAppRows, utilizationAddresses } from 'analytics/donorFilters';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
+import { CategoryTooltip } from 'components/CategoryTooltip';
 import { tierMeta } from 'content/nodeTierMeta';
 import { fetch_wallet_tx_history } from 'analytics/walletTxFetch';
 import { counterpartyDisplay, WINDOW_DAYS } from 'analytics/walletTxHistory';
@@ -411,22 +413,39 @@ function AppCategoriesPanel({ categories, totalApps, selectedCategory, onSelect,
             const barPct = (count / maxVal) * 100;
             const selected = selectedCategory === category;
             return (
-              <button
-                type="button"
+              /*
+                #334: the row showed an icon, a label and a bar with no way to
+                learn what the category contains. This is the treatment Home
+                used and that home/WorkhorsePanel still uses.
+
+                Wrapping the BUTTON rather than its contents: the row is a
+                filter (#299), and the tooltip target has to sit outside the
+                control so hovering explains the category without interfering
+                with the click or with keyboard focus.
+              */
+              <Tooltip2
                 key={category}
-                className={`dt-apps-row${selected ? ' dt-apps-row--selected' : ''}`}
-                onClick={() => onSelect(category)}
-                title={selected ? 'Selected — click the count to show all' : `Show only ${label} apps`}
+                content={<CategoryTooltip category={category} />}
+                placement="top"
+                hoverOpenDelay={200}
+                popoverClassName="hov-cat-tooltip"
               >
-                <span className="dt-apps-icon" style={{ color }}>
-                  <Icon size={11} />
-                </span>
-                <span className="dt-apps-label">{label}</span>
-                <div className="dt-apps-bar-wrap">
-                  <div className="dt-apps-bar-fill" style={{ width: `${barPct}%`, background: color }} />
-                </div>
-                <span className="hov-badge">{fmtNum(count)}</span>
-              </button>
+                <button
+                  type="button"
+                  className={`dt-apps-row${selected ? ' dt-apps-row--selected' : ''}`}
+                  onClick={() => onSelect(category)}
+                  aria-pressed={selected}
+                >
+                  <span className="dt-apps-icon" style={{ color }}>
+                    <Icon size={11} />
+                  </span>
+                  <span className="dt-apps-label">{label}</span>
+                  <div className="dt-apps-bar-wrap">
+                    <div className="dt-apps-bar-fill" style={{ width: `${barPct}%`, background: color }} />
+                  </div>
+                  <span className="hov-badge">{fmtNum(count)}</span>
+                </button>
+              </Tooltip2>
             );
           })
         )}
