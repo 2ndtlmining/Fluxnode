@@ -9,6 +9,7 @@ import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
 
 import { RewardCountdown } from 'rewards/RewardCountdown';
+import { BlockPulse } from 'home/BlockPulse';
 import { hasScheduledReduction } from 'rewards/rewardReduction';
 import { CC_BLOCK_REWARD, CC_NEXT_BLOCK_REWARD } from 'content/index';
 import { formatDonorCost, donorHighlights } from 'donor/donorPitch';
@@ -329,6 +330,13 @@ function RewardReductionBand({ gstore }) {
         Block reward falls from <strong>{CC_BLOCK_REWARD}</strong> to{' '}
         <strong>{CC_NEXT_BLOCK_REWARD} FLUX</strong> per block
       </div>
+      {/*
+        #292. Sits here rather than in a band of its own because this panel was
+        already leaving ~157px unused below the countdown (measured at 1386px:
+        544px tall, 387px inked) -- and because the pairing reads: the countdown
+        says when the reward changes, this says the chain is still running.
+      */}
+      <BlockPulse />
     </div>
   );
 }

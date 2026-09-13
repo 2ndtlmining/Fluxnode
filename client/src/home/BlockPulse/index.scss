@@ -1,0 +1,89 @@
+/*
+ * The block-assembly pulse (issue #292).
+ *
+ * Sits in the space the reward band leaves under the countdown -- measured at
+ * a 1386px viewport, that panel inked 387px of its 544px, so roughly 157px was
+ * going spare. This fills it rather than adding page height.
+ *
+ * Everything here is quiet except the one moment the tiles land. That is the
+ * whole idea: a landing page that moves continuously is exhausting, and a
+ * landing page that pulses once every thirty seconds reads as a heartbeat.
+ */
+
+.bp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border-secondary);
+  // Holds its ground when the panel beside it is short, so the strip does not
+  // collapse to nothing on a wallet with no donations.
+  min-height: 120px;
+}
+
+.bp-grid {
+  display: grid;
+  justify-content: center;
+  align-content: center;
+  // The flight starts outside the grid; without this the tiles are clipped
+  // to their cells on the way in.
+  overflow: visible;
+}
+
+.bp-grid--placeholder {
+  width: 64px;
+  height: 64px;
+  border: 1px dashed var(--border-secondary);
+  border-radius: 2px;
+}
+
+.bp-tile {
+  display: block;
+  border-radius: 1px;
+  // Square corners, near enough: these are meant to read as the units a block
+  // is packed from, not as pills.
+  opacity: 0.92;
+}
+
+.bp-tile--flying {
+  animation: bp-land 900ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/*
+ * In from wherever the tile's seed put it, to its cell. `backwards` holds the
+ * start state through the stagger delay, so a tile waiting its turn is not
+ * briefly visible in its final position first.
+ */
+@keyframes bp-land {
+  from {
+    transform: translate(var(--bp-from-x), var(--bp-from-y)) scale(0.55);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.92;
+  }
+}
+
+.bp-caption {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Reduced motion keeps the composition and drops only the travel. The
+ * component also checks the preference in JS so the staggered delays are not
+ * applied at all -- a tile that is not animating must not sit invisible
+ * waiting for a delay that no longer means anything.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .bp-tile--flying {
+    animation: none;
+  }
+}
