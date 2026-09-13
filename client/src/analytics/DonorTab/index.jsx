@@ -4,7 +4,7 @@ import { Tooltip2 } from '@blueprintjs/popover2';
 import { Lock } from 'lucide-react';
 import { useDonorStatus } from 'contexts/DonorContext';
 import { LayoutContext } from 'contexts/LayoutContext';
-import { maskNodeAddress } from 'analytics/privacy';
+import { maskNodeAddress, usePrivacy } from 'analytics/privacy';
 import { PremiumUnlock } from 'donor/PremiumUnlock';
 import { fetch_global_stats, fetch_total_network_utils, fetch_global_app_specs_raw } from 'apidata';
 import { buildSpecIndex } from 'appSpecs';
@@ -17,8 +17,7 @@ import { usageLabel, usagePercent } from 'analytics/utilizationDisplay';
 import { APP_CATEGORY_META } from 'content/appCategoryMeta';
 import { CategoryTooltip } from 'components/CategoryTooltip';
 import { tierMeta } from 'content/nodeTierMeta';
-import { fetch_wallet_tx_history } from 'analytics/walletTxFetch';
-import { counterpartyDisplay, WINDOW_DAYS } from 'analytics/walletTxHistory';
+import { WalletActivityPanel } from './WalletActivity';
 import { RewardCountdown } from 'rewards/RewardCountdown';
 import { rewardImpact, tallyWalletTiers } from 'rewards/rewardReduction';
 import './index.scss';
@@ -49,116 +48,6 @@ function txTime(unixSeconds) {
   if (!unixSeconds) return '—';
   return new Date(unixSeconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
-
-/*
- * The wallet's last WINDOW_DAYS of on-chain activity.
- *
- * Grouped by DIRECTION first, then type. "Payments sent" and "P2P" overlap --
- * a payment you send is a P2P transfer -- so a flat list of types would
- * double-count or need an arbitrary precedence rule. In/out/net is also the
- * question someone actually has about their own address.
- *
- * Counterparties are named from a checked-in address book (exchanges and the
- * Flux Foundation, from the fluxflow repo). An unknown counterparty shows as a
- * shortened address rather than being guessed at.
- */
-function WalletActivityPanel({ walletAddress }) {
-  const [state, setState] = useState({ status: 'loading', summary: null });
-
-  useEffect(() => {
-    if (!walletAddress) return undefined;
-    let cancelled = false;
-    setState({ status: 'loading', summary: null });
-    (async () => {
-      const result = await fetch_wallet_tx_history(walletAddress);
-      if (cancelled) return;
-      setState({ status: result.ok ? 'ready' : 'error', summary: result.summary });
-    })().catch(() => {
-      if (!cancelled) setState({ status: 'error', summary: null });
-    });
-    return () => { cancelled = true; };
-  }, [walletAddress]);
-
-  if (state.status === 'loading') {
-    return (
-      <div className="hov-panel dt-activity-panel">
-        <div className="hov-header"><span className="hov-header-title">RECENT ACTIVITY</span></div>
-        <div className="hov-empty">Loading recent transactions...</div>
-      </div>
-    );
-  }
-
-  if (state.status === 'error' || !state.summary) {
-    return (
-      <div className="hov-panel dt-activity-panel">
-        <div className="hov-header"><span className="hov-header-title">RECENT ACTIVITY</span></div>
-        <div className="hov-empty">Could not load transaction history right now.</div>
-      </div>
-    );
-  }
-
-  const { received, sent, net, rows } = state.summary;
-
-  return (
-    <div className="hov-panel dt-activity-panel">
-      <div className="hov-header">
-        <span className="hov-header-title">RECENT ACTIVITY</span>
-        <span className="hov-header-badge">last {WINDOW_DAYS} days</span>
-      </div>
-
-      <div className="dt-activity-summary">
-        <div className="dt-activity-col">
-          <span className="dt-activity-col-title">Received</span>
-          <div className="dt-activity-line"><span>Node rewards</span><strong>{fmtFlux(received.rewards)}</strong></div>
-          <div className="dt-activity-line"><span>From exchanges</span><strong>{fmtFlux(received.exchange)}</strong></div>
-          <div className="dt-activity-line"><span>From Flux Foundation</span><strong>{fmtFlux(received.foundation)}</strong></div>
-          <div className="dt-activity-line"><span>Transfers in</span><strong>{fmtFlux(received.transfers)}</strong></div>
-          <div className="dt-activity-line dt-activity-line--total"><span>Total in</span><strong>{fmtFlux(received.total)}</strong></div>
-        </div>
-
-        <div className="dt-activity-col">
-          <span className="dt-activity-col-title">Sent</span>
-          <div className="dt-activity-line"><span>To exchanges</span><strong>{fmtFlux(sent.exchange)}</strong></div>
-          <div className="dt-activity-line"><span>To Flux Foundation</span><strong>{fmtFlux(sent.foundation)}</strong></div>
-          <div className="dt-activity-line"><span>Transfers out</span><strong>{fmtFlux(sent.transfers)}</strong></div>
-          <div className="dt-activity-line"><span /><strong /></div>
-          <div className="dt-activity-line dt-activity-line--total"><span>Total out</span><strong>{fmtFlux(sent.total)}</strong></div>
-        </div>
-      </div>
-
-      <div className={`dt-activity-net${net >= 0 ? ' dt-activity-net--up' : ' dt-activity-net--down'}`}>
-        net {net >= 0 ? '+' : '−'}{fmtFlux(Math.abs(net))} FLUX over {WINDOW_DAYS} days
-      </div>
-
-      <div className="dt-activity-list">
-        {rows.length === 0 ? (
-          <div className="hov-empty">No transactions in the last {WINDOW_DAYS} days</div>
-        ) : (
-          rows.map((row) => (
-            <div key={row.txid} className="dt-activity-row">
-              <span className="dt-activity-date">{txTime(row.time)}</span>
-              <span className={`dt-activity-party dt-activity-party--${row.counterpartyKind || 'unknown'}`}>
-                {counterpartyDisplay(row)}
-              </span>
-              <span className={`dt-activity-amount dt-activity-amount--${row.direction}`}>
-                {row.direction === 'in' ? '+' : '−'}{fmtFlux(row.amount)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="dt-activity-caption">
-        Counterparties are named where the address is known (exchanges, Flux
-        Foundation). Flux app payments go to a Foundation address, so they appear
-        under Flux Foundation rather than as a separate deployment category.
-      </div>
-    </div>
-  );
-}
-
-// ── Payout card ──────────────────────────────────────────────────────────
-
 
 function fmtSigned(n, digits = 2) {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -273,17 +162,6 @@ function RewardImpactPanel({ nodes, gstore }) {
  * "NEXT PAYOUT / 57 mins", is deleted rather than restyled: it was duplication,
  * not emphasis.
  */
-/*
- * Privacy mode, for the three places this tab renders a node address (#343).
- *
- * A hook rather than a prop threaded through four component levels. The
- * context can be absent in tests that mount a panel on its own, so it
- * defaults to off rather than throwing.
- */
-function usePrivacy() {
-  return useContext(LayoutContext)?.enablePrivacyMode || false;
-}
-
 function PayoutCard({ nextNode, lastPaidNode, currentBlock }) {
   const privacy = usePrivacy();
   return (

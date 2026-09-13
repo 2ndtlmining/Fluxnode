@@ -1,4 +1,4 @@
-import { explorerBlockUrl, explorerTxUrl } from './explorerLinks';
+import { explorerBlockUrl, explorerTxUrl, explorerAddressUrl } from './explorerLinks';
 import { EXPLORER_HOSTS, __resetExplorerHealth, __explorerHealth } from './explorer';
 
 /*
@@ -99,5 +99,50 @@ describe('explorerTxUrl', () => {
   it('returns null without a txid', () => {
     expect(explorerTxUrl(null)).toBeNull();
     expect(explorerTxUrl('')).toBeNull();
+  });
+});
+
+/*
+ * Issue #358: the Recent activity panel links a transaction's counterparty
+ * through to its address page.
+ *
+ * A separate validator from the two above, because a Flux address is NOT a
+ * 64-character hash -- it is a base58 t1/t3 string of a different length
+ * entirely. Reusing the hash check would reject every real address, and
+ * accepting anything would put junk in a URL.
+ */
+describe('explorerAddressUrl', () => {
+  const T1 = 't1X1hKAb9rYmsikPKVJXBHueJU4VeuV7Tbb';
+  const T3 = 't3YcVbiQWHerVYHKBccAQGUmSWDdKu9Zjrr';
+
+  it('builds an address page URL for both address forms', () => {
+    expect(explorerAddressUrl(T1)).toBe(`https://explorer.runonflux.io/address/${T1}`);
+    expect(explorerAddressUrl(T3)).toBe(`https://explorer.runonflux.io/address/${T3}`);
+  });
+
+  it('does NOT point at the API path', () => {
+    expect(explorerAddressUrl(T1)).not.toContain('/api/');
+  });
+
+  it('returns null when there is no counterparty to link to', () => {
+    // "Unknown" is a real answer in this panel -- the explorer omits `addr` on
+    // some inputs -- and it must render as text, not as a link to nowhere.
+    for (const missing of [null, undefined, '', 0]) {
+      expect(explorerAddressUrl(missing)).toBeNull();
+    }
+  });
+
+  it('refuses anything that is not a Flux address', () => {
+    expect(explorerAddressUrl('not an address')).toBeNull();
+    expect(explorerAddressUrl('t2Wrong0000000000000000000000000000')).toBeNull();
+    expect(explorerAddressUrl('t1short')).toBeNull();
+    // A txid is the obvious thing to pass by mistake here.
+    expect(explorerAddressUrl('a'.repeat(64))).toBeNull();
+  });
+
+  it('follows the healthy host, like the others', () => {
+    __explorerHealth()[EXPLORER_HOSTS[0]].benchedUntil = Date.now() + 60_000;
+
+    expect(explorerAddressUrl(T1)).toBe(`https://explorer.app.runonflux.io/address/${T1}`);
   });
 });

@@ -153,7 +153,19 @@ export function buildWalletTxSummary(txs, walletAddress, nowSec, windowDays = WI
 
   rows.sort((a, b) => (b.time || 0) - (a.time || 0));
 
-  const bucket = () => ({ rewards: 0, exchange: 0, foundation: 0, transfers: 0, total: 0, count: 0 });
+  /*
+   * No `foundation` bucket since #358. Measured across 233 real transactions
+   * in the live window: one Foundation receipt, zero Foundation sends -- so a
+   * permanent line for it meant five of the panel's seven category rows read
+   * 0.00 forever. Per #270 a payment to a Foundation address cannot be told
+   * apart from an app deployment without the v9 memo, so the bucket could not
+   * be trusted even when it did fire.
+   *
+   * The amounts fold into `transfers`, which is what they are: a transfer to a
+   * counterparty we happen to recognise. The individual ROW keeps its "Flux
+   * Foundation" label -- naming a counterparty is worth doing.
+   */
+  const bucket = () => ({ rewards: 0, exchange: 0, transfers: 0, total: 0, count: 0 });
   const received = bucket();
   const sent = bucket();
 
@@ -161,7 +173,6 @@ export function buildWalletTxSummary(txs, walletAddress, nowSec, windowDays = WI
     const side = row.direction === 'in' ? received : sent;
     if (row.type === 'reward') side.rewards += row.amount;
     else if (row.type === 'exchange') side.exchange += row.amount;
-    else if (row.type === 'foundation') side.foundation += row.amount;
     else side.transfers += row.amount;
     side.total += row.amount;
     side.count += 1;

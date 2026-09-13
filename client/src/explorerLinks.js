@@ -67,3 +67,26 @@ export function explorerTxUrl(txid) {
   if (typeof txid !== 'string' || !BLOCK_HASH.test(txid)) return null;
   return `${uiHost()}/tx/${txid}`;
 }
+
+/*
+ * A Flux transparent address: t1 (P2PKH) or t3 (P2SH), base58, 35 characters.
+ *
+ * Deliberately NOT the hash pattern above. An address is not a 64-character
+ * hex string, so reusing that check would reject every real address -- and
+ * accepting anything would put junk straight into a URL. A txid is the obvious
+ * thing to pass here by mistake, and this rejects it.
+ */
+const FLUX_ADDRESS = /^t[13][1-9A-HJ-NP-Za-km-z]{33}$/;
+
+/**
+ * The explorer page for an address, or null when there is nothing to link to.
+ *
+ * Used by the Donor tab's activity rows (#358) to open a counterparty. An
+ * unknown counterparty returns null and renders as text: the explorer genuinely
+ * omits `addr` on some inputs, so "Unknown" is a real answer rather than a
+ * missing one, and it must not become a link to nowhere.
+ */
+export function explorerAddressUrl(address) {
+  if (typeof address !== 'string' || !FLUX_ADDRESS.test(address)) return null;
+  return `${uiHost()}/address/${address}`;
+}
