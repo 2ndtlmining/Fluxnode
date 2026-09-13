@@ -559,23 +559,28 @@ function DonorAppsTable({ rows, totalRows, filtered, loading }) {
                       {maskNodeAddress(row.nodeAddress, privacy)}
                     </td>
                     {/*
-                      How many of this app the donor runs, and how many the
-                      spec orders network-wide (#344). "3 / 75" reads very
-                      differently from a bare 3, and counting rows by hand gave
-                      the wrong answer for multi-component apps anyway.
+                      Instances RUNNING: the donor's, over the network's (#344).
+                      Both are observed from fluxinfo, so the pair is always
+                      coherent -- yours can never exceed the total.
+
+                      The spec's ORDERED count is in the tooltip rather than
+                      the cell. It disagrees with reality for most apps (483
+                      under-deployed, 10 over, alphexplorer at 592 running
+                      against 30 ordered), and #327 settled that this project
+                      reports what is actually running.
                     */}
                     <td className="dt-num dt-appstable-instances">
                       <Tooltip2
                         content={
-                          row.instances == null
-                            ? `${row.yours} on your nodes · no spec found, so the network-wide count is unknown`
-                            : `${row.yours} on your nodes of ${row.instances} ordered network-wide`
+                          row.ordered == null
+                            ? `${row.yours} of ${row.networkInstances} running network-wide · no spec found, so the ordered count is unknown`
+                            : `${row.yours} of ${row.networkInstances} running network-wide · ${row.ordered} ordered`
                         }
                         placement="left"
                       >
                         <span>
                           {row.yours}
-                          <small className="dt-appstable-of">/{row.instances ?? '—'}</small>
+                          <small className="dt-appstable-of">/{row.networkInstances}</small>
                         </span>
                       </Tooltip2>
                     </td>

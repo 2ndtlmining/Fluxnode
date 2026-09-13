@@ -190,9 +190,15 @@ describe('tallyRowCategories', () => {
  */
 describe('instance counts (#344)', () => {
   const nodesByIp = {
+    // The donor's own nodes.
     '1.2.3.4:16127': { containerAppNames: ['folding1', 'wp1', 'wp1'], containerComponents: [null, 'nginx', 'mysql'] },
     '1.2.3.4:16137': { containerAppNames: ['folding1'], containerComponents: [null] },
     '5.6.7.8:16127': { containerAppNames: ['folding1'], containerComponents: [null] },
+    // Somebody else's nodes, also running folding1. nodesByIp is the WHOLE
+    // network's map -- the donor's addresses are a filter over it, not its
+    // contents.
+    '9.9.9.9:16127': { containerAppNames: ['folding1'], containerComponents: [null] },
+    '9.9.9.9:16137': { containerAppNames: ['folding1'], containerComponents: [null] },
   };
   const addresses = ['1.2.3.4:16127', '1.2.3.4:16137', '5.6.7.8:16127'];
 
@@ -204,7 +210,7 @@ describe('instance counts (#344)', () => {
     expect(wp).toHaveLength(2);
     expect(wp.every((r) => r.yours === 1)).toBe(true);
 
-    // folding1 runs on three nodes, including two that share a host.
+    // folding1 runs on three of the donor's nodes, two sharing a host.
     const folding = rows.filter((r) => r.name === 'folding1');
     expect(folding).toHaveLength(3);
     expect(folding.every((r) => r.yours === 3)).toBe(true);
@@ -219,21 +225,62 @@ describe('instance counts (#344)', () => {
     expect(rows.find((r) => r.name === 'folding1').yours).toBe(2);
   });
 
-  it('carries the spec-wide ordered instance count for context', () => {
-    const withInstances = { ...specIndex, folding1: { ...specIndex.folding1, instances: 75 } };
+  /*
+   * THE DENOMINATOR IS RUNNING, NOT ORDERED.
+   *
+   * The first pass at this used the spec's `instances` field, which is how
+   * many were ORDERED. Measured across the live feeds, those two numbers
+   * disagree for most apps:
+   *
+   *     806 apps  running == ordered
+   *     483 apps  running <  ordered
+   *      10 apps  running >  ordered   -- alphexplorer: 592 running, 30 ordered
+   *
+   * So "1 / 30" would have been shown for an app with 592 instances up, and
+   * for those ten a row could read "3 / 1", which just looks broken. #327
+   * settled that this project reports what is actually RUNNING, and the
+   * running count is already in nodesByIp -- the same object the rows are
+   * built from, so it costs nothing.
+   */
+  it('reports the network-wide RUNNING count, not the ordered one', () => {
+    const rows = buildDonorAppRows(nodesByIp, addresses, specIndex);
+    const folding = rows.find((r) => r.name === 'folding1');
 
-    const rows = buildDonorAppRows(nodesByIp, addresses, withInstances);
-
-    expect(rows.find((r) => r.name === 'folding1').instances).toBe(75);
+    // Three of the donor's nodes plus two strangers' = five running.
+    expect(folding.networkInstances).toBe(5);
+    expect(folding.yours).toBe(3);
   });
 
-  it('leaves the network-wide count null when there is no spec to read it from', () => {
-    // An app running with no matching spec is real enough to list, but nothing
-    // about its size is knowable -- the same rule the resource columns follow.
-    const rows = buildDonorAppRows({ '1.2.3.4:16127': { containerAppNames: ['ghost'], containerComponents: [null] } }, ['1.2.3.4:16127'], {});
+  it('never reports fewer network instances than the donor runs', () => {
+    // The nonsense "3 / 1" the ordered figure could produce. The donor's nodes
+    // are part of the network, so yours <= networkInstances always holds.
+    const rows = buildDonorAppRows(nodesByIp, addresses, specIndex);
 
-    expect(rows[0].instances).toBeNull();
-    // The donor's own count is still known: it is running it right there.
+    expect(rows.every((r) => r.yours <= r.networkInstances)).toBe(true);
+  });
+
+  it('keeps the ordered count separately, since the gap is itself the story', () => {
+    // #327 is open on exactly this gap, so the figure is kept for the tooltip
+    // rather than discarded -- it is just not the headline.
+    const withInstances = { ...specIndex, folding1: { ...specIndex.folding1, instances: 30 } };
+
+    const folding = buildDonorAppRows(nodesByIp, addresses, withInstances).find((r) => r.name === 'folding1');
+
+    expect(folding.ordered).toBe(30);
+    expect(folding.networkInstances).toBe(5);
+  });
+
+  it('still counts running instances when there is no spec at all', () => {
+    // An app running with no matching spec has no ordered count, but it is
+    // demonstrably running -- that is observed, not inferred.
+    const rows = buildDonorAppRows(
+      { '1.2.3.4:16127': { containerAppNames: ['ghost'], containerComponents: [null] } },
+      ['1.2.3.4:16127'],
+      {}
+    );
+
+    expect(rows[0].ordered).toBeNull();
+    expect(rows[0].networkInstances).toBe(1);
     expect(rows[0].yours).toBe(1);
   });
 });

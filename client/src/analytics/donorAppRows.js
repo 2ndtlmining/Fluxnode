@@ -61,36 +61,66 @@ export function buildDonorAppRows(nodesByIp, donorAddresses, specIndex) {
         ramGB: spec ? spec.ramGBPerInst : null,
         ssdGB: spec ? spec.ssdGBPerInst : null,
         /*
-         * The spec's own ordered instance count, for context: three of
-         * seventy-five reads very differently from three. null when no spec
-         * matched -- the app is running, but nothing about its size is
-         * knowable, the same rule the resource columns follow.
+         * How many the spec ORDERED. Kept, but deliberately not the headline
+         * -- see the network-wide count below. null when no spec matched, the
+         * same rule the resource columns follow.
          */
-        instances: spec?.instances ?? null,
-        // Filled in below: needs every row before it can be counted.
+        ordered: spec?.instances ?? null,
+        // Both filled in below: they need every row, and the whole network.
         yours: 0,
+        networkInstances: 0,
       });
     });
   }
 
   /*
-   * How many instances of each app the donor actually runs (issue #344).
+   * How many instances are RUNNING -- the donor's, and the network's
+   * (issue #344).
    *
-   * A Flux app instance is one deployment on one NODE, so this counts distinct
-   * node addresses -- NOT rows. Counting rows would be wrong for any
+   * A Flux app instance is one deployment on one NODE, so both counts are over
+   * distinct node addresses, NOT rows. Counting rows would be wrong for any
    * multi-component app: WordPress is an nginx container and a mysql container
    * on a single node, which is two rows and ONE instance.
    *
    * Nodes are distinguished by ip:port, so two nodes sharing a host count
    * twice. They are two separate deployments, and collapsing them by IP is the
    * same mistake that made the utilisation figure wrong in this issue.
+   *
+   * WHY THE NETWORK FIGURE IS RUNNING RATHER THAN ORDERED. The first pass used
+   * the spec's `instances` field, which is how many were ordered. Measured
+   * across the live feeds those disagree for most apps:
+   *
+   *     806 apps  running == ordered
+   *     483 apps  running <  ordered
+   *      10 apps  running >  ordered   -- alphexplorer: 592 running, 30 ordered
+   *
+   * So an app with 592 instances up would have read "1 / 30", and for those
+   * ten a row could read "3 / 1" -- a denominator smaller than the numerator,
+   * which reads as a bug rather than as the over-deployment it is. #327
+   * settled that this project reports what is actually running; `ordered`
+   * stays on the row because the GAP between the two is itself the story
+   * there, but it is context, not the count.
+   *
+   * nodesByIp is the whole network's map -- donorAddresses is a filter over
+   * it, not its contents -- so the network figure costs no extra fetch.
    */
-  const nodesPerApp = {};
+  const donorNodesPerApp = {};
   for (const row of rows) {
-    (nodesPerApp[row.name] ||= new Set()).add(row.nodeAddress);
+    (donorNodesPerApp[row.name] ||= new Set()).add(row.nodeAddress);
   }
+
+  const networkNodesPerApp = {};
+  for (const [nodeAddress, node] of Object.entries(nodesByIp || {})) {
+    for (const name of node?.containerAppNames || []) {
+      (networkNodesPerApp[name] ||= new Set()).add(nodeAddress);
+    }
+  }
+
   for (const row of rows) {
-    row.yours = nodesPerApp[row.name].size;
+    row.yours = donorNodesPerApp[row.name].size;
+    // The donor's own nodes are part of the network, so this can never be
+    // smaller than `yours` -- unlike the ordered figure it replaces.
+    row.networkInstances = networkNodesPerApp[row.name]?.size ?? row.yours;
   }
 
   return rows;
