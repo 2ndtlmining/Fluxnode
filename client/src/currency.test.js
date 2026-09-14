@@ -61,7 +61,13 @@ describe('SUPPORTED_CURRENCIES', () => {
 });
 
 describe('isCacheUsable', () => {
-  const fresh = { rates: { USD: 1, EUR: 0.86, AUD: 1.4, GBP: 0.73 }, timestamp: 1000 };
+  // Derived from SUPPORTED_CURRENCIES rather than hardcoded, so that adding a
+  // currency can't turn this into a false negative. The hardcoded four went
+  // stale the moment the list grew past them.
+  const fresh = {
+    rates: Object.fromEntries(SUPPORTED_CURRENCIES.map((c) => [c, c === 'USD' ? 1 : 0.86])),
+    timestamp: 1000,
+  };
   const now = 1000 + 60 * 1000; // one minute later
 
   it('accepts a recent cache covering every supported currency', () => {
