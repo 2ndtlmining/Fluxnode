@@ -5,6 +5,7 @@ import {
   DONOR_WINDOW_DAYS,
   DONOR_MAX_PAGES_FETCHED,
   DONOR_STATUS_CACHE_TTL_MS,
+  DONOR_STATUS_NEGATIVE_CACHE_TTL_MS,
   OLD_ADDRESS_FLUX,
 } from 'donor/config';
 
@@ -75,13 +76,19 @@ function sumVoutToAddress(tx, address) {
   }, 0);
 }
 
+/*
+ * A cached "yes" is trusted for DONOR_STATUS_CACHE_TTL_MS; a cached "no" only
+ * for DONOR_STATUS_NEGATIVE_CACHE_TTL_MS. See donor/config.js for why the two
+ * differ, and issue #360 for what happened when they didn't.
+ */
 function readDonorStatusCache(address) {
   try {
     const raw = localStorage.getItem(DONOR_STATUS_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed.address !== address) return null;
-    if (Date.now() - parsed.timestamp >= DONOR_STATUS_CACHE_TTL_MS) return null;
+    const ttl = parsed.data?.isDonor ? DONOR_STATUS_CACHE_TTL_MS : DONOR_STATUS_NEGATIVE_CACHE_TTL_MS;
+    if (Date.now() - parsed.timestamp >= ttl) return null;
     return parsed.data;
   } catch {
     return null;
@@ -155,8 +162,12 @@ async function scanDonationsTo(walletAddress, donationAddress, windowStartSec) {
  * one-request-at-a-time pattern rather than doubling the burst size against
  * an explorer API already known to be rate-limit-sensitive.
  */
-export async function fetch_donor_status(walletAddress) {
-  const cached = readDonorStatusCache(walletAddress);
+export async function fetch_donor_status(walletAddress, { forceRefresh = false } = {}) {
+  // forceRefresh is for an explicit user action that means "I just donated,
+  // look again" — the unlock dialog's Check button. Answering that from a note
+  // the app wrote to itself beforehand is exactly the #360 complaint, so it
+  // skips the cache entirely rather than relying on the short negative TTL.
+  const cached = forceRefresh ? null : readDonorStatusCache(walletAddress);
   if (cached) return cached;
 
   const nowMs = Date.now();

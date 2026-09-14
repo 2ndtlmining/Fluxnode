@@ -16,7 +16,10 @@ export function useDonorWalletCheck() {
   const check = useCallback(async (address) => {
     setStatus(CHECK_STATUS.CHECKING);
     setResult(null);
-    const { status: nextStatus, result: nextResult } = await checkDonorWallet(address);
+    // forceRefresh: this hook only runs when the user has actually clicked
+    // Check, which almost always means they just donated and want to know if it
+    // landed. A cached "not a donor" from before the donation is the #360 bug.
+    const { status: nextStatus, result: nextResult } = await checkDonorWallet(address, { forceRefresh: true });
     setResult(nextResult);
     setStatus(nextStatus);
     if (nextStatus === CHECK_STATUS.SUCCESS) setDonorWallet(address.trim(), nextResult);

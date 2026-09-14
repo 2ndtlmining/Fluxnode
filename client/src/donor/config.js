@@ -8,6 +8,27 @@ export const DONOR_WINDOW_DAYS = 365;
 // re-checks the chain, matching fluxinfo.js's cache TTL convention.
 export const DONOR_STATUS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
+/*
+ * A verified NEGATIVE ("not a donor") is cached far more briefly than a
+ * positive, because the two answers have opposite lifetimes.
+ *
+ * A positive is stable: donor status lasts DONOR_WINDOW_DAYS once earned, so
+ * trusting it for 6h costs nothing. A negative is the one answer the user is
+ * actively in the middle of changing — they are looking at a locked feature
+ * and deciding whether to donate.
+ *
+ * Caching both for 6h caused issue #360. The ordinary journey guaranteed it:
+ * anyone who finds a locked feature checks their wallet FIRST, donates SECOND,
+ * and that first check wrote a "no" that outlived the donation by hours.
+ * Reported as "still locked 30 minutes after paying", and "it works in another
+ * browser" — a different localStorage, which is what gave the cache away.
+ *
+ * 60s is short enough that nobody notices it after donating, and long enough to
+ * absorb a double-click or a quick remount without re-scanning an explorer that
+ * is rate-limit-sensitive enough to need host failover.
+ */
+export const DONOR_STATUS_NEGATIVE_CACHE_TTL_MS = 60 * 1000; // 60s
+
 // Safety cap on explorer API pages fetched per check, for wallets whose donation
 // address has an unusually long transaction history.
 export const DONOR_MAX_PAGES_FETCHED = 20;

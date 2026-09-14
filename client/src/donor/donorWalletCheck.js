@@ -20,14 +20,20 @@ export const CHECK_STATUS = {
   UNVERIFIED: 'unverified',
 };
 
-export async function checkDonorWallet(address) {
+/*
+ * `forceRefresh` is passed straight to fetch_donor_status. Callers that
+ * represent a deliberate "check my donation now" (the unlock dialog) set it;
+ * callers where donor status is a side-effect of some other lookup
+ * (runDonorAutoDetect) leave it off and accept a cached answer. See issue #360.
+ */
+export async function checkDonorWallet(address, { forceRefresh = false } = {}) {
   const trimmed = (address || '').trim();
   if (!trimmed) return { status: CHECK_STATUS.INVALID, result: null };
 
   const looksReal = await validateAddress(trimmed);
   if (!looksReal) return { status: CHECK_STATUS.INVALID, result: null };
 
-  const result = await fetch_donor_status(trimmed);
+  const result = await fetch_donor_status(trimmed, { forceRefresh });
   if (result.isDonor) return { status: CHECK_STATUS.SUCCESS, result };
   if (!result.verified) return { status: CHECK_STATUS.UNVERIFIED, result };
   return { status: CHECK_STATUS.FAILURE, result };

@@ -389,3 +389,107 @@ describe('fetch_donor_status', () => {
   // only changes which of those two conditions is reached, not the logic
   // that decides verified from them.
 });
+
+/*
+ * Issue #360 ("Delay unlock"): users stayed locked for hours after donating,
+ * and switching browser fixed it — the signature of a client-side cache.
+ *
+ * The cause was that a *verified negative* was cached for the same 6h as a
+ * positive. Those two answers are not equivalent: donor status lasts 365 days
+ * once earned, so caching "yes" is safe, while "no" is precisely the answer the
+ * user is in the middle of changing. Worse, the natural journey guarantees the
+ * bad cache entry — anyone who finds a locked feature checks their wallet
+ * first, donates second, and that first check is what locks them out.
+ */
+describe('fetch_donor_status negative-result caching (issue #360)', () => {
+  const WALLET = 't1SenderRealWalletAddressXXXXXXXXX';
+  const DONATION_ADDR = window.gContent.ADDRESS_FLUX;
+
+  beforeEach(() => {
+    localStorage.clear();
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function page(txs) {
+    return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ pagesTotal: 1, txs }) };
+  }
+
+  function donationTx(amount) {
+    const time = Math.floor(Date.now() / 1000) - 60;
+    return {
+      txid: 'tx-donation', blockheight: 100, time, blocktime: time,
+      vin: [{ addr: WALLET, value: 0 }],
+      vout: [{ value: amount.toFixed(8), n: 0, scriptPubKey: { addresses: [DONATION_ADDR], type: 'pubkeyhash' } }],
+      isCoinBase: false,
+    };
+  }
+
+  // The exact sequence from the bug report, end to end.
+  it('unlocks a user who checked BEFORE donating, once the negative TTL has passed', async () => {
+    const realNow = Date.now();
+    global.fetch.mockResolvedValue(page([])); // both addresses: no donations yet
+
+    const before = await fetch_donor_status(WALLET);
+    expect(before.isDonor).toBe(false);
+    expect(before.verified).toBe(true); // a complete scan — this is what used to get cached for 6h
+
+    // The user donates. From here the chain reports the donation on every call.
+    global.fetch.mockResolvedValue(page([donationTx(15)]));
+
+    // Two minutes later they check again — comfortably past the negative TTL
+    // and nowhere near the 6h that used to apply.
+    jest.spyOn(Date, 'now').mockReturnValue(realNow + 2 * 60 * 1000);
+
+    const after = await fetch_donor_status(WALLET);
+    expect(after.isDonor).toBe(true);
+    expect(after.totalInWindow).toBeCloseTo(15);
+  });
+
+  // The negative cache still has to exist, or a double-click re-scans the
+  // explorer — which is rate-limit-sensitive enough that it fails over hosts.
+  it('still serves a negative from cache within the negative TTL', async () => {
+    global.fetch.mockResolvedValue(page([]));
+
+    await fetch_donor_status(WALLET);
+    const callsAfterFirst = global.fetch.mock.calls.length;
+    await fetch_donor_status(WALLET);
+
+    expect(global.fetch.mock.calls.length).toBe(callsAfterFirst); // served from cache, no new network calls
+  });
+
+  // A positive is stable for 365 days; shortening the negative TTL must not
+  // have shortened this one too, or every donor re-scans the chain constantly.
+  it('still serves a positive from cache well beyond the negative TTL', async () => {
+    const realNow = Date.now();
+    global.fetch.mockResolvedValue(page([donationTx(15)]));
+
+    const first = await fetch_donor_status(WALLET);
+    expect(first.isDonor).toBe(true);
+    const callsAfterFirst = global.fetch.mock.calls.length;
+
+    // An hour later: long past the negative TTL, well inside the 6h positive TTL.
+    jest.spyOn(Date, 'now').mockReturnValue(realNow + 60 * 60 * 1000);
+
+    const second = await fetch_donor_status(WALLET);
+    expect(second.isDonor).toBe(true);
+    expect(global.fetch.mock.calls.length).toBe(callsAfterFirst); // still cached
+  });
+
+  // "I just donated, look again" — an explicit user action must never be
+  // answered from a note the app wrote to itself beforehand.
+  it('forceRefresh ignores a cached negative and re-checks the chain immediately', async () => {
+    global.fetch.mockResolvedValue(page([]));
+    const before = await fetch_donor_status(WALLET);
+    expect(before.isDonor).toBe(false);
+
+    global.fetch.mockResolvedValue(page([donationTx(15)]));
+
+    // No time passes at all — this is the user clicking Check seconds later.
+    const after = await fetch_donor_status(WALLET, { forceRefresh: true });
+    expect(after.isDonor).toBe(true);
+  });
+});
