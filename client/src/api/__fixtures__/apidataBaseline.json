@@ -569,7 +569,7 @@
     },
     "SUPPORTED_CURRENCIES": {
       "type": "object",
-      "value": "[\"USD\",\"EUR\",\"AUD\",\"GBP\"]"
+      "value": "[\"USD\",\"EUR\",\"AUD\",\"GBP\",\"IDR\",\"CHF\",\"THB\",\"HKD\",\"CNY\",\"JPY\",\"INR\",\"THB\",\"SGD',\"RUB\",\"CAD\",\"MYR',\"KRW\"]"
     },
     "_extract_country_counts": {
       "length": 1,
