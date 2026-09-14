@@ -19,6 +19,25 @@ describe('checkDonorWallet', () => {
     expect(fetch_donor_status).not.toHaveBeenCalled();
   });
 
+  /*
+   * Issue #360: the unlock dialog must be able to bypass the donor-status
+   * cache, because a user clicking Check has almost always just donated and a
+   * cached pre-donation "no" is what kept them locked out for hours.
+   */
+  it('passes forceRefresh through to fetch_donor_status when asked', async () => {
+    validateAddress.mockResolvedValue(true);
+    fetch_donor_status.mockResolvedValue({ isDonor: true, verified: true });
+    await checkDonorWallet('t1RealAddress', { forceRefresh: true });
+    expect(fetch_donor_status).toHaveBeenCalledWith('t1RealAddress', { forceRefresh: true });
+  });
+
+  it('defaults to the cached path when forceRefresh is not requested', async () => {
+    validateAddress.mockResolvedValue(true);
+    fetch_donor_status.mockResolvedValue({ isDonor: false, verified: true });
+    await checkDonorWallet('t1RealAddress');
+    expect(fetch_donor_status).toHaveBeenCalledWith('t1RealAddress', { forceRefresh: false });
+  });
+
   it('returns SUCCESS with the real result when the wallet qualifies', async () => {
     validateAddress.mockResolvedValue(true);
     const donorResult = { isDonor: true, totalInWindow: 25, expiresAt: 123, daysLeft: 10, verified: true };
