@@ -21,7 +21,7 @@ const FRANKFURTER_URL = 'https://api.frankfurter.dev/v1/latest';
  * Every rate is quoted against USD, because all prices in the app originate as
  * flux_price_usd and are rendered as `flux_price_usd * selectedCurrency.rate`.
  */
-export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'AUD', 'GBP', 'IDR', 'CHF', 'SAR', 'HKD', 'CNY', 'JPY', 'INR', 'THB', 'SGD', 'RUB', 'CAD', 'MYR', 'KRW'];
+export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'AUD', 'GBP', 'IDR', 'CHF', 'HKD', 'CNY', 'JPY', 'INR', 'THB', 'SGD', 'CAD', 'MYR', 'KRW'];
 
 /**
  * A cache is only usable if it is recent AND covers every supported currency.
