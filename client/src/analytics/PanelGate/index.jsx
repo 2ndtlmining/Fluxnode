@@ -25,9 +25,13 @@ import './index.scss';
  * pass it.
  */
 export function PanelGate({ panelKey, feature, children, preview = 'plain', viewedWallet = null }) {
-  const { isUnlocked, donorWallet } = useDonorStatus();
+  const { isUnlocked, isTestingOverride, donorWallet } = useDonorStatus();
 
-  if (getPanelAccess(panelKey, isUnlocked, { donorWallet, viewedWallet })) return children;
+  // isTestingOverride only reaches the wallet-scoped panels (#364) -- everything
+  // else is already through on isUnlocked before it is looked at.
+  if (getPanelAccess(panelKey, isUnlocked, { donorWallet, viewedWallet, testingOverride: isTestingOverride })) {
+    return children;
+  }
 
   /*
    * A donor looking at somebody ELSE's wallet (#325). They have donated, so

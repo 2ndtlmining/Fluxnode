@@ -59,11 +59,20 @@ export function DonorProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [donorWallet]);
 
-  const isUnlocked = isTestingUnlocked() || donorStatus?.isDonor === true;
+  /*
+   * #364: consumers need the override itself, not only its effect on
+   * isUnlocked. The wallet-scoped panels (#325) ask a second question --
+   * "is the viewed wallet the one that donated?" -- which the override could
+   * not answer through isUnlocked alone, because it never produces a
+   * donorWallet to compare against. Exposing it here keeps
+   * analytics/panelAccess.js a pure module with no `window` access of its own.
+   */
+  const isTestingOverride = isTestingUnlocked();
+  const isUnlocked = isTestingOverride || donorStatus?.isDonor === true;
 
   const value = useMemo(() => ({
-    isUnlocked, donorWallet, donorStatus, setDonorWallet, refreshDonorStatus,
-  }), [isUnlocked, donorWallet, donorStatus, setDonorWallet, refreshDonorStatus]);
+    isUnlocked, isTestingOverride, donorWallet, donorStatus, setDonorWallet, refreshDonorStatus,
+  }), [isUnlocked, isTestingOverride, donorWallet, donorStatus, setDonorWallet, refreshDonorStatus]);
 
   return <DonorContext.Provider value={value}>{children}</DonorContext.Provider>;
 }
