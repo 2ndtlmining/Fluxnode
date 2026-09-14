@@ -963,3 +963,223 @@
   display: block;
   width: 100%;
 }
+
+/* ── #358: Recent activity rebuilt ──────────────────────────────────────────
+ *
+ * Measured: 94% of rows were node rewards and five of seven category lines
+ * were permanently zero. Rewards now collapse into runs, a day strip shows
+ * whether they are still arriving, and a category earns its line.
+ */
+
+.dt-act-truncated {
+  margin: 8px 0 4px;
+  padding: 6px 10px;
+  border-left: 2px solid #d9a03a;
+  background: color-mix(in srgb, #d9a03a 8%, transparent);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* Per-day node rewards. A short or missing bar is a day that paid little or
+   nothing, which 219 identical list rows cannot show. */
+.dt-act-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 62px;
+  margin: 10px 0 14px;
+}
+
+.dt-act-strip-col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  cursor: help;
+}
+
+.dt-act-strip-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent-green, #0ea271);
+}
+
+/* Visible as an absence rather than nothing at all — the gap is the signal. */
+.dt-act-strip-bar--empty {
+  background: var(--border-secondary);
+}
+
+/*
+ * A day outside the scanned period. Hatched and hollow so it reads as "no
+ * data", never as "no rewards" — a short flat bar would say the nodes stopped
+ * earning on a day nobody looked at.
+ */
+.dt-act-strip-bar--unscanned {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    var(--border-secondary) 3px,
+    var(--border-secondary) 5px
+  );
+  border: 1px dashed var(--border-secondary);
+  border-radius: 2px;
+}
+
+.dt-act-strip-label--unscanned {
+  opacity: 0.45;
+}
+
+.dt-act-strip-label {
+  margin-top: 4px;
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+}
+
+.dt-act-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.dt-act-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dt-act-col-title {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.dt-act-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+}
+
+.dt-act-line--total {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.dt-act-net {
+  margin: 12px 0 6px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.dt-act-net--up strong,
+.dt-act-net--up { color: var(--accent-green, #0ea271); }
+.dt-act-net--down { color: var(--accent-red, #dc3a3a); }
+
+.dt-act-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-secondary);
+}
+
+/*
+ * One grid for every row shape -- run header, nested reward, single
+ * transaction -- so the four columns line up down the list however a row is
+ * built. A per-shape layout drifts the moment one of them changes.
+ */
+.dt-act-row {
+  display: grid;
+  grid-template-columns: 14px 64px minmax(0, 1fr) 100px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 5px 2px;
+  border: 0;
+  background: none;
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 0.76rem;
+  text-align: left;
+  color: inherit;
+
+  &:last-child { border-bottom: none; }
+}
+
+.dt-act-row--run {
+  cursor: pointer;
+
+  &:hover { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
+}
+
+/* Indented and dimmer, so an expanded run reads as detail under its header. */
+.dt-act-row--nested {
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+
+  .dt-act-date,
+  .dt-act-party { color: var(--text-tertiary); }
+}
+
+.dt-act-caret {
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+}
+
+.dt-act-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.dt-act-party {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.dt-act-party--exchange { color: #4d9bf5; }
+.dt-act-party--foundation { color: #a78bfa; }
+/* Italic because it is an absence, not a name — same rule the resource cells follow. */
+.dt-act-party--unknown { font-style: italic; color: var(--text-tertiary); }
+
+.dt-act-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.dt-act-amount--in { color: var(--accent-green, #0ea271); }
+.dt-act-amount--out { color: var(--accent-red, #dc3a3a); }
+
+.dt-act-link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--brand-primary, #4d9bf5);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.dt-act-plain { color: inherit; }
+
+@media (max-width: 640px) {
+  .dt-act-summary { grid-template-columns: 1fr; }
+}

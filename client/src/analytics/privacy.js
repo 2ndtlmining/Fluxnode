@@ -1,3 +1,5 @@
+import { useContext } from 'react';
+import { LayoutContext } from 'contexts/LayoutContext';
 import { hide_sensitive_number } from 'utils';
 
 /*
@@ -25,4 +27,17 @@ import { hide_sensitive_number } from 'utils';
 export function maskNodeAddress(address, enabled) {
   if (!address) return '';
   return enabled ? hide_sensitive_number(address) : address;
+}
+
+/**
+ * Whether privacy mode is on.
+ *
+ * A hook rather than a prop threaded through four component levels. Lives here
+ * with the masking it feeds, now that three components need it (#343, #358).
+ *
+ * Defaults to off when the context is absent, so a panel mounted on its own in
+ * a test does not throw.
+ */
+export function usePrivacy() {
+  return useContext(LayoutContext)?.enablePrivacyMode || false;
 }

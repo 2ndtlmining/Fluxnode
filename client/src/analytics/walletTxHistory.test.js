@@ -137,7 +137,18 @@ describe('buildWalletTxSummary', () => {
     expect(summary.received.transfers).toBe(10);
     expect(summary.received.total).toBe(15);
     expect(summary.sent.exchange).toBe(4);
-    expect(summary.sent.foundation).toBe(1);
+    /*
+     * Folded into transfers since #358, not its own bucket. Measured across
+     * 233 real transactions: one Foundation receipt and zero Foundation sends,
+     * so a permanent line for it was five-sevenths of the panel's category
+     * rows reading 0.00. Per #270 a payment to a Foundation address cannot be
+     * told apart from an app deployment anyway.
+     *
+     * The individual ROW still carries its "Flux Foundation" label -- naming
+     * the counterparty is worth doing; a permanently-zero total is not.
+     */
+    expect(summary.sent.transfers).toBe(1);
+    expect(summary.sent.foundation).toBeUndefined();
     expect(summary.sent.total).toBe(5);
     expect(summary.net).toBe(10);
     expect(summary.rows).toHaveLength(5);
