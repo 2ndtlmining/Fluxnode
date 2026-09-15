@@ -52,8 +52,12 @@ function sanitise(text) {
   if (typeof text !== 'string') return null;
   const cleaned = text
     // C0 and C1 control characters, plus the replacement character a partial
-    // decode can leave behind.
-    .replace(/[\x00-\x1F\x7F-\x9F\uFFFD]/g, ' ')
+    // decode can leave behind; zero-width characters (space, ZWNJ, ZWJ, LRM,
+    // RLM, the BOM/zero-width no-break space) that can render an otherwise
+    // non-empty note as a blank cell; and bidirectional override/isolate
+    // characters that can reverse or hide part of the displayed text.
+    // eslint-disable-next-line no-control-regex -- the C0/C1 ranges are the point.
+    .replace(/[\x00-\x1F\x7F-\x9F\uFFFD\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!cleaned) return null;

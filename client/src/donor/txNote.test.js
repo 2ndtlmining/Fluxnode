@@ -58,6 +58,20 @@ describe('decodeTxNote', () => {
     expect(decodeTxNote(txWithAsm('OP_RETURN 202020'))).toBeNull();
   });
 
+  it('replaces a right-to-left override between words with a space', () => {
+    // "hello" + U+202E (RIGHT-TO-LEFT OVERRIDE, UTF-8 e2 80 ae) + "world".
+    // A bidi override can reverse or hide the text that follows it, so it must
+    // be stripped like any other control character rather than rendered.
+    expect(decodeTxNote(txWithAsm('OP_RETURN 68656c6c6fe280ae776f726c64'))).toBe('hello world');
+  });
+
+  it('returns null for a note made only of zero-width characters', () => {
+    // Three U+200B ZERO WIDTH SPACE characters (UTF-8 e2 80 8b each). Rendered
+    // as-is this is an invisible, non-empty string -- a blank cell instead of
+    // the em-dash placeholder decodeTxNote's callers use for "no note".
+    expect(decodeTxNote(txWithAsm('OP_RETURN e2808be2808be2808b'))).toBeNull();
+  });
+
   it('returns null rather than throwing on malformed input', () => {
     expect(decodeTxNote(null)).toBeNull();
     expect(decodeTxNote({})).toBeNull();
