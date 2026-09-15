@@ -35,6 +35,12 @@
  * their distinct addresses for the same reason: senderOf returns the first
  * input that is not a donation address, so repeats cannot matter.
  *
+ * v2 (#366/#367) widens that trim in two ways, detailed at DONATION_SCAN_CACHE_KEY
+ * and inside trimTx below: an OUTGOING transaction keeps every addressed output,
+ * not just those paying a donation address, because the Costs tab's whole
+ * subject is what those outputs paid; and each transaction's decoded OP_RETURN
+ * note (#367) is stored as plain text, not the script it came from.
+ *
  * WHAT THIS COSTS. The persisted scan is therefore NOT a faithful copy of the
  * network's answer -- it is a copy adequate for fetch_donation_totals and
  * nothing else. fetch_wallet_donation_summary and fetch_total_donations
@@ -106,9 +112,15 @@ function trimTx(tx, addresses) {
    *
    * This is safe for size in a way the incoming rule is not: the 2,001-output
    * transaction that forced this trim is a mining pool paying its roster INTO
-   * a donation address. The project has never sent a batch payment and the two
-   * outgoing transactions on record have three outputs between them. If that
-   * ever changes, cap here rather than narrowing the rule.
+   * a donation address. `isOutgoing` tests against BOTH donation addresses, not
+   * just the current one, so a transaction sent by OLD_ADDRESS_FLUX -- a node
+   * collateral address with 18 pages of movement, per this file's header --
+   * also keeps every addressed output here. That is retained rather than
+   * filtered at this layer; buildCostRows (donor/costRows.js) then discards
+   * all of it, because it scopes costs to the current address only. Bounded
+   * because the old address has never sent a batch payment either: the whole
+   * persisted cache, old-address outgoing outputs included, measures 75 KB
+   * today. If that ever changes, cap here rather than narrowing the rule.
    */
   const isOutgoing = senders.some((s) => addresses.includes(s.addr));
   const keptVout = isOutgoing
