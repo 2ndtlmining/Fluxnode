@@ -88,9 +88,10 @@ describe('explorerBlockUrl', () => {
 
 describe('explorerTxUrl', () => {
   /*
-   * Deliberately NOT used on Home: #322 removed donor transaction links from
-   * the donation list on purpose. This exists for Chain Activity's transfer
-   * rows, which are network-wide chain events rather than anybody's donation.
+   * Used by Chain Activity's transfer rows and, since the owner reinstated
+   * them for verifiability, by Home's donation and cost lists too. #322 had
+   * removed the Home links; the donor ADDRESS remains unlinked, which is the
+   * part of #322 that still stands.
    */
   it('builds a UI transaction URL', () => {
     expect(explorerTxUrl(HASH)).toBe(`https://explorer.runonflux.io/tx/${HASH}`);

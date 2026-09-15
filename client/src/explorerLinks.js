@@ -58,10 +58,11 @@ export function explorerBlockUrl(hash) {
 /**
  * The explorer page for a transaction, or null without one.
  *
- * Deliberately not used on Home: #322 removed donor transaction links from the
- * donation list, so that the panel does not expose who donated and from which
- * transaction. Chain Activity's transfers are network-wide chain events rather
- * than anybody's donation, so the same reasoning does not apply there.
+ * Used by Chain Activity's transfer rows, and again by Home's donation and
+ * cost lists. #322 had removed the Home links so the panel would not expose
+ * who donated and from which transaction; the project owner reinstated the
+ * transaction link for verifiability, while the donor address stays unlinked
+ * text. See TxLink in home/HomeOverview/index.jsx for that reasoning.
  */
 export function explorerTxUrl(txid) {
   if (typeof txid !== 'string' || !BLOCK_HASH.test(txid)) return null;

@@ -1057,14 +1057,35 @@
 }
 
 /*
- * No longer a link (#322). Styled as the quiet reference it now is rather than
- * as something to click -- an accent-green underlined string that does nothing
- * on click is worse than plain text.
+ * A link again, at the project owner's direction, so a reader can verify a row
+ * against the chain. See TxLink in index.jsx for how that sits with #322.
+ *
+ * Underlined on hover only, matching components/BlockLink: these sit in a
+ * dense column, and a permanently underlined monospace string reads as noise.
+ * The non-link variant (a malformed txid) keeps the same size, weight and
+ * colour so a row that cannot link does not break the column's rhythm.
  */
 .hov-donations-tx {
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
   color: var(--text-secondary);
+  text-decoration: none;
+}
+
+a.hov-donations-tx--link {
+  border-radius: 2px;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--brand-primary, #4d9bf5);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-primary, #4d9bf5);
+    outline-offset: 2px;
+  }
 }
 
 .hov-donations-amount { color: var(--text-primary); font-weight: 600; }

@@ -8,6 +8,7 @@ import { COST_CATEGORY_LABELS } from 'donor/costRows';
 import { FaHeart } from 'react-icons/fa';
 import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
+import { explorerTxUrl } from 'explorerLinks';
 
 import { RewardCountdown } from 'rewards/RewardCountdown';
 import { BlockPulse } from 'home/BlockPulse';
@@ -114,6 +115,51 @@ function SupportCta({ address, shortAddress, standalone = false }) {
  * on-chain balance and nothing on screen would say why. Labelling is what lets
  * the panel be both complete and honest.
  */
+/*
+ * A transaction id that opens the explorer, so a reader can verify a row
+ * against the chain rather than taking the panel's word for it.
+ *
+ * THIS REVERSES PART OF #322, deliberately and at the project owner's
+ * direction. #322 removed these links on the grounds that an href carrying
+ * the whole txid republishes what shortening the visible text withholds --
+ * readable in the status bar and on copy-link. That reasoning still stands
+ * for the DONOR address, which is why the donor column remains unlinked
+ * text; but a transparency panel whose figures cannot be checked against the
+ * chain is a weaker thing than one whose transaction ids leak, and a txid is
+ * the narrower disclosure of the two.
+ *
+ * What #322 argued against that is NOT reinstated here: there is no `title`
+ * carrying the raw txid. The href has to hold it to work; a tooltip would
+ * only publish it a second way, for no gain. The title describes the action
+ * instead, matching components/BlockLink.
+ *
+ * Degrades to plain text on a malformed txid rather than linking to a 404 --
+ * explorerTxUrl refuses anything that is not a 64-character hex hash.
+ */
+function TxLink({ txid }) {
+  const href = explorerTxUrl(txid);
+  const label = shortId(txid, 4, 4);
+
+  if (!href) return <span className="hov-donations-tx">{label}</span>;
+
+  return (
+    <a
+      className="hov-donations-tx hov-donations-tx--link"
+      href={href}
+      target="_blank"
+      /*
+       * noreferrer alongside noopener, matching BlockLink: this is an outbound
+       * link to a third party from a page that may be showing a wallet the
+       * reader searched for, and the referrer would carry the URL revealing it.
+       */
+      rel="noopener noreferrer"
+      title="Open this transaction in the Flux explorer"
+    >
+      {label}
+    </a>
+  );
+}
+
 const SORTS = {
   block: { label: 'Block', get: (r) => r.blockHeight },
   amount: { label: 'Amount', get: (r) => r.amount },
@@ -221,12 +267,12 @@ function DonationList({ rows, tabPanelId, tabId }) {
               className={`hov-donations-row${r.isProjectTransfer ? ' hov-donations-row--project' : ''}`}
             >
               {/*
-                #322: no `title` with the full value, and no link. A tooltip
-                carrying the whole address, or an href carrying the whole txid,
-                republishes exactly what the shortening is here to withhold --
-                one is readable on hover, the other in the status bar and on
-                copy-link. Shortening the visible text while leaking the full
-                value into an attribute would be security theatre.
+                #322: the DONOR address stays shortened text with no `title`
+                and no link. A tooltip carrying the whole address republishes
+                exactly what the shortening is here to withhold, and a list of
+                who supports the project is the disclosure #322 cared about.
+                The transaction id is now a link -- see TxLink for why that
+                trade was made differently.
               */}
               <span className="hov-donations-donor">
                 {shortId(r.from, 3, 3)}
@@ -236,7 +282,7 @@ function DonationList({ rows, tabPanelId, tabId }) {
                   </span>
                 )}
               </span>
-              <span className="hov-donations-tx">{shortId(r.txid, 4, 4)}</span>
+              <TxLink txid={r.txid} />
               {/*
                 #367. The note is shown in full on hover, which is a deliberate
                 exception to #322 rather than an oversight: #322 removed
@@ -366,15 +412,16 @@ function CostList({ rows, costs, tabPanelId, tabId }) {
         ) : (
           sorted.map((r) => (
             <div key={r.key} className="hov-donations-row">
-              {/* Same #322 reasoning as the donation list: shortened, no full
-                  value in an attribute. */}
+              {/* Same #322 reasoning as the donation list: the recipient stays
+                  shortened text with no full value in an attribute. The
+                  transaction links out -- see TxLink. */}
               <span className="hov-donations-donor">
                 {shortId(r.to, 3, 3)}
                 <span className={`hov-donations-tag hov-cost-tag--${r.category}`}>
                   {COST_CATEGORY_LABELS[r.category]}
                 </span>
               </span>
-              <span className="hov-donations-tx">{shortId(r.txid, 4, 4)}</span>
+              <TxLink txid={r.txid} />
               {r.note ? (
                 <Tooltip2
                   content={r.note}
