@@ -111,14 +111,36 @@ export function isWalletScoped(panelKey) {
 /**
  * @param panelKey  key in PANEL_ACCESS
  * @param isUnlocked  DonorContext.isUnlocked
- * @param wallets  { donorWallet, viewedWallet } -- optional, and only consulted
- *   for WALLET_SCOPED panels. Callers that gate network-scoped panels pass two
- *   arguments exactly as before and are unaffected.
+ * @param wallets  { donorWallet, viewedWallet, testingOverride } -- optional, and
+ *   only consulted for WALLET_SCOPED panels. Callers that gate network-scoped
+ *   panels pass two arguments exactly as before and are unaffected.
+ *   `testingOverride` is DonorContext.isTestingOverride (#364, below).
  */
 export function getPanelAccess(panelKey, isUnlocked, wallets = {}) {
   const level = PANEL_ACCESS[panelKey];
 
   if (level === WALLET_SCOPED) {
+    /*
+     * #364: the TESTING override has to clear BOTH conditions, not just the
+     * first one. It feeds isUnlocked (DonorContext) and nothing else -- it
+     * never produces a donorWallet -- so before this, `sameWallet(null,
+     * viewed)` kept these two panels locked for every wallet even with the
+     * flag on, while /analytics and /live (plain 'donor') unlocked fine.
+     * That left Achievements and the per-wallet Apps breakdown with no local
+     * QA path at all, the demo wallet having gone in #324.
+     *
+     * Bypassing ownership here is safe because the rule it defeats is a
+     * paywall rule, not a privacy one -- both panels are derived from public,
+     * unauthenticated Flux APIs (see PanelGate's note) -- and because the flag
+     * is a whole-gate override by design: it is off in every deployed image,
+     * and set only by a QA container's `-e TESTING=true`.
+     *
+     * It is deliberately ANDed with isUnlocked rather than short-circuiting
+     * ahead of it, so this cannot become a second way in independent of the
+     * one real users go through.
+     */
+    if (isUnlocked && wallets.testingOverride === true) return true;
+
     // Both conditions, not either: the viewer must have proved a donation AND
     // be looking at the wallet that proved it.
     return !!isUnlocked && sameWallet(wallets.donorWallet, wallets.viewedWallet);

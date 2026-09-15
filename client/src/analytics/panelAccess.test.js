@@ -158,6 +158,63 @@ describe('getPanelAccess — wallet-scoped panels (#325)', () => {
     expect(getPanelAccess('appEcosystem', false, { donorWallet: OWNER, viewedWallet: OWNER })).toBe(false);
   });
 
+  /*
+   * #364: the comment above was the intent, but nothing tested it for the
+   * WALLET_SCOPED panels -- and those were exactly where it had stopped being
+   * true. The TESTING override feeds `isUnlocked` and nothing else; it never
+   * produces a donorWallet, so `sameWallet(null, viewed)` locked these two for
+   * every wallet. `testingOverride` is the flag threaded through from
+   * DonorContext so a pure module can honour it without touching `window`.
+   */
+  it('lets the TESTING override satisfy the ownership check too (#364)', () => {
+    for (const key of ['nodesAchievements', 'nodesApps']) {
+      // The reported case: override on, no real donor wallet ever verified.
+      expect(
+        getPanelAccess(key, true, {
+          donorWallet: null,
+          viewedWallet: SOMEONE_ELSE,
+          testingOverride: true,
+        })
+      ).toBe(true);
+
+      // And a donor with the override on, looking at somebody else's wallet --
+      // QA needs to reach the panel for any address, not just the stored one.
+      expect(
+        getPanelAccess(key, true, {
+          donorWallet: OWNER,
+          viewedWallet: SOMEONE_ELSE,
+          testingOverride: true,
+        })
+      ).toBe(true);
+    }
+  });
+
+  it('does not let testingOverride alone unlock anything (#364)', () => {
+    // The override reaches isUnlocked first; a caller that passes the flag
+    // without it must not open a second, independent back door.
+    expect(
+      getPanelAccess('nodesAchievements', false, {
+        donorWallet: OWNER,
+        viewedWallet: OWNER,
+        testingOverride: true,
+      })
+    ).toBe(false);
+  });
+
+  it('keeps #325 intact when the override is off (#364)', () => {
+    // The borrowed-address rule is unchanged for real users: absent or false,
+    // testingOverride must leave the wallet comparison as the only way in.
+    for (const testingOverride of [undefined, false]) {
+      expect(
+        getPanelAccess('nodesApps', true, {
+          donorWallet: OWNER,
+          viewedWallet: SOMEONE_ELSE,
+          testingOverride,
+        })
+      ).toBe(false);
+    }
+  });
+
   it('behaves as before when no wallet context is supplied at all', () => {
     // Every existing caller passes two arguments; they must not change meaning.
     expect(getPanelAccess('appEcosystem', true)).toBe(true);
