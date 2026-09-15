@@ -105,3 +105,15 @@ export const EXCLUDED_FROM_DONATION_TOTALS = ['t1gesjNJGfzU8shfMZj6DVDatRKA3LQj8
 export function isTestingUnlocked() {
   return window.gContent?.TESTING === true;
 }
+
+/*
+ * Flux Cloud, where the project's hosting is paid (issue #366).
+ *
+ * A LIST rather than a constant because there is every reason to expect a
+ * second one: this is a payment endpoint, not an identity. As of 2026-09-16
+ * the donation address has sent it nothing -- the category is built and shown
+ * at zero because payments are expected shortly, not because the data is
+ * there. An empty category that appears the day it is first used is better
+ * than a reader wondering where hosting costs went.
+ */
+export const FLUX_CLOUD_ADDRESSES = ['t3NryfAQLGeFs9jEoeqsxmBN2QLRaRKFLUX'];
