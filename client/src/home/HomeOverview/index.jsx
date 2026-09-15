@@ -133,7 +133,7 @@ function DonationList({ rows }) {
    */
   const q = query.trim().toLowerCase();
   /*
-   * Wallet and amount only -- deliberately NOT txid (#322).
+   * Wallet, amount and note -- deliberately NOT txid (#322).
    *
    * It used to match txid too, which was defensible while the full id was on
    * screen. It is not now: searching "45" would return a 10 FLUX donation whose
@@ -141,9 +141,17 @@ function DonationList({ rows }) {
    * there is nothing on the row to explain the match. A search that returns
    * rows the reader cannot connect to their query reads as a bug, so the
    * predicate matches the placeholder.
+   *
+   * The note is included for exactly that reason and not in spite of it: it IS
+   * readable on the row, so a match is always explainable (#367).
    */
   const filtered = q
-    ? rows.filter((r) => r.from.toLowerCase().includes(q) || String(r.amount).includes(q))
+    ? rows.filter(
+        (r) =>
+          r.from.toLowerCase().includes(q) ||
+          String(r.amount).includes(q) ||
+          (r.note || '').toLowerCase().includes(q)
+      )
     : rows;
 
   const get = SORTS[sortKey].get;
@@ -180,14 +188,15 @@ function DonationList({ rows }) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search wallet or amount"
-          aria-label="Search donations by wallet or amount"
+          placeholder="Search wallet, amount or note"
+          aria-label="Search donations by wallet, amount or note"
         />
       </div>
 
       <div className="hov-donations-row hov-donations-row--header">
         <button type="button" onClick={() => toggleSort('donor')}>Donor{arrow('donor')}</button>
         <span>Transaction</span>
+        <span>Note</span>
         <button type="button" className="hov-num" onClick={() => toggleSort('amount')}>Amount{arrow('amount')}</button>
         <button type="button" className="hov-num" onClick={() => toggleSort('block')}>Block{arrow('block')}</button>
         <span className="hov-num">When</span>
@@ -219,6 +228,23 @@ function DonationList({ rows }) {
                 )}
               </span>
               <span className="hov-donations-tx">{shortId(r.txid, 4, 4)}</span>
+              {/*
+                #367. The note is shown in full on hover, which is a deliberate
+                exception to #322 rather than an oversight: #322 removed
+                tooltips carrying a full ADDRESS or TXID, because a shortened
+                identifier with the whole value in an attribute republishes
+                exactly what the shortening withholds. A note is not an
+                identifier -- it is text the donor chose to write into a public
+                transaction, and there is nothing to withhold. donor/txNote.js
+                caps and sanitises it on the way in.
+              */}
+              {r.note ? (
+                <Tooltip2 content={r.note} placement="top" hoverOpenDelay={200}>
+                  <span className="hov-donations-note">{r.note}</span>
+                </Tooltip2>
+              ) : (
+                <span className="hov-donations-note hov-donations-note--empty">&mdash;</span>
+              )}
               <span className="hov-num hov-donations-amount">{fmtNum(r.amount, 2)}</span>
               <span className="hov-num hov-donations-block">{fmtNum(r.blockHeight)}</span>
               <span className="hov-num hov-donations-age">{relativeAge(r.timeSec)}</span>

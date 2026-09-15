@@ -960,7 +960,10 @@
   /* Donor and transaction get the room; the three numeric columns are fixed
      so they line up as columns rather than drifting with content width. */
   /* #322 shortened both identifiers, so these no longer need to flex wide. */
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.7fr) 92px 92px 100px;
+  /* #367 added Note between Transaction and Amount. It takes the largest
+     flexible share because it is the only column with prose in it, and it
+     ellipsises rather than wrapping so a long note cannot change row height. */
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.6fr) minmax(0, 1fr) 92px 92px 100px;
   padding: 5px 4px;
   font-size: 0.76rem;
   border-bottom: 1px solid rgba(128, 128, 128, 0.07);
@@ -999,6 +1002,21 @@
   }
 
   .hov-num { text-align: right; }
+}
+
+.hov-donations-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* An empty cell would leave the row looking broken rather than noteless. */
+.hov-donations-note--empty {
+  color: var(--text-tertiary);
+  font-style: normal;
 }
 
 .hov-donations-list {
@@ -1066,8 +1084,10 @@
 @media (max-width: 700px) {
   /* The block height is the first thing to go: it is the least useful column
      on a phone and the only one nobody scans by eye. */
+  /* #367: Note stays visible here, so this still needs one track per visible
+     column -- Donor, Transaction, Note, Amount, When -- or the row shears. */
   .hov-donations-row {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.8fr) 80px 88px;
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.6fr) minmax(0, 0.9fr) 80px 88px;
   }
 
   .hov-donations-block { display: none; }
