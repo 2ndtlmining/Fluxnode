@@ -1072,7 +1072,23 @@
   text-decoration: none;
 }
 
-a.hov-donations-tx--link {
+/*
+ * ROW-SCOPED ON PURPOSE, and the extra specificity is the whole point.
+ *
+ * Blueprint's dark theme styles bare anchors with `.bp4-dark a, .bp4-dark
+ * a:hover { color: #8abbff }` -- specificity (0,1,1), which beats a lone
+ * `.hov-donations-tx` at (0,1,0) and captures the hover state too. Measured in
+ * the browser before this rule existed: every transaction rendered #8abbff
+ * rather than --text-secondary, giving a column of bright blue monospace and
+ * a hover state that barely changed. `.hov-donations-row a.hov-donations-tx`
+ * is (0,2,0) plus the element, so it wins without !important.
+ *
+ * Muted until hover, matching components/BlockLink: these sit in a dense
+ * column where permanent underline-and-colour reads as noise, and the cursor
+ * plus the shift is signal enough once the reader is on one.
+ */
+.hov-donations-row a.hov-donations-tx {
+  color: var(--text-secondary);
   border-radius: 2px;
 
   &:hover,
