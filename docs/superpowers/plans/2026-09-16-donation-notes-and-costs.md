@@ -218,7 +218,7 @@ function sanitise(text) {
   const cleaned = text
     // C0 and C1 control characters, plus the replacement character a partial
     // decode can leave behind.
-    .replace(/[ --�]/g, ' ')
+    .replace(/[\u0000-\u001F\u007F-\u009F\uFFFD]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!cleaned) return null;
