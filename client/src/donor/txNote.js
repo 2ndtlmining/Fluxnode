@@ -53,7 +53,7 @@ function sanitise(text) {
   const cleaned = text
     // C0 and C1 control characters, plus the replacement character a partial
     // decode can leave behind.
-    .replace(/[\x00-\x1F\x7F-\x9F�]/g, ' ')
+    .replace(/[\x00-\x1F\x7F-\x9F\uFFFD]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (!cleaned) return null;
