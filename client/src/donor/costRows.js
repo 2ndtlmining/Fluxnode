@@ -1,5 +1,5 @@
 import { DONOR_WINDOW_DAYS, EXCLUDED_FROM_DONATION_TOTALS, FLUX_CLOUD_ADDRESSES } from './config';
-import { senderOf } from './donationTotals';
+import { senderOf, donationAddresses } from './donationTotals';
 import { decodeTxNote } from './txNote';
 
 /*
@@ -48,6 +48,16 @@ function currentDonationAddress() {
  * Project-owned wallets are excluded for a different reason -- they are not
  * donors at all (see EXCLUDED_FROM_DONATION_TOTALS), so money going back to
  * one is a transfer, not a refund.
+ *
+ * The donor set is still scoped to the CURRENT address by `paysSource` below --
+ * only transactions paying the source address are considered at all. But the
+ * SENDER of one of those transactions is read with the full `donationAddresses()`
+ * list, matching every other caller of senderOf, so an input from
+ * OLD_ADDRESS_FLUX (e.g. a treasury consolidation sweeping the old address into
+ * the current one) is correctly skipped rather than misread as that address
+ * donating. Passing a narrower list here previously let the project's own
+ * former address get recorded as a donor, which then mislabelled a later
+ * payment back to it as a Refund instead of Other.
  */
 function donorsOf(txs, sourceAddress) {
   const projectWallets = new Set(EXCLUDED_FROM_DONATION_TOTALS);
@@ -59,7 +69,7 @@ function donorsOf(txs, sourceAddress) {
     );
     if (!paysSource) continue;
 
-    const from = senderOf(tx, [sourceAddress]);
+    const from = senderOf(tx, donationAddresses());
     if (from && !projectWallets.has(from)) donors.add(from);
   }
 

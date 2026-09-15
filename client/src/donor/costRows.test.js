@@ -99,6 +99,48 @@ describe('buildCostRows', () => {
     expect(rows.find((r) => r.txid === 'out').category).toBe('other');
   });
 
+  it('does not credit a consolidation sweep from the OLD address as a donation', () => {
+    /*
+     * Regression: donorsOf used to pass only [sourceAddress] to senderOf, so a
+     * transaction consolidating OLD_ADDRESS_FLUX into the current address was
+     * misread as "the OLD address donated". A later payment from the source
+     * back to OLD then matched that false donor and was labelled Refund
+     * instead of Other -- moving real money out of the header's Costs figure
+     * and into Refunds, on a panel whose entire purpose is that those two
+     * numbers are right.
+     */
+    const OLD = 't1ebxupkNYVQiswfwi7xBTwwKtioJqwLmUG';
+    const consolidation = {
+      txid: 'sweep',
+      time: sec(10),
+      blockheight: 2_945_000,
+      vin: [{ addr: OLD }],
+      vout: [{ value: '500', scriptPubKey: { addresses: [DONATION_ADDR] } }]
+    };
+    const rows = buildCostRows(
+      [consolidation, outgoing({ txid: 'out', to: OLD, amount: 50, daysAgo: 1 })],
+      { nowMs: NOW }
+    );
+    expect(rows.find((r) => r.txid === 'out').category).toBe('other');
+  });
+
+  it('classifies a refund correctly even when it appears before its justifying donation', () => {
+    // Same fixtures as "labels a payment to a prior donor as a refund", with the
+    // array order reversed. The two-pass design (collect donors, then
+    // categorise) exists precisely so array order cannot matter; nothing
+    // previously pinned that.
+    const rows = buildCostRows(
+      [
+        outgoing({ txid: 'out', to: 't1Jprekh', amount: 189, change: 10.99, daysAgo: 9 }),
+        incoming({ txid: 'in', from: 't1Jprekh', amount: 100, daysAgo: 10 })
+      ],
+      { nowMs: NOW }
+    );
+    const refund = rows.find((r) => r.txid === 'out');
+    expect(refund.category).toBe('refund');
+    expect(refund.amount).toBe(189);
+  });
+
   it('ignores transactions sent by the OLD address', () => {
     // The old address is node collateral with 18 pages of unrelated movement.
     const fromOld = {
