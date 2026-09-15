@@ -48,6 +48,12 @@ describe('decodeTxNote', () => {
     expect(decodeTxNote(txWithAsm('OP_RETURN 610a0a0962'))).toBe('a b');
   });
 
+  it('strips DEL, which sits between the C0 and C1 ranges', () => {
+    // 0x7F is not a C0 control and not a C1 control, so a class covering only
+    // those two ranges lets it through onto the page.
+    expect(decodeTxNote(txWithAsm('OP_RETURN 617f62'))).toBe('a b');
+  });
+
   it('returns null for a payload that is only whitespace', () => {
     expect(decodeTxNote(txWithAsm('OP_RETURN 202020'))).toBeNull();
   });
