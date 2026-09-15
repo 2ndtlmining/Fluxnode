@@ -133,3 +133,41 @@ describe('the donation scan is shared between its callers', () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(afterFirst);
   });
 });
+
+/*
+ * Issue #366. Costs ride along on the scan that donations already pay for --
+ * the same argument #315 made for the donation list. A separate fetch would
+ * add a fifth caller to an explorer that #314 was raised about.
+ */
+describe('fetch_donation_totals: costs (#366)', () => {
+  it('returns cost rows and totals from the same scan', async () => {
+    mockExplorer((url) => (url.includes(CURRENT_ADDRESS) ? page(['a']) : page([])));
+    const { fetch_donation_totals } = freshModule();
+
+    const result = await fetch_donation_totals();
+
+    expect(Array.isArray(result.costRows)).toBe(true);
+    expect(result.costs).toEqual(
+      expect.objectContaining({
+        costFlux: expect.any(Number),
+        refundFlux: expect.any(Number),
+        rowCount: expect.any(Number)
+      })
+    );
+  });
+
+  // Reuses the "every address was unreadable" mechanism from the describe
+  // block above -- mockExplorer(() => null) simulates both donation
+  // addresses 429ing, exactly the outage the earlier test covers.
+  it('reports zero costs rather than null when the scan is unreadable', async () => {
+    // A failed scan must not put `undefined FLUX` in the header band.
+    mockExplorer(() => null); // every host 429s
+    const { fetch_donation_totals } = freshModule();
+
+    const result = await fetch_donation_totals();
+
+    expect(result.ok).toBe(false);
+    expect(result.costRows).toEqual([]);
+    expect(result.costs.costFlux).toBe(0);
+  });
+});
