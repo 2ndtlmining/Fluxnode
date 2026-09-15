@@ -31,6 +31,7 @@ import { categorizeRunningApps } from 'runningAppsCategorized';
 import { explorerFetchJson } from 'explorer';
 import { OLD_ADDRESS_FLUX } from 'donor/config';
 import { aggregateDonations, buildDonationRows } from 'donor/donationTotals';
+import { buildCostRows, aggregateCosts } from 'donor/costRows';
 import { readDonationScanCache, writeDonationScanCache } from 'api/donationScanCache';
 import { richListRank } from 'wallet/richList';
 import {
@@ -386,7 +387,12 @@ function donationScansCachedFirst() {
 /** The shared reduction, so the cached and live passes cannot compute differently. */
 function donationTotalsFrom(scans, status, fetchedAt) {
   if (!Array.isArray(scans) || scans.every((txs) => txs === null)) {
-    return { ok: false, totals: null, rows: [], status, fetchedAt };
+    /*
+     * Costs are zeroed rather than nulled even on failure: the panel reads
+     * `ok` to decide whether to render at all, and a null here would put
+     * "undefined FLUX" in the header band if that ever changed.
+     */
+    return { ok: false, totals: null, rows: [], costRows: [], costs: aggregateCosts([]), status, fetchedAt };
   }
 
   const txs = scans.filter(Boolean).flat();
@@ -394,12 +400,22 @@ function donationTotalsFrom(scans, status, fetchedAt) {
    * Rows are rebuilt here, never cached (#341). buildDonationRows applies a
    * ROLLING window against nowMs; persisting derived rows would freeze that
    * window and keep listing donations that have since aged out of it. The
-   * cache stores transactions precisely so this stays live.
+   * cache stores transactions precisely so this stays live. buildCostRows
+   * applies the same window and is rebuilt for the same reason.
    */
+  const costRows = buildCostRows(txs);
+
   return {
     ok: true,
     totals: aggregateDonations(txs),
     rows: buildDonationRows(txs),
+    /*
+     * Costs ride along on this scan rather than fetching their own (#366),
+     * exactly as the donation rows do -- the outgoing transactions were
+     * always in these bytes and were being skipped.
+     */
+    costRows,
+    costs: aggregateCosts(costRows),
     status,
     fetchedAt
   };

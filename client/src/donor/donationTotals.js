@@ -1,4 +1,5 @@
 import { DONOR_WINDOW_DAYS, OLD_ADDRESS_FLUX, EXCLUDED_FROM_DONATION_TOTALS } from './config';
+import { decodeTxNote } from './txNote';
 
 /*
  * Network-wide donation aggregates for the Home transparency panel (issue #258).
@@ -50,8 +51,12 @@ function paidToDonationAddress(tx, addresses) {
  * Who sent it. Inputs belonging to a donation address are skipped so a
  * consolidation or refund from the project's own address is never credited as
  * an incoming donation.
+ *
+ * Exported for donor/costRows.js (#366), which needs the same answer to decide
+ * who has donated before. Shared rather than reimplemented: if the two drifted,
+ * the Costs tab would disagree with the Donations tab about who a donor is.
  */
-function senderOf(tx, addresses) {
+export function senderOf(tx, addresses) {
   for (const input of tx?.vin || []) {
     const addr = input?.addr;
     if (addr && !addresses.includes(addr)) return addr;
@@ -177,6 +182,11 @@ export function buildDonationRows(txs, { nowMs = Date.now(), excluded } = {}) {
       amount: Math.round(amount * 1e8) / 1e8,
       blockHeight: tx.blockheight || 0,
       timeSec: tx.time,
+      /*
+       * The note the donor attached (#367). Null far more often than not --
+       * 8 of 40 transactions on the current address carry one.
+       */
+      note: decodeTxNote(tx),
       isProjectTransfer: projectWallets.has(from)
     });
   }

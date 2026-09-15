@@ -83,6 +83,9 @@ class Home extends React.Component {
       countryCounts: [],
       donations: null,
       donationRows: [],
+      // #366: what the donation address has spent, from the same scan.
+      costRows: [],
+      costs: null,
       donationsSettled: false,
       donationsFailed: false,
       // 'cached' while showing last-known figures from a previous visit,
@@ -275,21 +278,25 @@ class Home extends React.Component {
      * outlive the component that asked for it.
      */
     fetch_donation_totals({
-      onRefresh: ({ ok, totals, rows, status }) => {
+      onRefresh: ({ ok, totals, rows, costRows, costs, status }) => {
         if (this._unmounted) return;
         this.setState({
           donations: totals,
           donationRows: rows || [],
+          costRows: costRows || [],
+          costs: costs || null,
           donationsSettled: true,
           donationsFailed: !ok,
           donationsStatus: status
         });
       }
     })
-      .then(({ ok, totals, rows, status, fetchedAt }) =>
+      .then(({ ok, totals, rows, costRows, costs, status, fetchedAt }) =>
         this.setState({
           donations: totals,
           donationRows: rows || [],
+          costRows: costRows || [],
+          costs: costs || null,
           donationsSettled: true,
           donationsFailed: !ok,
           donationsStatus: status,
@@ -712,6 +719,8 @@ class Home extends React.Component {
                 countryCounts={this.state.countryCounts}
                 donations={this.state.donations}
                 donationRows={this.state.donationRows}
+                costRows={this.state.costRows}
+                costs={this.state.costs}
                 donationsSettled={this.state.donationsSettled}
                 donationsFailed={this.state.donationsFailed}
                 donationsStatus={this.state.donationsStatus}

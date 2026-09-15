@@ -133,3 +133,61 @@ describe('the donation scan is shared between its callers', () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(afterFirst);
   });
 });
+
+/*
+ * Issue #366. Costs ride along on the scan that donations already pay for --
+ * the same argument #315 made for the donation list. A separate fetch would
+ * add a fifth caller to an explorer that #314 was raised about.
+ */
+describe('fetch_donation_totals: costs (#366)', () => {
+  it('returns cost rows and totals computed from the same scan', async () => {
+    /*
+     * The fixture has to satisfy buildCostRows' own filters or this test proves
+     * nothing: sent BY the current donation address, a numeric `time` inside
+     * the 365-day window, and paying somebody who is not the source. The 1.99
+     * change leg is included deliberately -- excluding it from the total is the
+     * behaviour most worth pinning here.
+     */
+    const nowSec = Math.floor(Date.now() / 1000);
+    const spend = {
+      txid: 'spend-1',
+      time: nowSec - 24 * 60 * 60,
+      blockheight: 2952400,
+      vin: [{ addr: CURRENT_ADDRESS }],
+      vout: [
+        { value: '23.0', scriptPubKey: { addresses: ['t1XNTegMCLrmRWKzKQwRM8H15arLDzox74g'] } },
+        { value: '1.99', scriptPubKey: { addresses: [CURRENT_ADDRESS] } }
+      ]
+    };
+
+    mockExplorer((url) => (url.includes(CURRENT_ADDRESS) ? { pagesTotal: 1, txs: [spend] } : page([])));
+
+    const { fetch_donation_totals } = freshModule();
+    const result = await fetch_donation_totals();
+
+    expect(result.costRows).toHaveLength(1);
+    expect(result.costRows[0]).toMatchObject({
+      txid: 'spend-1',
+      to: 't1XNTegMCLrmRWKzKQwRM8H15arLDzox74g',
+      amount: 23,
+      category: 'other'
+    });
+    expect(result.costs.costFlux).toBe(23);
+    expect(result.costs.refundFlux).toBe(0);
+  });
+
+  // Reuses the "every address was unreadable" mechanism from the describe
+  // block above -- mockExplorer(() => null) simulates both donation
+  // addresses 429ing, exactly the outage the earlier test covers.
+  it('reports zero costs rather than null when the scan is unreadable', async () => {
+    // A failed scan must not put `undefined FLUX` in the header band.
+    mockExplorer(() => null); // every host 429s
+    const { fetch_donation_totals } = freshModule();
+
+    const result = await fetch_donation_totals();
+
+    expect(result.ok).toBe(false);
+    expect(result.costRows).toEqual([]);
+    expect(result.costs.costFlux).toBe(0);
+  });
+});

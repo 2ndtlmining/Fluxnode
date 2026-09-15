@@ -394,3 +394,99 @@ describe('writeDonationScanCache / readDonationScanCache', () => {
     expect(store[DONATION_SCAN_CACHE_KEY]).not.toContain('deadbeef');
   });
 });
+
+/*
+ * Issues #366 and #367. The trim previously kept only outputs paying a
+ * donation address, which discarded (a) the OP_RETURN note and (b) the
+ * recipient of every outgoing payment -- the two things these issues need.
+ */
+describe('trimTxsForCache: notes and outgoing payments', () => {
+  const CLOUD = 't3NryfAQLGeFs9jEoeqsxmBN2QLRaRKFLUX';
+
+  it('keeps the decoded note and drops the script it came from', () => {
+    const tx = explorerTx({
+      vin: [{ addr: 't1donor' }],
+      vout: [
+        { value: '10.0', scriptPubKey: { addresses: [DONATION_ADDRESS], hex: 'a914…', asm: 'OP_HASH160 …' } },
+        { value: '0.0', scriptPubKey: { addresses: null, asm: 'OP_RETURN 326e64544c20466c75782044617368626f617264' } }
+      ]
+    });
+
+    const [trimmed] = trimTxsForCache([tx], [DONATION_ADDRESS]);
+
+    expect(trimmed.note).toBe('2ndTL Flux Dashboard');
+    // The note is persisted decoded; the script that carried it is not, or the
+    // trim would be re-admitting the script hex it exists to remove.
+    expect(JSON.stringify(trimmed)).not.toContain('OP_RETURN');
+  });
+
+  it('omits note entirely when there is none, rather than storing null', () => {
+    const tx = explorerTx({
+      vin: [{ addr: 't1donor' }],
+      vout: [{ value: '10.0', scriptPubKey: { addresses: [DONATION_ADDRESS] } }]
+    });
+    expect('note' in trimTxsForCache([tx], [DONATION_ADDRESS])[0]).toBe(false);
+  });
+
+  it('keeps every addressed output of an OUTGOING transaction', () => {
+    // Sent BY the donation address: the recipient is the whole point, and it
+    // pays no donation address, so the old trim deleted it.
+    const tx = explorerTx({
+      vin: [{ addr: DONATION_ADDRESS }],
+      vout: [
+        { value: '23.0', scriptPubKey: { addresses: ['t1XNTegMCLrmRWKzKQwRM8H15arLDzox74g'] } },
+        { value: '1.99', scriptPubKey: { addresses: [DONATION_ADDRESS] } },
+        { value: '0.0', scriptPubKey: { addresses: null, asm: 'OP_RETURN 7468616e6b7320666f72207468652068656c70' } }
+      ]
+    });
+
+    const [trimmed] = trimTxsForCache([tx], [DONATION_ADDRESS]);
+
+    expect(trimmed.vout).toHaveLength(2); // recipient + change; OP_RETURN is not an output row
+    expect(trimmed.vout[0].scriptPubKey.addresses).toEqual(['t1XNTegMCLrmRWKzKQwRM8H15arLDzox74g']);
+    expect(trimmed.vout[1].scriptPubKey.addresses).toEqual([DONATION_ADDRESS]);
+    expect(trimmed.note).toBe('thanks for the help');
+  });
+
+  it('still drops irrelevant outputs of an INCOMING transaction', () => {
+    /*
+     * The size guard that made this cache viable. OLD_ADDRESS_FLUX is a node
+     * collateral address and the largest transaction touching it carries 2,001
+     * outputs -- a mining pool paying its roster, of which exactly one is a
+     * donation. Widening the trim for outgoing transactions must not widen it
+     * for these.
+     */
+    const vout = [{ value: '5.0', scriptPubKey: { addresses: [OLD_DONATION_ADDRESS] } }];
+    for (let i = 0; i < 2000; i++) vout.push({ value: '1.0', scriptPubKey: { addresses: ['t1miner' + i] } });
+
+    const [trimmed] = trimTxsForCache([explorerTx({ vin: [{ addr: 't1pool' }], vout })], [OLD_DONATION_ADDRESS]);
+
+    expect(trimmed.vout).toHaveLength(1);
+  });
+
+  it('keeps a cloud payment that pays no donation address', () => {
+    const tx = explorerTx({
+      vin: [{ addr: DONATION_ADDRESS }],
+      vout: [{ value: '50.0', scriptPubKey: { addresses: [CLOUD] } }]
+    });
+    expect(trimTxsForCache([tx], [DONATION_ADDRESS])[0].vout[0].scriptPubKey.addresses).toEqual([CLOUD]);
+  });
+});
+
+describe('DONATION_SCAN_CACHE_KEY', () => {
+  it('is v2, so entries written by the narrower trim are never read back', () => {
+    /*
+     * A v1 entry has no notes and no outgoing recipients. Read back under the
+     * wider trim it would render an empty Costs tab and a blank Note column --
+     * a confident wrong answer that survives reloads, which is the failure this
+     * module's header warns about.
+     */
+    expect(DONATION_SCAN_CACHE_KEY).toBe('donationScan_v2');
+  });
+
+  it('evicts the v1 entry on write so it does not sit in storage forever', () => {
+    localStorage.setItem('donationScan_v1', JSON.stringify({ scans: [[]], timestamp: Date.now() }));
+    writeDonationScanCache([[]]);
+    expect(localStorage.getItem('donationScan_v1')).toBeNull();
+  });
+});

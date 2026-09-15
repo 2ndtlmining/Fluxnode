@@ -4,9 +4,11 @@ import './index.scss';
 import { Spinner } from '@blueprintjs/core';
 import { Tooltip2 } from '@blueprintjs/popover2';
 import { relativeAge, shortId } from 'donor/donationTotals';
+import { COST_CATEGORY_LABELS } from 'donor/costRows';
 import { FaHeart } from 'react-icons/fa';
 import { BsCheckLg, BsClipboard } from 'react-icons/bs';
 import { useCopyAddress } from 'donor/useCopyAddress';
+import { explorerTxUrl } from 'explorerLinks';
 
 import { RewardCountdown } from 'rewards/RewardCountdown';
 import { BlockPulse } from 'home/BlockPulse';
@@ -113,18 +115,69 @@ function SupportCta({ address, shortAddress, standalone = false }) {
  * on-chain balance and nothing on screen would say why. Labelling is what lets
  * the panel be both complete and honest.
  */
+/*
+ * A transaction id that opens the explorer, so a reader can verify a row
+ * against the chain rather than taking the panel's word for it.
+ *
+ * THIS REVERSES PART OF #322, deliberately and at the project owner's
+ * direction. #322 removed these links on the grounds that an href carrying
+ * the whole txid republishes what shortening the visible text withholds --
+ * readable in the status bar and on copy-link. That reasoning still stands
+ * for the DONOR address, which is why the donor column remains unlinked
+ * text; but a transparency panel whose figures cannot be checked against the
+ * chain is a weaker thing than one whose transaction ids leak, and a txid is
+ * the narrower disclosure of the two.
+ *
+ * What #322 argued against that is NOT reinstated here: there is no `title`
+ * carrying the raw txid. The href has to hold it to work; a tooltip would
+ * only publish it a second way, for no gain. The title describes the action
+ * instead, matching components/BlockLink.
+ *
+ * Degrades to plain text on a malformed txid rather than linking to a 404 --
+ * explorerTxUrl refuses anything that is not a 64-character hex hash.
+ */
+function TxLink({ txid }) {
+  const href = explorerTxUrl(txid);
+  const label = shortId(txid, 4, 4);
+
+  if (!href) return <span className="hov-donations-tx">{label}</span>;
+
+  return (
+    <a
+      className="hov-donations-tx hov-donations-tx--link"
+      href={href}
+      target="_blank"
+      /*
+       * noreferrer alongside noopener, matching BlockLink: this is an outbound
+       * link to a third party from a page that may be showing a wallet the
+       * reader searched for, and the referrer would carry the URL revealing it.
+       */
+      rel="noopener noreferrer"
+      title="Open this transaction in the Flux explorer"
+    >
+      {label}
+    </a>
+  );
+}
+
 const SORTS = {
   block: { label: 'Block', get: (r) => r.blockHeight },
   amount: { label: 'Amount', get: (r) => r.amount },
   donor: { label: 'Donor', get: (r) => r.from },
 };
 
-function DonationList({ rows }) {
+function DonationList({ rows, tabPanelId, tabId }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState('block');
   const [ascending, setAscending] = useState(false);
 
-  if (!rows || rows.length === 0) return null;
+  /*
+   * #366: this list can no longer assume it is only mounted when donations
+   * exist -- the tab strip's reachability is now donations OR costs (R4), and
+   * Donations stays the default tab. A missing/empty rows prop must render an
+   * empty state, not bail out from under the tab bar.
+   */
+  const safeRows = Array.isArray(rows) ? rows : [];
 
   /*
    * Search runs over the WHOLE row set, not the rendered slice -- the list is
@@ -133,7 +186,7 @@ function DonationList({ rows }) {
    */
   const q = query.trim().toLowerCase();
   /*
-   * Wallet and amount only -- deliberately NOT txid (#322).
+   * Wallet, amount and note -- deliberately NOT txid (#322).
    *
    * It used to match txid too, which was defensible while the full id was on
    * screen. It is not now: searching "45" would return a 10 FLUX donation whose
@@ -141,10 +194,18 @@ function DonationList({ rows }) {
    * there is nothing on the row to explain the match. A search that returns
    * rows the reader cannot connect to their query reads as a bug, so the
    * predicate matches the placeholder.
+   *
+   * The note is included for exactly that reason and not in spite of it: it IS
+   * readable on the row, so a match is always explainable (#367).
    */
   const filtered = q
-    ? rows.filter((r) => r.from.toLowerCase().includes(q) || String(r.amount).includes(q))
-    : rows;
+    ? safeRows.filter(
+        (r) =>
+          r.from.toLowerCase().includes(q) ||
+          String(r.amount).includes(q) ||
+          (r.note || '').toLowerCase().includes(q)
+      )
+    : safeRows;
 
   const get = SORTS[sortKey].get;
   const sorted = [...filtered].sort((a, b) => {
@@ -167,27 +228,26 @@ function DonationList({ rows }) {
   const arrow = (key) => (key === sortKey ? (ascending ? ' ↑' : ' ↓') : '');
 
   return (
-    <div className="hov-donations">
+    <div className="hov-donations" role="tabpanel" id={tabPanelId} aria-labelledby={tabId}>
       <div className="hov-donations-head">
         <span className="hov-donations-title">
-          Donations
-          <span className="hov-donations-count">
-            {q ? `${sorted.length} / ${rows.length}` : rows.length}
-          </span>
+          Donated to the project over the last year
+          {q && <span className="hov-donations-count">{sorted.length} / {safeRows.length}</span>}
         </span>
         <input
           className="hov-donations-search"
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search wallet or amount"
-          aria-label="Search donations by wallet or amount"
+          placeholder="Search wallet, amount or note"
+          aria-label="Search donations by wallet, amount or note"
         />
       </div>
 
       <div className="hov-donations-row hov-donations-row--header">
         <button type="button" onClick={() => toggleSort('donor')}>Donor{arrow('donor')}</button>
         <span>Transaction</span>
+        <span>Note</span>
         <button type="button" className="hov-num" onClick={() => toggleSort('amount')}>Amount{arrow('amount')}</button>
         <button type="button" className="hov-num" onClick={() => toggleSort('block')}>Block{arrow('block')}</button>
         <span className="hov-num">When</span>
@@ -195,7 +255,11 @@ function DonationList({ rows }) {
 
       <div className="hov-donations-list">
         {sorted.length === 0 ? (
-          <div className="hov-empty">No donation matches that search</div>
+          <div className="hov-empty">
+            {safeRows.length === 0
+              ? 'No donations recorded in the last year'
+              : 'No donation matches that search'}
+          </div>
         ) : (
           sorted.map((r) => (
             <div
@@ -203,12 +267,12 @@ function DonationList({ rows }) {
               className={`hov-donations-row${r.isProjectTransfer ? ' hov-donations-row--project' : ''}`}
             >
               {/*
-                #322: no `title` with the full value, and no link. A tooltip
-                carrying the whole address, or an href carrying the whole txid,
-                republishes exactly what the shortening is here to withhold --
-                one is readable on hover, the other in the status bar and on
-                copy-link. Shortening the visible text while leaking the full
-                value into an attribute would be security theatre.
+                #322: the DONOR address stays shortened text with no `title`
+                and no link. A tooltip carrying the whole address republishes
+                exactly what the shortening is here to withhold, and a list of
+                who supports the project is the disclosure #322 cared about.
+                The transaction id is now a link -- see TxLink for why that
+                trade was made differently.
               */}
               <span className="hov-donations-donor">
                 {shortId(r.from, 3, 3)}
@@ -218,7 +282,29 @@ function DonationList({ rows }) {
                   </span>
                 )}
               </span>
-              <span className="hov-donations-tx">{shortId(r.txid, 4, 4)}</span>
+              <TxLink txid={r.txid} />
+              {/*
+                #367. The note is shown in full on hover, which is a deliberate
+                exception to #322 rather than an oversight: #322 removed
+                tooltips carrying a full ADDRESS or TXID, because a shortened
+                identifier with the whole value in an attribute republishes
+                exactly what the shortening withholds. A note is not an
+                identifier -- it is text the donor chose to write into a public
+                transaction, and there is nothing to withhold. donor/txNote.js
+                caps and sanitises it on the way in.
+              */}
+              {r.note ? (
+                <Tooltip2
+                  content={r.note}
+                  placement="top"
+                  hoverOpenDelay={200}
+                  className="hov-donations-note"
+                >
+                  <span>{r.note}</span>
+                </Tooltip2>
+              ) : (
+                <span className="hov-donations-note hov-donations-note--empty">&mdash;</span>
+              )}
               <span className="hov-num hov-donations-amount">{fmtNum(r.amount, 2)}</span>
               <span className="hov-num hov-donations-block">{fmtNum(r.blockHeight)}</span>
               <span className="hov-num hov-donations-age">{relativeAge(r.timeSec)}</span>
@@ -230,7 +316,143 @@ function DonationList({ rows }) {
   );
 }
 
-function CommunitySupportPanel({ donations, donationRows, donationsSettled, donationsFailed, donationsStatus }) {
+/*
+ * What the donation address has spent (issue #366).
+ *
+ * Structurally identical to DonationList on purpose -- same six columns, same
+ * widths, same search and sort affordances -- so switching tabs moves the
+ * reader between two views of one ledger rather than between two different
+ * tables. The category rides as a tag on the recipient rather than taking a
+ * column of its own, reusing the styling the "project" tag already uses.
+ *
+ * Categories come from donor/costRows.js. Flux Cloud is expected to be EMPTY
+ * for now: no hosting payment has been made from this address yet. That is why
+ * the totals below name the category even at zero instead of hiding it.
+ */
+const COST_SORTS = {
+  block: { label: 'Block', get: (r) => r.blockHeight },
+  amount: { label: 'Amount', get: (r) => r.amount },
+  to: { label: 'To', get: (r) => r.to },
+};
+
+function CostList({ rows, costs, tabPanelId, tabId }) {
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState('block');
+  const [ascending, setAscending] = useState(false);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? rows.filter(
+        (r) =>
+          r.to.toLowerCase().includes(q) ||
+          String(r.amount).includes(q) ||
+          (r.note || '').toLowerCase().includes(q) ||
+          COST_CATEGORY_LABELS[r.category].toLowerCase().includes(q)
+      )
+    : rows;
+
+  const get = COST_SORTS[sortKey].get;
+  const sorted = [...filtered].sort((a, b) => {
+    const av = get(a);
+    const bv = get(b);
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return ascending ? cmp : -cmp;
+  });
+
+  const toggleSort = (key) => {
+    if (key === sortKey) {
+      setAscending((prev) => !prev);
+    } else {
+      setSortKey(key);
+      setAscending(key === 'to');
+    }
+  };
+
+  const arrow = (key) => (key === sortKey ? (ascending ? ' ↑' : ' ↓') : '');
+
+  return (
+    <div className="hov-donations" role="tabpanel" id={tabPanelId} aria-labelledby={tabId}>
+      <div className="hov-donations-head">
+        {/*
+          The breakdown lives here rather than in the header band, which
+          carries only the two figures #366 asked for. Flux Cloud is named even
+          at 0 FLUX: a category that appears only once it has data leaves a
+          reader wondering where hosting costs went.
+        */}
+        <span className="hov-costs-breakdown">
+          <span><b>{fmtNum(costs?.cloudFlux || 0, 2)}</b> Flux Cloud</span>
+          <span><b>{fmtNum(costs?.otherFlux || 0, 2)}</b> other</span>
+          <span><b>{fmtNum(costs?.refundFlux || 0, 2)}</b> refunded</span>
+          {q && <span className="hov-donations-count">{sorted.length} / {rows.length}</span>}
+        </span>
+        <input
+          className="hov-donations-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search address, amount or note"
+          aria-label="Search costs by address, amount or note"
+        />
+      </div>
+
+      <div className="hov-donations-row hov-donations-row--header">
+        <button type="button" onClick={() => toggleSort('to')}>To{arrow('to')}</button>
+        <span>Transaction</span>
+        <span>Note</span>
+        <button type="button" className="hov-num" onClick={() => toggleSort('amount')}>Amount{arrow('amount')}</button>
+        <button type="button" className="hov-num" onClick={() => toggleSort('block')}>Block{arrow('block')}</button>
+        <span className="hov-num">When</span>
+      </div>
+
+      <div className="hov-donations-list">
+        {sorted.length === 0 ? (
+          <div className="hov-empty">
+            {rows.length === 0 ? 'Nothing has been spent from the donation address yet' : 'No cost matches that search'}
+          </div>
+        ) : (
+          sorted.map((r) => (
+            <div key={r.key} className="hov-donations-row">
+              {/* Same #322 reasoning as the donation list: the recipient stays
+                  shortened text with no full value in an attribute. The
+                  transaction links out -- see TxLink. */}
+              <span className="hov-donations-donor">
+                {shortId(r.to, 3, 3)}
+                <span className={`hov-donations-tag hov-cost-tag--${r.category}`}>
+                  {COST_CATEGORY_LABELS[r.category]}
+                </span>
+              </span>
+              <TxLink txid={r.txid} />
+              {r.note ? (
+                <Tooltip2
+                  content={r.note}
+                  placement="top"
+                  hoverOpenDelay={200}
+                  className="hov-donations-note"
+                >
+                  <span>{r.note}</span>
+                </Tooltip2>
+              ) : (
+                <span className="hov-donations-note hov-donations-note--empty">&mdash;</span>
+              )}
+              <span className="hov-num hov-donations-amount">{fmtNum(r.amount, 2)}</span>
+              <span className="hov-num hov-donations-block">{fmtNum(r.blockHeight)}</span>
+              <span className="hov-num hov-donations-age">{relativeAge(r.timeSec)}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, donationsSettled, donationsFailed, donationsStatus }) {
+  /*
+   * Donations is the default tab (#366): it is what the panel has always been
+   * about and what a first-time reader came for. Costs is the answer to
+   * "where does it go", which is a second question, not a competing one.
+   */
+  const [tab, setTab] = useState('donations');
+
   if (!donationsSettled) {
     return (
       <div className="hov-panel hov-panel-center hov-panel--support">
@@ -252,6 +474,15 @@ function CommunitySupportPanel({ donations, donationRows, donationsSettled, dona
   const shortAddress = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : '—';
   const lastAge = lastDonation ? relativeAge(lastDonation.timeSec) : null;
 
+  /*
+   * #366: the panel has something to show if money came IN or went OUT. Gating
+   * on donations alone hid the Costs and Refunds figures in the one case that
+   * motivated splitting this out -- donationCount comes from aggregateDonations,
+   * which excludes project-owned transfers, so it can sit at 0 while the address
+   * has demonstrably spent money.
+   */
+  const hasSupportData = donationCount > 0 || costRows.length > 0;
+
   return (
     <div className="hov-panel hov-panel--support">
       {/*
@@ -266,7 +497,7 @@ function CommunitySupportPanel({ donations, donationRows, donationsSettled, dona
         right={donationsStatus === 'cached' ? <span className="hov-header-note">Updating…</span> : null}
       />
 
-      {donationCount === 0 ? (
+      {!hasSupportData ? (
         <div className="hov-empty">No donations recorded in the last year</div>
       ) : (
         <>
@@ -279,23 +510,41 @@ function CommunitySupportPanel({ donations, donationRows, donationsSettled, dona
               <div className="hov-support-sub">donated by the community over the last year</div>
             </div>
 
-            <div className="hov-kv-list">
-            <div className="hov-kv-row">
-              <span className="hov-kv-label">Supporters</span>
-              <span className="hov-kv-value">{fmtNum(uniqueDonors)}</span>
-            </div>
-            <div className="hov-kv-row">
-              <span className="hov-kv-label">Donations</span>
-              <span className="hov-kv-value">{fmtNum(donationCount)}</span>
-            </div>
-            {lastDonation && (
-              <div className="hov-kv-row">
-                <span className="hov-kv-label">Most recent</span>
-                <span className="hov-kv-value">
-                  {fmtNum(lastDonation.amount, 2)} FLUX &middot; {lastAge}
-                </span>
+            {/*
+              Two stat columns rather than five stacked rows (#366). Money in
+              on the left, money out on the right, so the pair reads as a
+              balance and the band keeps the height it had.
+            */}
+            <div className="hov-kv-columns">
+              <div className="hov-kv-list">
+                <div className="hov-kv-row">
+                  <span className="hov-kv-label">Supporters</span>
+                  <span className="hov-kv-value">{fmtNum(uniqueDonors)}</span>
+                </div>
+                <div className="hov-kv-row">
+                  <span className="hov-kv-label">Donations</span>
+                  <span className="hov-kv-value">{fmtNum(donationCount)}</span>
+                </div>
+                {lastDonation && (
+                  <div className="hov-kv-row">
+                    <span className="hov-kv-label">Most recent</span>
+                    <span className="hov-kv-value">
+                      {fmtNum(lastDonation.amount, 2)} FLUX &middot; {lastAge}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+
+              <div className="hov-kv-list hov-kv-list--out">
+                <div className="hov-kv-row">
+                  <span className="hov-kv-label">Costs</span>
+                  <span className="hov-kv-value">{fmtNum(costs?.costFlux || 0, 2)} FLUX</span>
+                </div>
+                <div className="hov-kv-row">
+                  <span className="hov-kv-label">Refunds</span>
+                  <span className="hov-kv-value">{fmtNum(costs?.refundFlux || 0, 2)} FLUX</span>
+                </div>
+              </div>
             </div>
 
             <SupportCta address={address} shortAddress={shortAddress} />
@@ -303,11 +552,51 @@ function CommunitySupportPanel({ donations, donationRows, donationsSettled, dona
         </>
       )}
 
-      {donationCount > 0 && <DonationList rows={donationRows} />}
+      {(donationRows.length > 0 || costRows.length > 0) && (
+        <>
+          <div className="hov-tabs" role="tablist" aria-label="Community support detail">
+            <button
+              type="button"
+              id="hov-tab-donations"
+              role="tab"
+              aria-selected={tab === 'donations'}
+              aria-controls="hov-tabpanel"
+              className={`hov-tab${tab === 'donations' ? ' hov-tab--active' : ''}`}
+              onClick={() => setTab('donations')}
+            >
+              Donations <span className="hov-tab-count">{donationRows.length}</span>
+            </button>
+            <button
+              type="button"
+              id="hov-tab-costs"
+              role="tab"
+              aria-selected={tab === 'costs'}
+              aria-controls="hov-tabpanel"
+              className={`hov-tab${tab === 'costs' ? ' hov-tab--active' : ''}`}
+              onClick={() => setTab('costs')}
+            >
+              Costs <span className="hov-tab-count">{costRows.length}</span>
+            </button>
+          </div>
 
-      {/* With no donations there is no band to hang the address off, so it
+          {/*
+            role="tabpanel" and aria-labelledby ride on the SAME element
+            DonationList/CostList already render (.hov-donations), rather than
+            a new wrapper around it -- see the SCSS: .hov-donations carries the
+            border/spacing that sits directly under .hov-tabs, so an extra
+            styled box here would double that spacing instead of being invisible.
+          */}
+          {tab === 'donations' ? (
+            <DonationList rows={donationRows} tabPanelId="hov-tabpanel" tabId="hov-tab-donations" />
+          ) : (
+            <CostList rows={costRows} costs={costs} tabPanelId="hov-tabpanel" tabId="hov-tab-costs" />
+          )}
+        </>
+      )}
+
+      {/* With no support data there is no band to hang the address off, so it
           gets its own row rather than disappearing. */}
-      {donationCount === 0 && (
+      {!hasSupportData && (
         <SupportCta address={address} shortAddress={shortAddress} standalone />
       )}
     </div>
@@ -421,6 +710,8 @@ export function HomeOverview({
   countryCounts,
   donations,
   donationRows,
+  costRows = [],
+  costs,
   donationsSettled,
   donationsFailed,
   donationsStatus
@@ -431,6 +722,8 @@ export function HomeOverview({
         <CommunitySupportPanel
           donations={donations}
           donationRows={donationRows}
+          costRows={costRows}
+          costs={costs}
           donationsSettled={donationsSettled}
           donationsFailed={donationsFailed}
           donationsStatus={donationsStatus}

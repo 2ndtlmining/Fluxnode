@@ -141,7 +141,7 @@ describe('relativeAge', () => {
 /*
  * Issue #315 -- the same transactions, listed individually rather than summed.
  */
-import { buildDonationRows, shortId } from './donationTotals';
+import { buildDonationRows, shortId, senderOf } from './donationTotals';
 
 const PROJECT_WALLET = 't1gesjNJGfzU8shfMZj6DVDatRKA3LQj8Nh'; // EXCLUDED_FROM_DONATION_TOTALS
 
@@ -274,5 +274,47 @@ describe('shortId', () => {
     expect(shortId(null, 3, 3)).toBe('');
     expect(shortId(undefined, 4, 4)).toBe('');
     expect(shortId(12345, 4, 4)).toBe('');
+  });
+});
+
+describe('buildDonationRows: notes (#367)', () => {
+  function txWithNote({ txid, from, amount, daysAgo, asm }) {
+    const vout = [{ value: String(amount), scriptPubKey: { addresses: [DONATION_ADDR] } }];
+    if (asm) vout.push({ value: '0', scriptPubKey: { addresses: null, asm } });
+    return { txid, time: sec(daysAgo), blockheight: 2_950_000, vin: [{ addr: from }], vout };
+  }
+
+  it('carries the decoded note onto the row', () => {
+    const [row] = buildDonationRows(
+      [txWithNote({ txid: 'a', from: 't1alice', amount: 10, daysAgo: 1, asm: 'OP_RETURN 676f6f6420776f726b206d61746521' })],
+      { nowMs: NOW }
+    );
+    expect(row.note).toBe('good work mate!');
+  });
+
+  it('sets note to null when the donation carried none', () => {
+    const [row] = buildDonationRows([txWithNote({ txid: 'a', from: 't1alice', amount: 10, daysAgo: 1 })], { nowMs: NOW });
+    expect(row.note).toBeNull();
+  });
+
+  it('does not let a note change the amount', () => {
+    // The OP_RETURN output pays 0 to nobody. Summing it into the donation
+    // would be harmless today and wrong the moment a note rides a real output.
+    const [row] = buildDonationRows(
+      [txWithNote({ txid: 'a', from: 't1alice', amount: 10, daysAgo: 1, asm: 'OP_RETURN 616263' })],
+      { nowMs: NOW }
+    );
+    expect(row.amount).toBe(10);
+  });
+});
+
+describe('senderOf', () => {
+  it('skips donation-address inputs so a refund is never credited as a donation', () => {
+    const tx = { vin: [{ addr: DONATION_ADDR }, { addr: 't1alice' }] };
+    expect(senderOf(tx, [DONATION_ADDR])).toBe('t1alice');
+  });
+
+  it('returns null when every input is a donation address', () => {
+    expect(senderOf({ vin: [{ addr: DONATION_ADDR }] }, [DONATION_ADDR])).toBeNull();
   });
 });
