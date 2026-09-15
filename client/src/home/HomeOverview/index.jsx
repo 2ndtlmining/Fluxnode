@@ -239,8 +239,13 @@ function DonationList({ rows }) {
                 caps and sanitises it on the way in.
               */}
               {r.note ? (
-                <Tooltip2 content={r.note} placement="top" hoverOpenDelay={200}>
-                  <span className="hov-donations-note">{r.note}</span>
+                <Tooltip2
+                  content={r.note}
+                  placement="top"
+                  hoverOpenDelay={200}
+                  className="hov-donations-note"
+                >
+                  <span>{r.note}</span>
                 </Tooltip2>
               ) : (
                 <span className="hov-donations-note hov-donations-note--empty">&mdash;</span>

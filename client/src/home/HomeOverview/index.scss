@@ -1004,8 +1004,19 @@
   .hov-num { text-align: right; }
 }
 
-.hov-donations-note {
+/*
+ * Scoped to the row, and deliberately more specific than it looks. Tooltip2
+ * does not render its child directly -- it wraps it in a generated span that
+ * carries this class (see the className prop in index.jsx), and Blueprint
+ * styles that span `display: inline-block` via `span.bp4-popover2-target`.
+ * A bare `.hov-donations-note` selector loses that specificity contest, and
+ * `text-overflow` does nothing on an inline box, so the note would spill
+ * across the numeric columns instead of ellipsising.
+ */
+.hov-donations-row .hov-donations-note {
+  display: block;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1014,7 +1025,7 @@
 }
 
 /* An empty cell would leave the row looking broken rather than noteless. */
-.hov-donations-note--empty {
+.hov-donations-row .hov-donations-note--empty {
   color: var(--text-tertiary);
   font-style: normal;
 }
