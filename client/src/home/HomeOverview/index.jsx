@@ -125,7 +125,13 @@ function DonationList({ rows }) {
   const [sortKey, setSortKey] = useState('block');
   const [ascending, setAscending] = useState(false);
 
-  if (!rows || rows.length === 0) return null;
+  /*
+   * #366: this list can no longer assume it is only mounted when donations
+   * exist -- the tab strip's reachability is now donations OR costs (R4), and
+   * Donations stays the default tab. A missing/empty rows prop must render an
+   * empty state, not bail out from under the tab bar.
+   */
+  const safeRows = Array.isArray(rows) ? rows : [];
 
   /*
    * Search runs over the WHOLE row set, not the rendered slice -- the list is
@@ -147,13 +153,13 @@ function DonationList({ rows }) {
    * readable on the row, so a match is always explainable (#367).
    */
   const filtered = q
-    ? rows.filter(
+    ? safeRows.filter(
         (r) =>
           r.from.toLowerCase().includes(q) ||
           String(r.amount).includes(q) ||
           (r.note || '').toLowerCase().includes(q)
       )
-    : rows;
+    : safeRows;
 
   const get = SORTS[sortKey].get;
   const sorted = [...filtered].sort((a, b) => {
@@ -180,6 +186,7 @@ function DonationList({ rows }) {
       <div className="hov-donations-head">
         <span className="hov-donations-title">
           Donated to the project over the last year
+          {q && <span className="hov-donations-count">{sorted.length} / {safeRows.length}</span>}
         </span>
         <input
           className="hov-donations-search"
@@ -202,7 +209,11 @@ function DonationList({ rows }) {
 
       <div className="hov-donations-list">
         {sorted.length === 0 ? (
-          <div className="hov-empty">No donation matches that search</div>
+          <div className="hov-empty">
+            {safeRows.length === 0
+              ? 'No donations recorded in the last year'
+              : 'No donation matches that search'}
+          </div>
         ) : (
           sorted.map((r) => (
             <div
@@ -326,6 +337,7 @@ function CostList({ rows, costs }) {
           <span><b>{fmtNum(costs?.cloudFlux || 0, 2)}</b> Flux Cloud</span>
           <span><b>{fmtNum(costs?.otherFlux || 0, 2)}</b> other</span>
           <span><b>{fmtNum(costs?.refundFlux || 0, 2)}</b> refunded</span>
+          {q && <span className="hov-donations-count">{sorted.length} / {rows.length}</span>}
         </span>
         <input
           className="hov-donations-search"
@@ -415,6 +427,15 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
   const shortAddress = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : '—';
   const lastAge = lastDonation ? relativeAge(lastDonation.timeSec) : null;
 
+  /*
+   * #366: the panel has something to show if money came IN or went OUT. Gating
+   * on donations alone hid the Costs and Refunds figures in the one case that
+   * motivated splitting this out -- donationCount comes from aggregateDonations,
+   * which excludes project-owned transfers, so it can sit at 0 while the address
+   * has demonstrably spent money.
+   */
+  const hasSupportData = donationCount > 0 || costRows.length > 0;
+
   return (
     <div className="hov-panel hov-panel--support">
       {/*
@@ -429,7 +450,7 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
         right={donationsStatus === 'cached' ? <span className="hov-header-note">Updating…</span> : null}
       />
 
-      {donationCount === 0 ? (
+      {!hasSupportData ? (
         <div className="hov-empty">No donations recorded in the last year</div>
       ) : (
         <>
@@ -515,9 +536,9 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
         </>
       )}
 
-      {/* With no donations there is no band to hang the address off, so it
+      {/* With no support data there is no band to hang the address off, so it
           gets its own row rather than disappearing. */}
-      {donationCount === 0 && (
+      {!hasSupportData && (
         <SupportCta address={address} shortAddress={shortAddress} standalone />
       )}
     </div>
