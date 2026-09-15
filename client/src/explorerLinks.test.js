@@ -65,19 +65,35 @@ describe('explorerBlockUrl', () => {
   });
 
   /*
-   * #347 names both hosts, in this order, for exactly this reason.
+   * DOES NOT FAIL OVER, and that is the fix rather than the bug.
+   *
+   * This test previously asserted the opposite -- that benching the primary
+   * produced an explorer.app.runonflux.io URL. Measured against the live hosts
+   * on 2026-09-16, that URL does not exist:
+   *
+   *     200  https://explorer.app.runonflux.io/
+   *     200  https://explorer.app.runonflux.io/api/sync
+   *     404  https://explorer.app.runonflux.io/tx/<txid>
+   *     404  https://explorer.app.runonflux.io/address/<address>
+   *
+   * The secondary serves the API but not the UI, so failing over to it turned
+   * every link on the page into a 404 precisely when the primary was
+   * rate-limiting -- which is routine, because the primary is the host the app
+   * polls. The old assertion could not catch it: it compared one string to
+   * another, and this file's own header explains why that is not enough
+   * ("nothing checks a URL until it is clicked").
    */
-  it('falls back to the second host when the first is benched', () => {
+  it('does not fail over to the API-only host when the primary is benched', () => {
     __explorerHealth()[EXPLORER_HOSTS[0]].benchedUntil = Date.now() + 60_000;
 
-    expect(explorerBlockUrl(HASH)).toBe(`https://explorer.app.runonflux.io/block/${HASH}`);
+    expect(explorerBlockUrl(HASH)).toBe(`https://explorer.runonflux.io/block/${HASH}`);
   });
 
   it('still returns a link when every host is benched', () => {
-    // A benched host is one that failed recently, not one known to be gone. A
-    // dead link is worse than an unlinked number, but no link at all when the
-    // explorer is merely rate-limited would be worse still -- the page is
-    // almost certainly fine for a human clicking it.
+    // A benched host is one that failed recently, not one known to be gone --
+    // most often it is rate-limiting our JSON polling, which says nothing
+    // about whether a person clicking through gets a page. No link at all
+    // would be the worse answer.
     for (const host of EXPLORER_HOSTS) {
       __explorerHealth()[host].benchedUntil = Date.now() + 60_000;
     }
@@ -141,9 +157,11 @@ describe('explorerAddressUrl', () => {
     expect(explorerAddressUrl('a'.repeat(64))).toBeNull();
   });
 
-  it('follows the healthy host, like the others', () => {
+  it('stays on the UI-capable host when the primary is benched, like the others', () => {
+    // Same correction as the block test above: the secondary 404s on
+    // /address/, so failing over to it produced a dead link.
     __explorerHealth()[EXPLORER_HOSTS[0]].benchedUntil = Date.now() + 60_000;
 
-    expect(explorerAddressUrl(T1)).toBe(`https://explorer.app.runonflux.io/address/${T1}`);
+    expect(explorerAddressUrl(T1)).toBe(`https://explorer.runonflux.io/address/${T1}`);
   });
 });

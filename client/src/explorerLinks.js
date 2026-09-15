@@ -1,4 +1,4 @@
-import { EXPLORER_HOSTS, __explorerHealth } from 'explorer';
+import { EXPLORER_HOSTS } from 'explorer';
 
 /*
  * Links INTO the block explorer's web pages (issue #347).
@@ -30,19 +30,39 @@ import { EXPLORER_HOSTS, __explorerHealth } from 'explorer';
 
 const BLOCK_HASH = /^[0-9a-fA-F]{64}$/;
 
-/** The currently-preferred host, with the /api suffix removed. */
+/*
+ * The host that serves the explorer's human-facing pages, with the /api
+ * suffix removed.
+ *
+ * NOT chosen by health, and that is a correction to #347 rather than an
+ * oversight. Health tracking answers "is this host serving us JSON right
+ * now", which is the wrong question for a link a person will click: only the
+ * PRIMARY host serves the UI at all. Measured against both hosts on
+ * 2026-09-16:
+ *
+ *     200  https://explorer.app.runonflux.io/
+ *     200  https://explorer.app.runonflux.io/api/sync
+ *     404  https://explorer.app.runonflux.io/tx/<txid>
+ *     404  https://explorer.app.runonflux.io/address/<address>
+ *
+ * So the secondary is API-capable but not UI-capable, and failing over to it
+ * turned every link on the page into a 404 exactly when the primary was
+ * rate-limiting -- which is often, since the primary is the one the app polls.
+ * A link to a rate-limited host still loads for someone clicking a moment
+ * later; a link to a 404 never loads at all.
+ *
+ * This file's own header warns that a broken link ships invisibly because
+ * nothing checks a URL until somebody clicks it. That is precisely how this
+ * survived: two tests asserted the failover produced an app-host URL, and
+ * neither could tell that the URL it asserted does not exist.
+ *
+ * If the secondary ever starts serving UI pages, restoring health-based
+ * failover is the right move -- re-measure the four paths above first.
+ */
+const UI_HOST = EXPLORER_HOSTS[0].replace(/\/api\/?$/, '');
+
 function uiHost() {
-  const now = Date.now();
-  const health = __explorerHealth();
-  /*
-   * When every host is benched, fall back to the first rather than returning
-   * nothing. A benched host is one that failed us recently, not one known to
-   * be gone -- most often it is rate-limiting our JSON polling, which says
-   * nothing about whether a person clicking through will get a page. An
-   * unlinked number would be the worse answer.
-   */
-  const host = EXPLORER_HOSTS.find((h) => health[h].benchedUntil <= now) || EXPLORER_HOSTS[0];
-  return host.replace(/\/api\/?$/, '');
+  return UI_HOST;
 }
 
 /**
