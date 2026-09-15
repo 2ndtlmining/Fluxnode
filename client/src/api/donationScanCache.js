@@ -48,8 +48,17 @@
  */
 
 import { donationAddresses } from 'donor/donationTotals';
+import { decodeTxNote } from 'donor/txNote';
 
-export const DONATION_SCAN_CACHE_KEY = 'donationScan_v1';
+/*
+ * v2 (#366/#367): the trim now keeps the OP_RETURN note and, on outgoing
+ * transactions, every addressed output. A v1 entry has neither, and read back
+ * under this trim it would render a blank Note column and an empty Costs tab
+ * without erroring -- so the key moves rather than the shape being widened in
+ * place.
+ */
+export const DONATION_SCAN_CACHE_KEY = 'donationScan_v2';
+const LEGACY_CACHE_KEYS = ['donationScan_v1'];
 
 /** Same list, same order, so a changed donation address invalidates the entry. */
 function sameAddresses(a, b) {
@@ -69,7 +78,7 @@ function sameAddresses(a, b) {
  */
 export const DONATION_SCAN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Only what aggregateDonations and buildDonationRows read, and only what they read it for. */
+/** Only what the readers read, and only what they read it for. */
 function trimTx(tx, addresses) {
   const vin = Array.isArray(tx?.vin) ? tx.vin : [];
   const vout = Array.isArray(tx?.vout) ? tx.vout : [];
@@ -89,22 +98,52 @@ function trimTx(tx, addresses) {
     senders.push({ addr });
   }
 
-  return {
+  /*
+   * Outgoing transactions keep EVERY addressed output (#366). The recipient is
+   * the entire subject of the Costs tab and pays no donation address, so the
+   * incoming rule below would delete it; the change leg is kept because
+   * buildCostRows must recognise and exclude it rather than guess.
+   *
+   * This is safe for size in a way the incoming rule is not: the 2,001-output
+   * transaction that forced this trim is a mining pool paying its roster INTO
+   * a donation address. The project has never sent a batch payment and the two
+   * outgoing transactions on record have three outputs between them. If that
+   * ever changes, cap here rather than narrowing the rule.
+   */
+  const isOutgoing = senders.some((s) => addresses.includes(s.addr));
+  const keptVout = isOutgoing
+    ? vout.filter((v) => (v?.scriptPubKey?.addresses || []).length > 0)
+    : /*
+       * Incoming: only the outputs that pay a donation address. EVERY one of
+       * them is kept -- paidToDonationAddress sums them, so a donation split
+       * across two outputs would otherwise be halved. A transaction that pays
+       * none keeps its txid with an empty vout: it still exists, and its txid
+       * still de-duplicates against the other address's scan.
+       */
+      vout.filter((v) => (v?.scriptPubKey?.addresses || []).some((a) => addresses.includes(a)));
+
+  const trimmed = {
     txid: tx?.txid,
     time: tx?.time,
     blockheight: tx?.blockheight,
     vin: senders,
-    /*
-     * Only the outputs that pay a donation address. EVERY one of them is kept
-     * -- paidToDonationAddress sums them, so a donation split across two
-     * outputs would otherwise be halved. A transaction that pays none keeps its
-     * txid with an empty vout: it still exists, and its txid still
-     * de-duplicates against the other address's scan.
-     */
-    vout: vout
-      .filter((v) => (v?.scriptPubKey?.addresses || []).some((a) => addresses.includes(a)))
-      .map((v) => ({ value: v?.value, scriptPubKey: { addresses: v?.scriptPubKey?.addresses } }))
+    vout: keptVout.map((v) => ({
+      value: v?.value,
+      scriptPubKey: { addresses: v?.scriptPubKey?.addresses }
+    }))
   };
+
+  /*
+   * Stored DECODED (#367). Keeping the OP_RETURN script to re-parse later
+   * would re-admit exactly the script hex this trim exists to strip, for no
+   * gain: the decode is deterministic and the text is capped at 80 bytes by
+   * the relay rule. Absent when there is no note, so the common case costs
+   * nothing.
+   */
+  const note = decodeTxNote(tx);
+  if (note) trimmed.note = note;
+
+  return trimmed;
 }
 
 export function trimTxsForCache(txs, addresses = donationAddresses()) {
@@ -164,6 +203,10 @@ export function writeDonationScanCache(scans) {
   const addresses = donationAddresses();
 
   try {
+    // A v1 entry is unreadable now and is pure dead weight in a storage
+    // budget this module already fights for.
+    for (const key of LEGACY_CACHE_KEYS) localStorage.removeItem(key);
+
     localStorage.setItem(
       DONATION_SCAN_CACHE_KEY,
       JSON.stringify({
