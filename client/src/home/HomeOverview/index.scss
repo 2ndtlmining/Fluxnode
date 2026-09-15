@@ -1103,3 +1103,80 @@
 
   .hov-donations-block { display: none; }
 }
+
+/* ── Donations / Costs tabs (issue #366) ─────────────────────────────────── */
+
+.hov-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.hov-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  /* Sits ON the container's border so the active tab joins the panel below
+     rather than floating above it. */
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+
+  &:hover { color: var(--text-secondary); }
+}
+
+.hov-tab--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-green);
+}
+
+.hov-tab-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+}
+
+.hov-kv-columns {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+/* Money out, set apart from money in without being alarming about it -- these
+   are ordinary running costs, not a warning. */
+.hov-kv-list--out {
+  padding-left: 28px;
+  border-left: 1px solid var(--border-secondary);
+}
+
+.hov-costs-breakdown {
+  display: flex;
+  gap: 16px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+
+  b { color: var(--text-secondary); font-weight: 600; }
+}
+
+.hov-cost-tag--cloud { color: var(--accent-green); }
+.hov-cost-tag--refund { color: var(--text-secondary); }
+.hov-cost-tag--other { color: var(--text-tertiary); }
+
+@media (max-width: 900px) {
+  .hov-kv-list--out {
+    padding-left: 0;
+    border-left: none;
+  }
+}
