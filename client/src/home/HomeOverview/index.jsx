@@ -120,7 +120,7 @@ const SORTS = {
   donor: { label: 'Donor', get: (r) => r.from },
 };
 
-function DonationList({ rows }) {
+function DonationList({ rows, tabPanelId, tabId }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState('block');
   const [ascending, setAscending] = useState(false);
@@ -182,7 +182,7 @@ function DonationList({ rows }) {
   const arrow = (key) => (key === sortKey ? (ascending ? ' ↑' : ' ↓') : '');
 
   return (
-    <div className="hov-donations">
+    <div className="hov-donations" role="tabpanel" id={tabPanelId} aria-labelledby={tabId}>
       <div className="hov-donations-head">
         <span className="hov-donations-title">
           Donated to the project over the last year
@@ -289,7 +289,7 @@ const COST_SORTS = {
   to: { label: 'To', get: (r) => r.to },
 };
 
-function CostList({ rows, costs }) {
+function CostList({ rows, costs, tabPanelId, tabId }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState('block');
   const [ascending, setAscending] = useState(false);
@@ -325,7 +325,7 @@ function CostList({ rows, costs }) {
   const arrow = (key) => (key === sortKey ? (ascending ? ' ↑' : ' ↓') : '');
 
   return (
-    <div className="hov-donations">
+    <div className="hov-donations" role="tabpanel" id={tabPanelId} aria-labelledby={tabId}>
       <div className="hov-donations-head">
         {/*
           The breakdown lives here rather than in the header band, which
@@ -510,8 +510,10 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
           <div className="hov-tabs" role="tablist" aria-label="Community support detail">
             <button
               type="button"
+              id="hov-tab-donations"
               role="tab"
               aria-selected={tab === 'donations'}
+              aria-controls="hov-tabpanel"
               className={`hov-tab${tab === 'donations' ? ' hov-tab--active' : ''}`}
               onClick={() => setTab('donations')}
             >
@@ -519,8 +521,10 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
             </button>
             <button
               type="button"
+              id="hov-tab-costs"
               role="tab"
               aria-selected={tab === 'costs'}
+              aria-controls="hov-tabpanel"
               className={`hov-tab${tab === 'costs' ? ' hov-tab--active' : ''}`}
               onClick={() => setTab('costs')}
             >
@@ -528,10 +532,17 @@ function CommunitySupportPanel({ donations, donationRows, costRows = [], costs, 
             </button>
           </div>
 
+          {/*
+            role="tabpanel" and aria-labelledby ride on the SAME element
+            DonationList/CostList already render (.hov-donations), rather than
+            a new wrapper around it -- see the SCSS: .hov-donations carries the
+            border/spacing that sits directly under .hov-tabs, so an extra
+            styled box here would double that spacing instead of being invisible.
+          */}
           {tab === 'donations' ? (
-            <DonationList rows={donationRows} />
+            <DonationList rows={donationRows} tabPanelId="hov-tabpanel" tabId="hov-tab-donations" />
           ) : (
-            <CostList rows={costRows} costs={costs} />
+            <CostList rows={costRows} costs={costs} tabPanelId="hov-tabpanel" tabId="hov-tab-costs" />
           )}
         </>
       )}
