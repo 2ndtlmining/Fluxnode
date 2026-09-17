@@ -17,6 +17,9 @@ const CATEGORIES = {
     keywords: [
       'folding-at-home', 'foldingathome', 'folding@home', 'boinc',
       'gridcoin', 'seti@', 'rosetta',
+      // Distributed Compute Protocol (issue #369) — a genuine volunteer-compute
+      // peer to Folding@Home, not a deployment wrapper.
+      'dcp-worker', 'distributivenetwork',
     ],
   },
   gaming: {
@@ -43,6 +46,9 @@ const CATEGORIES = {
       'prestigetree', 'progressknight', 'tosios', 'dwarfs', 'minesweeper',
       'memorygame', 'fivem', 'rustrooms', 'posio', 'giftrun', 'bounceback',
       'radiusraid', 'thehouse', 'evolve', 'zomboid', 'openclaw',
+      // Issue #369, same littlestache browser-game family as the row above,
+      // plus a backgammon bot.
+      'devlife', 'spacecompany', 'gammonbot',
     ],
   },
   communication: {
@@ -52,6 +58,9 @@ const CATEGORIES = {
       'coturn', 'jitsi', 'rocket.chat', 'mattermost', 'streamr',
       'element-web', 'simplex', 'standardnotes',
       'dexchat', 'spacebar', 'mollysocket', 'revolt', 'zulip',
+      // Issue #369. Mail counts as communication; 'mailserver' rather than a
+      // bare 'mail', which would sweep up anything with "email" in the name.
+      'mailserver', 'cryptalk', 'teams_poster',
     ],
   },
   web: {
@@ -73,6 +82,7 @@ const CATEGORIES = {
       'whitepaper', 'blog', 'rustpad', 'libremdb',
       'anonymousoverflow', 'syncpaint', 'synctube', 'privatebin', 'landing',
       'apidocs',
+      'filebrowser',
     ],
   },
   blockchain: {
@@ -97,6 +107,16 @@ const CATEGORIES = {
       // run in MODE A/B/C with +0/+100/+200 port offsets so one Flux node can
       // host up to three master nodes. Source: github.com/girderworks/node-docker
       'girderworks',
+      /*
+       * Issue #369. Flux-ecosystem chain tooling that had no keyword.
+       *
+       * Every one of these is spelled out in full rather than shortened to
+       * 'flux': a bare 'flux' keyword would match most of the network,
+       * including runonflux/orbit, which OPAQUE_RUNTIME_IMAGES exists to keep
+       * OUT of a category.
+       */
+      'electrum', 'kasvillage', '2ndtlmining', 'fluxpaoverview', 'fluxexport',
+      'dcms-flux',
     ],
   },
   database: {
@@ -117,6 +137,10 @@ const CATEGORIES = {
       'rustdesk', 'n8n', 'keycloak', 'code-server', 'kanboard',
       'wekan', 'meshcentral', 'jira',
       '/ssh', 'sshd', 'gitliman',
+      // Issue #369 — linuxserver's KasmVNC desktop images, which sit with the
+      // existing remote-access entries (webtop, code-server) rather than in a
+      // productivity category that does not exist.
+      'libreoffice', 'inkscape',
       // NOTE: 'orbit' deliberately NOT listed. runonflux/orbit is the Flux git
       // deployment runtime, not a DevOps tool — it hosts arbitrary user apps,
       // so its ~175 containers belong in Other, not DevOps.
@@ -129,6 +153,9 @@ const CATEGORIES = {
       'jellyfin', '/plex', 'plexinc', 'emby', 'navidrome', 'airsonic',
       'kodi', 'subsonic', 'funkwhale', 'owncast', 'viewtube', 'yt-dl',
       'qbittorrent', 'transmission', 'sonarr', 'radarr',
+      // Issue #369. 'linx-server' in full: the bare '-server' suffix is shared
+      // with the game servers above.
+      'linx-server', 'titlovi',
     ],
   },
   ai: {
@@ -152,6 +179,13 @@ const CATEGORIES = {
       // Bandwidth-sharing / residential proxy agents
       'proxymsg', 'pawns-cli', 'repocket', 'earnapp', 'honeygain',
       'packetstream', 'traffmonetizer', 'bitping', 'mysterium', '/mtg:',
+      /*
+       * Issue #369. 'brook' and 'n2n' are anchored to the repository separator
+       * on purpose — unanchored, three and four characters of common letters
+       * sweep up unrelated images (node:22-bookworm-slim contains neither, but
+       * only by luck, and the next image along will not be so kind).
+       */
+      'mkp224o', 'proxyrack', '/brook', '/n2n',
     ],
   },
   monitoring: {
@@ -160,6 +194,7 @@ const CATEGORIES = {
       'grafana', 'prometheus', 'uptime-kuma', 'netdata',
       'portainer', '/loki', 'zabbix', 'checkmk', 'glances',
       'globalping', 'nettools',
+      'node-telemetry', // issue #369
     ],
   },
 };
@@ -196,6 +231,85 @@ export function isOpaqueRuntimeImage(image) {
   return OPAQUE_RUNTIME_IMAGES.some((k) => lower.includes(k));
 }
 
+/*
+ * Supporting cast (issue #369).
+ *
+ * A database or a reverse proxy sitting in someone's compose file says nothing
+ * about what the app IS -- almost every non-trivial app ships one. They are
+ * still worth matching, because a standalone MySQL deployment is genuinely a
+ * Database app, but they must lose to any component that identifies the actual
+ * workload.
+ *
+ * Measured on live data, treating these as weak is what moves the Flux
+ * Explorer out of Database (its compose[0] is alpine-mongo) and the
+ * sandmanshiri proxy stacks out of DevOps (their compose[0] is an ssh box).
+ */
+const WEAK_CATEGORIES = new Set(['database']);
+const WEAK_KEYWORDS = new Set(['nginx', 'apache', 'webserver']);
+
+/**
+ * The category a single component argues for, and whether that argument is
+ * weak. Returns null when the component matches nothing at all.
+ */
+function componentCategory(repotag) {
+  const lower = (repotag || '').toLowerCase();
+  const cat = categorizeApp(lower);
+  if (cat === 'other') return null;
+  const keyword = (CATEGORIES[cat]?.keywords || []).find((k) => lower.includes(k));
+  return { cat, weak: WEAK_CATEGORIES.has(cat) || WEAK_KEYWORDS.has(keyword) };
+}
+
+/**
+ * Pick one category from a compose file's components by majority vote.
+ *
+ * Compose ORDER is an authoring detail, so the old first-match-wins rule was
+ * reading a property of the author's text editor, not of the app. Counting
+ * instead means the five proxy containers in a six-container proxy stack
+ * outvote the one ssh box that happened to be typed first.
+ *
+ * Weak components are held back and only consulted if nothing else matched,
+ * which is what keeps a standalone database in Database. Ties go to the
+ * earliest component -- with genuinely balanced evidence the author's own
+ * ordering is the only signal left, and it is the behaviour that was there
+ * before.
+ */
+function voteOnComponents(composeList) {
+  const scored = composeList.map((c) => componentCategory(c?.repotag)).filter(Boolean);
+
+  for (const pool of [scored.filter((s) => !s.weak), scored]) {
+    if (pool.length === 0) continue;
+
+    const tally = {};
+    const firstSeenAt = {};
+    pool.forEach((s, i) => {
+      tally[s.cat] = (tally[s.cat] || 0) + 1;
+      if (!(s.cat in firstSeenAt)) firstSeenAt[s.cat] = i;
+    });
+
+    return Object.keys(tally).sort((a, b) => tally[b] - tally[a] || firstSeenAt[a] - firstSeenAt[b])[0];
+  }
+
+  return null;
+}
+
+/**
+ * The repotag of the component that earned an app its category (issue #369).
+ *
+ * Once the category comes from a vote rather than from compose[0], compose[0]
+ * is no longer a fair label for the app: the Flux Explorer's is alpine-mongo,
+ * which would head the Blockchain breakdown with a database. Callers naming an
+ * app in a per-category ranking want the component the category actually came
+ * from.
+ *
+ * Returns '' when there is no compose list or nothing in it matches, leaving
+ * the caller to fall back to whatever primary repotag it already had.
+ */
+export function representativeRepotag(composeList, category) {
+  if (!Array.isArray(composeList)) return '';
+  const match = composeList.find((c) => categorizeApp((c?.repotag || '').toLowerCase()) === category);
+  return match?.repotag || '';
+}
+
 /**
  * Categorize a global app specification.
  *
@@ -229,10 +343,8 @@ export function categorizeAppSpec(spec) {
     return categorizeDedicatedSiteApp(spec.name) || 'enterprise';
   }
 
-  for (const component of composeList) {
-    const cat = categorizeApp((component.repotag || '').toLowerCase());
-    if (cat !== 'other') return cat;
-  }
+  const voted = voteOnComponents(composeList);
+  if (voted) return voted;
 
   if (spec.repotag) {
     const cat = categorizeApp(spec.repotag.toLowerCase());

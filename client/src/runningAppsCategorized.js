@@ -1,6 +1,7 @@
 import { buildCategoryTop, splitComponentCountKey } from 'fluxinfo';
 import { repotagForComponent } from 'appSpecs';
-import { isOpaqueRuntimeImage } from 'main/Gamification/appCategories';
+import { categorizeApp, isOpaqueRuntimeImage, representativeRepotag } from 'main/Gamification/appCategories';
+import { categorizeDedicatedSiteApp } from 'main/Gamification/dedicatedSites';
 
 // Recognised via specIndex only now (issue #187 removed the docker image
 // fluxinfo used to report, so these can no longer be image-substring
@@ -43,6 +44,30 @@ const PRESEARCH_REPO_BASE = (process.env.REACT_APP_PRE_SEARCH || 'presearch/node
  * its containers still count toward totals — just not toward any specific
  * image's popularity ranking.
  */
+/*
+ * The category for one running app.
+ *
+ * When the spec is present its category wins outright -- it was computed from
+ * the real repotags, which beat any name. But the two fetches this module joins
+ * are independent, so an app that expires between them arrives with no spec at
+ * all, and the old `spec?.category || 'other'` threw away the app NAME sitting
+ * right there in the running-container tally (issue #369).
+ *
+ * The name is the weakest signal we have and is only reached once there is
+ * nothing else, which is exactly the situation these containers are in -- the
+ * alternative is not a better category, it is Other. On live data that was 29
+ * of 46 spec-less containers, most of them the dedicated game-hosting websites
+ * (`mc-website`, `valheim-website`, `website-fivem`).
+ *
+ * The dedicated-site prefix table is consulted first for the same reason it is
+ * in categorizeAppSpec: `palworld1787294387972` is a documented deployment
+ * convention, not a guess.
+ */
+function categoryFor(name, spec) {
+  if (spec?.category) return spec.category;
+  return categorizeDedicatedSiteApp(name) || categorizeApp(name);
+}
+
 export function categorizeRunningApps(aggregate, specIndex) {
   const nameCounts = aggregate?.nameCounts || {};
   const componentCounts = aggregate?.componentCounts || {};
@@ -62,12 +87,14 @@ export function categorizeRunningApps(aggregate, specIndex) {
     // 'other'; restore that here rather than in the shared categorizeAppSpec,
     // which other pages (AppsSection, networkCategories) have never applied
     // it to and whose behaviour is not this branch's to change.
-    const category = isOpaqueRuntimeImage(spec?.repotag) ? 'other' : spec?.category || 'other';
+    const category = isOpaqueRuntimeImage(spec?.repotag) ? 'other' : categoryFor(name, spec);
     runningCategoryMap[category] = (runningCategoryMap[category] || 0) + count;
 
-    // App-level repotag (compose[0], or the spec's own for single-component
+    // The image that NAMES this app in its category breakdown. Prefer the
+    // component the category came from (issue #369) and fall back to the
+    // app-level repotag (compose[0], or the spec's own for single-component
     // apps) — this loop has no per-container component context by design.
-    const repotag = spec?.repotag || '';
+    const repotag = representativeRepotag(spec?.compose, category) || spec?.repotag || '';
     const imageKey = repotag ? repotag.split(':')[0] : name;
     categoryImages[category] = categoryImages[category] || {};
     categoryImages[category][imageKey] = (categoryImages[category][imageKey] || 0) + count;
