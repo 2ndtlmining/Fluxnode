@@ -148,6 +148,171 @@ describe('categorizeAppSpec', () => {
   });
 });
 
+/*
+ * Issue #369 -- compose ORDER is an authoring detail, not a statement about
+ * what an app is. These are all real specs off the live network where the
+ * first-matching-component rule picked the supporting container.
+ */
+/*
+ * Issue #369 -- recognised apps that were sitting in Other purely because no
+ * keyword covered them. Every image below was taken from the live network with
+ * its container count; the bespoke one-off business sites in the same tail are
+ * deliberately NOT here, because a keyword list cannot scale to them.
+ */
+describe('categorizeApp -- #369 additions from the Other tail', () => {
+  const cases = [
+    // Distributed computing -- a genuine peer to Folding@Home, not a wrapper.
+    ['distributivenetwork/dcp-worker:latest', 'computing'],
+    // Browser/indie games from a publisher already well represented in Gaming.
+    ['littlestache/devlife:latest', 'gaming'],
+    ['littlestache/spacecompany:latest', 'gaming'],
+    ['w2vy/gammonbot:latest', 'gaming'],
+    // Chat and mail.
+    ['ghcr.io/docker-mailserver/docker-mailserver:latest', 'communication'],
+    ['hexagon/cryptalk:latest', 'communication'],
+    ['vinnydev1/teams_poster-backend:latest', 'communication'],
+    // Flux-ecosystem blockchain tooling.
+    ['smartico/electrum:latest', 'blockchain'],
+    ['wayneshaw349/kasvillage-townhall:v60', 'blockchain'],
+    ['2ndtlmining/flux:latest', 'blockchain'],
+    ['jefke/fluxpaoverview:latest', 'blockchain'],
+    ['w2vy/fluxexport:latest', 'blockchain'],
+    ['vinnydev1/dcms-flux-backend:1.1.1', 'blockchain'],
+    // Privacy tooling and bandwidth-sharing agents (the pawns-cli/repocket family).
+    ['wirewrex/mkp224o:latest', 'vpn'],
+    ['proxyrack/pop:latest', 'vpn'],
+    ['teddysun/brook:latest', 'vpn'],
+    ['theanony/n2n:3.0', 'vpn'],
+    // Remote-access desktop apps, alongside the existing webtop/code-server.
+    ['linuxserver/libreoffice:latest', 'devops'],
+    ['lscr.io/linuxserver/inkscape:latest', 'devops'],
+    // Media.
+    ['wirewrex/linx-server:latest', 'media'],
+    ['movidrom/titlovi:2.0.24', 'media'],
+    // Telemetry.
+    ['evgs528/node-telemetry-agent:latest', 'monitoring'],
+    // Web.
+    ['filebrowser/filebrowser:latest', 'web'],
+  ];
+
+  it.each(cases)('categorizes %s as %s', (image, expected) => {
+    expect(categorizeApp(image)).toBe(expected);
+  });
+});
+
+describe('categorizeApp -- #369 keywords must not collide', () => {
+  it('does not let the short "n2n" and "brook" keywords match unrelated images', () => {
+    // Unanchored these would sweep up anything containing the letters.
+    expect(categorizeApp('node:22-bookworm-slim')).toBe('other');
+    expect(categorizeApp('someorg/conan2net:latest')).toBe('other');
+  });
+
+  it('does not let "2ndtlmining" or "dcms-flux" widen into a bare "flux" match', () => {
+    expect(categorizeApp('someorg/fluxy-thing:latest')).toBe('other');
+  });
+
+  it('keeps the existing Other cases in Other', () => {
+    expect(categorizeApp('runonflux/orbit:latest')).toBe('other');
+    expect(categorizeApp('busybox:latest')).toBe('other');
+    expect(categorizeApp('teammakdi/makdi:bulbasaur')).toBe('other');
+  });
+});
+
+describe('categorizeAppSpec -- supporting containers must not outrank the payload', () => {
+  it('files the Flux Explorer as Blockchain, not Database, though mongo is listed first', () => {
+    const spec = {
+      name: 'explorer',
+      description: 'Official Flux Explorer explorer.runonflux.io',
+      compose: [
+        { repotag: 'mvertes/alpine-mongo:latest' },
+        { repotag: 'runonflux/explorer:latest' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('blockchain');
+  });
+
+  it('files an insight explorer as Blockchain though mongo is listed first', () => {
+    const spec = {
+      name: 'dashexplorer',
+      compose: [
+        { repotag: 'mvertes/alpine-mongo:latest' },
+        { repotag: 'runonflux/dash-insight-explorer:latest' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('blockchain');
+  });
+
+  it('files viewtube as Media though two database components are listed first', () => {
+    const spec = {
+      name: 'viewtube',
+      compose: [
+        { repotag: 'wirewrex/mongo:7' },
+        { repotag: 'redis:7' },
+        { repotag: 'mauriceo/viewtube:latest' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('media');
+  });
+
+  it('files a multi-protocol proxy stack as VPN, not DevOps on its ssh component', () => {
+    // row01/as01/na01/ch01 on the live network: 5 of 6 components are proxies.
+    const spec = {
+      name: 'row01',
+      compose: [
+        { repotag: 'sandmanshiri/ssh:latest' },
+        { repotag: 'sandmanshiri/shadowsocks:latest' },
+        { repotag: 'sandmanshiri/vless:latest' },
+        { repotag: 'sandmanshiri/trojan:latest' },
+        { repotag: 'sandmanshiri/outline:latest' },
+        { repotag: 'sandmanshiri/http-proxy:latest' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('vpn');
+  });
+
+  it('does not let an nginx frontend outrank the app behind it', () => {
+    const spec = {
+      name: 'owncloudssl',
+      compose: [
+        { repotag: 'wirewrex/nginx-hns:fix' },
+        { repotag: 'mysql:8.3.0' },
+        { repotag: 'redis:6' },
+        { repotag: 'owncloud/server:10.15.0' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('web');
+  });
+
+  it('still files a genuine standalone database as Database', () => {
+    expect(categorizeAppSpec({ name: 'mydb', compose: [{ repotag: 'mysql:8.3.0' }] })).toBe('database');
+    expect(categorizeAppSpec({ name: 'pg', compose: [{ repotag: 'runonflux/flux-pg-cluster:latest' }] })).toBe('database');
+  });
+
+  it('keeps a WordPress stack in Web when its database components come later', () => {
+    const spec = {
+      name: 'wordpress1695330800529',
+      compose: [
+        { repotag: 'runonflux/wp-nginx:latest' },
+        { repotag: 'mysql:8.3.0' },
+        { repotag: 'runonflux/shared-db:latest' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('web');
+  });
+
+  it('breaks a tie toward the earliest component', () => {
+    const spec = {
+      name: 'pokerflux',
+      compose: [
+        { repotag: 'baptistecdr/pokerth-server:main' },
+        { repotag: 'wirewrex/nginx-hns:fix' },
+        { repotag: 'wirewrex/flux-dns-fdm:CSIAE' },
+      ],
+    };
+    expect(categorizeAppSpec(spec)).toBe('gaming');
+  });
+});
+
 describe('dedicated websites are Web, never the app they advertise', () => {
   /*
    * Cross-checked against the Flux team's own tooling: Fluxtracker excludes

@@ -38,6 +38,103 @@ const aggregate = {
   },
 };
 
+/*
+ * Issue #369 -- a running app whose spec is missing still has a NAME, and the
+ * name is often decisive. The two fetches (fluxinfo and
+ * globalappsspecifications) are independent, so an app that expires between
+ * them arrives with no spec at all; on live data that was 46 containers, 29 of
+ * which the name alone resolves.
+ */
+/*
+ * Issue #369 -- once the category comes from a vote across components, the
+ * image NAMED in the category tooltip has to be the component that earned the
+ * category. compose[0] is no longer a safe stand-in: the Flux Explorer's
+ * compose[0] is alpine-mongo, so the Blockchain tooltip was headed
+ * "alpine-mongo 132".
+ */
+describe('categorizeRunningApps -- the category breakdown names the deciding component', () => {
+  const explorerIndex = {
+    explorer: {
+      repotag: 'mvertes/alpine-mongo:latest', // compose[0], the supporting container
+      category: 'blockchain',
+      compose: [
+        { name: 'mongo', repotag: 'mvertes/alpine-mongo:latest' },
+        { name: 'explorer', repotag: 'runonflux/explorer:latest' },
+      ],
+    },
+  };
+  const explorerAggregate = {
+    nameCounts: { explorer: 80 },
+    componentCounts: { 'explorer\u0000mongo': 40, 'explorer\u0000explorer': 40 },
+    nodesByIp: {},
+  };
+
+  it('names the explorer image in the Blockchain breakdown, not its mongo sidecar', () => {
+    const { runningCategoryTop } = categorizeRunningApps(explorerAggregate, explorerIndex);
+    expect(runningCategoryTop.blockchain.top[0].image).toBe('runonflux/explorer');
+  });
+
+  it('still attributes the full container count to that image', () => {
+    const { runningCategoryTop } = categorizeRunningApps(explorerAggregate, explorerIndex);
+    expect(runningCategoryTop.blockchain.top[0].count).toBe(80);
+  });
+
+  it('leaves a single-component app naming its own image', () => {
+    const index = { mc: { repotag: 'itzg/minecraft-server:latest', category: 'gaming', compose: null } };
+    const agg = { nameCounts: { mc: 4 }, componentCounts: { 'mc\u0000': 4 }, nodesByIp: {} };
+    const { runningCategoryTop } = categorizeRunningApps(agg, index);
+    expect(runningCategoryTop.gaming.top[0].image).toBe('itzg/minecraft-server');
+  });
+});
+
+describe('categorizeRunningApps -- falls back to the app name when no spec exists', () => {
+  const noSpecAggregate = {
+    nameCounts: {
+      'mc-website': 3,
+      'valheim-website': 3,
+      themok6: 3,
+      palworld1787294387972: 1,
+      hermesagent1785354550027: 1,
+      lapetitereserve: 1,
+    },
+    componentCounts: {
+      'mc-website\u0000': 3,
+      'valheim-website\u0000': 3,
+      'themok6\u0000': 3,
+      'palworld1787294387972\u0000': 1,
+      'hermesagent1785354550027\u0000': 1,
+      'lapetitereserve\u0000': 1,
+    },
+    nodesByIp: {},
+  };
+
+  it('files a dedicated game website as Web on its name alone', () => {
+    const { runningCategoryMap } = categorizeRunningApps(noSpecAggregate, {});
+    expect(runningCategoryMap.web).toBe(6); // mc-website + valheim-website
+  });
+
+  it('applies a keyword match from the name', () => {
+    const { runningCategoryMap } = categorizeRunningApps(noSpecAggregate, {});
+    expect(runningCategoryMap.blockchain).toBe(3); // themok6 -> 'themok'
+  });
+
+  it('applies the dedicated-site prefix table to a spec-less deployment', () => {
+    const { runningCategoryMap } = categorizeRunningApps(noSpecAggregate, {});
+    expect(runningCategoryMap.gaming).toBe(1); // palworld<13-digit timestamp>
+    expect(runningCategoryMap.ai).toBe(1); // hermesagent<13-digit timestamp>
+  });
+
+  it('still leaves a name that says nothing in Other', () => {
+    const { runningCategoryMap } = categorizeRunningApps(noSpecAggregate, {});
+    expect(runningCategoryMap.other).toBe(1); // lapetitereserve
+  });
+
+  it('counts every spec-less container toward the total either way', () => {
+    const { totalRunningApps } = categorizeRunningApps(noSpecAggregate, {});
+    expect(totalRunningApps).toBe(12);
+  });
+});
+
 describe('categorizeRunningApps', () => {
   it('groups by repotag (not app name) so many instances of one image collapse into one bucket', () => {
     const { runningCategoryMap } = categorizeRunningApps(aggregate, specIndex);
