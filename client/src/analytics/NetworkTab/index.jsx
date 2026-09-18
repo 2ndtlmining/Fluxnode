@@ -167,6 +167,11 @@ function NetworkStatusStrip({ gstore, gpuPrices }) {
   const lockedSupply =
     cumulus * CC_COLLATERAL_CUMULUS + nimbus * CC_COLLATERAL_NIMBUS + stratus * CC_COLLATERAL_STRATUS;
 
+  const { arcane_nodes: arcaneNodes = 0, total_nodes: arcaneTotal = 0 } = gstore.arcane_os || {};
+  // Recomputed rather than trusting the stored percentage, so the share and the
+  // count beside it can never disagree.
+  const arcanePct = arcaneTotal > 0 ? (arcaneNodes / arcaneTotal) * 100 : 0;
+
   const stats = [
     {
       key: 'price',
@@ -198,6 +203,25 @@ function NetworkStatusStrip({ gstore, gpuPrices }) {
       key: 'daemon',
       label: 'Daemon',
       value: daemon_version_string(gstore.daemon_version) ?? '—'
+    },
+    /*
+     * ArcaneOS adoption (#371). This used to live on the old home Header's cell
+     * grid, which the IA migration left orphaned (home/Header/index.jsx is now
+     * imported by nothing) -- gstore.arcane_os kept being fetched the whole
+     * time, but nothing rendered it. The share is the headline number and the
+     * node count rides alongside it, because a percentage with no denominator
+     * in view invites "percent of what".
+     */
+    {
+      key: 'arcane',
+      label: 'ArcaneOS',
+      value: arcaneTotal > 0 ? `${arcanePct.toFixed(2)}%` : '—',
+      sub: arcaneTotal > 0 ? `${fmtNum(arcaneNodes)} nodes` : null,
+      title:
+        arcaneTotal > 0
+          ? `${fmtNum(arcaneNodes)} of ${fmtNum(arcaneTotal)} nodes running ArcaneOS`
+          : undefined,
+      accent: true
     }
   ];
 
@@ -211,8 +235,11 @@ function NetworkStatusStrip({ gstore, gpuPrices }) {
   return (
     <div className="nt-status-strip">
       {stats.map((s) => (
-        <div key={s.key} className="nt-status-item">
-          <span className={`nt-status-value${s.accent ? ' nt-status-value--accent' : ''}`}>{s.value}</span>
+        <div key={s.key} className="nt-status-item" title={s.title}>
+          <span className="nt-status-value-row">
+            <span className={`nt-status-value${s.accent ? ' nt-status-value--accent' : ''}`}>{s.value}</span>
+            {s.sub && <span className="nt-status-sub">{s.sub}</span>}
+          </span>
           <span className="nt-status-label">{s.label}</span>
         </div>
       ))}

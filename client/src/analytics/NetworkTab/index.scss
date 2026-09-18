@@ -641,6 +641,26 @@
   color: var(--accent-green, #2fc29e);
 }
 
+/*
+ * Value plus its qualifier on one baseline (#371) -- ArcaneOS shows the share
+ * and the node count behind it, and the count has to read as secondary to the
+ * percentage rather than as a second stat.
+ */
+.nt-status-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nt-status-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 .nt-status-label {
   font-size: 0.66rem;
   font-weight: 600;
