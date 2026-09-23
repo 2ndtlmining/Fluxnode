@@ -6,7 +6,7 @@ import { Button, Card, Icon, Tag } from '@blueprintjs/core';
 import { Container, Row, Col } from 'react-grid-system';
 
 import { InfoCell } from 'components/InfoCell';
-import { FiDollarSign, FiAward, FiShoppingBag, FiLayers } from 'react-icons/fi';
+import { FiDollarSign, FiAward, FiShoppingBag, FiLayers, FiAlertTriangle } from 'react-icons/fi';
 
 import { pa_summary_full } from 'apidata';
 import { hide_sensitive_number } from 'utils';
@@ -31,6 +31,45 @@ import BaseLogo_black from 'assets/Base_Symbol_Black.png'
 function maskAmount(value, enablePrivacyMode, decimals = 2) {
   const fixed = Number(value ?? 0).toFixed(decimals);
   return enablePrivacyMode ? hide_sensitive_number(fixed) : fixed;
+}
+
+/*
+ * Flux ended the Flux-Ergo bridge on 22 Sep 2026 (issue #375). The snapshot is
+ * Ergo block 1,878,291; balances held then are claimable 1:1 inside Fusion and
+ * mining rewards stay claimable on the Flux main chain. The Ergo card keeps its
+ * figures, since they are still owed, but is marked as retired.
+ */
+export const ERGO_SUPPORT_ENDED = {
+  snapshotBlock: '1,878,291',
+  snapshotDate: '21 Sep 2026',
+  checkerUrl: 'https://ergo.runonflux.com',
+  announcementUrl: 'https://github.com/RunOnFlux/flux-ergo-claims/blob/main/content/announcement.md',
+};
+
+export function ErgoSupportBanner() {
+  return (
+    <div className='pa-ergo-banner' role='alert'>
+      <FiAlertTriangle className='pa-ergo-banner-icon' aria-hidden='true' />
+      <div>
+        <div className='pa-ergo-banner-title'>Flux support for the Ergo parallel asset has ended</div>
+        <p>
+          The Flux&ndash;Ergo bridge is closed permanently. FLUX held on Ergo at the snapshot (block{' '}
+          {ERGO_SUPPORT_ENDED.snapshotBlock}, {ERGO_SUPPORT_ENDED.snapshotDate}) is honoured 1:1 and is claimed{' '}
+          <strong>inside Fusion only</strong>, with the claim window opening in early October. Ergo mining rewards
+          remain claimable on the Flux main chain. Any Flux&ndash;Ergo claim portal outside Fusion is a scam.
+        </p>
+        <p className='pa-ergo-banner-links'>
+          <a href={ERGO_SUPPORT_ENDED.checkerUrl} target='_blank' rel='noopener noreferrer'>
+            Check your snapshot balance
+          </a>
+          {' · '}
+          <a href={ERGO_SUPPORT_ENDED.announcementUrl} target='_blank' rel='noopener noreferrer'>
+            Read the announcement
+          </a>
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function PASummary(summary, enablePrivacyMode) {
@@ -76,10 +115,11 @@ function PASummary(summary, enablePrivacyMode) {
   );
 }
 
-function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder, enablePrivacyMode }) {
+function PAssetCard({ assetName, blockStyle, logoUrl, paInfo, placeholder, enablePrivacyMode, retired }) {
   return (
-    <div className={'adp-text-normal pa-card' + ` pa-grad-${blockStyle}`}>
+    <div className={'adp-text-normal pa-card' + ` pa-grad-${blockStyle}` + (retired ? ' pa-card-retired' : '')}>
       <div className='logo-wrapper'>
+        {retired && <div className='pa-retired-badge'>Support ended</div>}
         <div className='logo adp-bg-normal'>
           {logoUrl && <img src={logoUrl} alt={assetName + ' logo'} />}
         </div>
@@ -124,6 +164,11 @@ export function ParallelAssets({ summary, theme, enablePrivacyMode = false }) {
 
   return (
     <Container fluid>
+      <Row>
+        <Col className='margin-b-xl' lg={24}>
+          <ErgoSupportBanner />
+        </Col>
+      </Row>
       <Row>
         <Col className='margin-b-xl' offset={{}} lg={7}>
           {PASummary(summary, enablePrivacyMode)}
@@ -185,6 +230,7 @@ export function ParallelAssets({ summary, theme, enablePrivacyMode = false }) {
               logoUrl={ErgoLogo}
               // logoUrl='https://cryptologos.cc/logos/ergo-erg-logo.png'
               assetName={'Ergo'}
+              retired
             />
             <PAssetCard
               enablePrivacyMode={enablePrivacyMode}
