@@ -17,6 +17,7 @@ import { FocusStyleManager } from '@blueprintjs/core';
 import { lazy_load_currency_rate } from 'apidata';
 import ErrorBoundary from 'components/ErrorBoundary';
 import { PremiumGate } from 'donor/PremiumGate';
+import { NoxideBanner } from 'components/NoxideBanner';
 
 const MainApp = React.lazy(() => import('main/MainApp'));
 const Home = React.lazy(() => import('home/Home'));
@@ -114,6 +115,7 @@ class Application extends React.Component {
                 onThemeSwitch={() => this.setDarkMode(!darkMode)}
                 currencyRates={currencyRates}
               />
+              <NoxideBanner />
               <div className='app-routed-content'>
               <Routes>
                 <Route exact path='/' element={<Navigate to='/home' replace />} />
