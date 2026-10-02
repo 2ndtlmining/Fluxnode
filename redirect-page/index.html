@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FluxNode Dashboard - Temporarily Unavailable</title>
+<title>FluxNode is moving to Noxide</title>
+<meta name="robots" content="noindex" />
 <style>
   :root {
     color-scheme: dark;
@@ -115,34 +116,48 @@
 </head>
 <body>
   <div class="card">
-    <div class="badge"><span class="dot"></span> Maintenance in progress</div>
-    <h1>FluxNode Dashboard</h1>
-    <p class="status">Temporarily Unavailable</p>
+    <div class="badge"><span class="dot"></span> Switching over</div>
+    <h1>FluxNode is moving to Noxide</h1>
+    <p class="status">New engine, same dashboard</p>
     <p class="message">
-      Recent API changes introduced in FluxOS v8.18 have affected the accuracy of the data shown here.
-      Our team is reworking the integration to restore full compatibility.
+      FluxNode has been rebuilt in Rust as Noxide: the same node, wallet and network views, much faster.
+      We are switching this address over to it right now.
     </p>
     <p class="message">
-      In the meantime, please use the official Flux Network Overview below for accurate node and network statistics.
+      Until the switch is finished, Noxide runs at its beta address. You are being taken to the page you asked for there.
     </p>
-    <a href="https://stats.runonflux.io/flux/dashboard/overview" class="btn" id="redirect-btn">Go to Dashboard Now</a>
-    <p class="countdown">Redirecting automatically in <span id="countdown">6</span>s&hellip;</p>
+    <a href="https://noxide.app.runonflux.io/" class="btn" id="redirect-btn">Go to Noxide now</a>
+    <p class="countdown">Redirecting automatically in <span id="countdown">3</span>s&hellip;</p>
   </div>
 
   <script>
     (function () {
-      var TARGET_URL = "https://stats.runonflux.io/flux/dashboard/overview";
-      var SECONDS = 6;
-      var countdownEl = document.getElementById("countdown");
+      var NOXIDE = "https://noxide.app.runonflux.io";
+      var SECONDS = 3;
 
+      /* FluxNode routed on the fragment (`/#/nodes?wallet=...`); a plain path
+         is kept as well. Noxide has no /home or /live, so those and anything
+         unknown go to `/`; it redirects /nodes, /apps and the rest itself,
+         keeping the wallet. */
+      var KNOWN = ["/nodes", "/analytics", "/apps", "/achievements", "/transactions", "/assets"];
+      var route = /^#(\/[^#]*)/.exec(location.hash);
+      var path = route ? route[1] : location.pathname + location.search;
+      var m = /^(\/[a-z]*)(\?.*)?$/.exec(path);
+      var page = m ? m[1] : "/";
+      var query = m && m[2] ? m[2] : "";
+      if (KNOWN.indexOf(page) < 0) page = "/";
+      var target = NOXIDE + page + query;
+
+      var btn = document.getElementById("redirect-btn");
+      if (btn) btn.href = target;
+
+      var countdownEl = document.getElementById("countdown");
       var timer = setInterval(function () {
         SECONDS -= 1;
-        if (countdownEl) {
-          countdownEl.textContent = SECONDS;
-        }
+        if (countdownEl) countdownEl.textContent = SECONDS;
         if (SECONDS <= 0) {
           clearInterval(timer);
-          window.location.href = TARGET_URL;
+          location.replace(target);
         }
       }, 1000);
     })();
