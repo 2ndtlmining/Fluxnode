@@ -1,0 +1,117 @@
+@import 'styles/functional';
+
+/* FluxNode -> Noxide transition notice */
+.noxide-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+
+    padding: 10px 16px;
+    border-bottom: 1px solid #2b6cb0;
+    background-color: #ebf4ff;
+    color: #1a365d;
+    font-size: 0.95em;
+
+    @include rule-mode-dark() {
+        background-color: rgba(66, 153, 225, 0.14);
+        border-bottom-color: rgba(99, 179, 237, 0.5);
+        color: #d6e9ff;
+    }
+
+    .noxide-banner-icon {
+        flex: 0 0 auto;
+        font-size: 1.3em;
+        color: #2b6cb0;
+
+        @include rule-mode-dark() {
+            color: #63b3ed;
+        }
+    }
+
+    .noxide-banner-body {
+        flex: 1 1 320px;
+        min-width: 0;
+    }
+
+    .noxide-banner-title {
+        font-weight: 600;
+    }
+
+    .noxide-banner-countdown {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .noxide-banner-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+    }
+
+    .noxide-banner-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        background-color: #2b6cb0;
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: #2c5282;
+            color: #fff;
+            text-decoration: none;
+        }
+    }
+
+    .noxide-banner-feedback {
+        color: inherit;
+        text-decoration: underline;
+        white-space: nowrap;
+    }
+
+    .noxide-banner-dismiss {
+        display: inline-flex;
+        padding: 4px;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 1.15em;
+        cursor: pointer;
+        opacity: 0.7;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+/* Final week: louder, and no dismiss button */
+.noxide-banner.noxide-banner-final {
+    border-bottom-color: #fe6625;
+    background-color: #fff4ee;
+    color: #5c2208;
+
+    @include rule-mode-dark() {
+        background-color: rgba(254, 102, 37, 0.14);
+        border-bottom-color: rgba(254, 102, 37, 0.6);
+        color: #ffd9c7;
+    }
+
+    .noxide-banner-icon {
+        color: #fe6625;
+    }
+
+    .noxide-banner-cta {
+        background-color: #dd5414;
+
+        &:hover {
+            background-color: #b8430f;
+        }
+    }
+}
