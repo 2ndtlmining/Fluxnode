@@ -8,7 +8,7 @@
  */
 
 export const NOXIDE_ORIGIN = 'https://noxide.app.runonflux.io';
-export const NOXIDE_ISSUES_URL = 'https://github.com/2ndtlmining/Noxide/issues';
+export const FEEDBACK_ISSUES_URL = 'https://github.com/2ndtlmining/Fluxnode/issues';
 
 // 00:00 UTC, 1 Nov 2026. Fixed in UTC so the countdown means the same thing
 // in every timezone.

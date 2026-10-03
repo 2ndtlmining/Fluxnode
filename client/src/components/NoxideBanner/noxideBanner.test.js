@@ -67,12 +67,13 @@ describe('<NoxideBanner />', () => {
     renderAt('/nodes?wallet=t3c4EfxLoXXSRZCRnPRF3RpjPi9mBzF5yoJ', CUTOVER_AT - 10 * DAY - HOUR);
     screen.getByText(/new, faster engine on 1 November/i);
     screen.getByText('(10 days left)');
+    screen.getByText(/try the beta \(noxide\) and tell us what is missing/i);
     const link = screen.getByRole('link', { name: /try the noxide beta/i });
     expect(link.getAttribute('href')).toBe(
       'https://noxide.app.runonflux.io/nodes?wallet=t3c4EfxLoXXSRZCRnPRF3RpjPi9mBzF5yoJ'
     );
     expect(screen.getByRole('link', { name: /report a problem/i }).getAttribute('href')).toBe(
-      'https://github.com/2ndtlmining/Noxide/issues'
+      'https://github.com/2ndtlmining/Fluxnode/issues'
     );
   });
 

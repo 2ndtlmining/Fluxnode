@@ -4,7 +4,7 @@ import { FiExternalLink, FiX, FiZap } from 'react-icons/fi';
 import './index.scss';
 
 import {
-  NOXIDE_ISSUES_URL,
+  FEEDBACK_ISSUES_URL,
   isFinalWeek,
   noxideUrlFor,
   readDismissedAt,
@@ -54,16 +54,13 @@ export function NoxideBanner({ now: fixedNow }) {
           FluxNode is getting a new, faster engine on 1 November
         </span>{' '}
         <span className='noxide-banner-countdown'>({timeLeftLabel(now)})</span>
-        <span className='noxide-banner-text'>
-          {' '}
-          Same address, rebuilt in Rust as Noxide. Try the beta with your wallet now and tell us what is missing.
-        </span>
+        <span className='noxide-banner-text'>. Try the beta (Noxide) and tell us what is missing.</span>
       </div>
       <div className='noxide-banner-actions'>
         <a className='noxide-banner-cta' href={href} target='_blank' rel='noopener noreferrer'>
           Try the Noxide beta <FiExternalLink aria-hidden='true' />
         </a>
-        <a className='noxide-banner-feedback' href={NOXIDE_ISSUES_URL} target='_blank' rel='noopener noreferrer'>
+        <a className='noxide-banner-feedback' href={FEEDBACK_ISSUES_URL} target='_blank' rel='noopener noreferrer'>
           Report a problem
         </a>
         {!finalWeek && (
