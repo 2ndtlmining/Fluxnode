@@ -1,10 +1,13 @@
 # syntax=docker/dockerfile:1.2
 #
-# TEMPORARY MAINTENANCE IMAGE
-# ---------------------------
-# Serves a static notice explaining that the FluxNode dashboard is
-# temporarily inaccurate due to FluxOS v8.18 API changes, and redirects
-# visitors to the official Flux Network Overview instead.
+# TEMPORARY REDIRECT IMAGE
+# ------------------------
+# Serves a short notice that FluxNode is moving to Noxide and forwards the
+# visitor to the same page on the Noxide beta (noxide.app.runonflux.io),
+# keeping the wallet. Used for the window on 1 Nov 2026 while the FluxNode
+# Flux app spec is changed over to the Noxide image. Like the previous
+# maintenance use of this image, it listens on :80 like the real app, so
+# swapping it in is an image-only spec change.
 #
 # This is intentionally separate from the main Dockerfile: it has no
 # build stage, no app code, and no dependency on client/ or api/ being
@@ -13,13 +16,13 @@
 # fixed, without touching the normal build pipeline.
 #
 # Build:
-#   docker build -f Dockerfile.redirect -t <USERNAME>/<REPOSITORY>:redirect-maintenance .
+#   docker build -f Dockerfile.redirect -t <USERNAME>/<REPOSITORY>:redirect-noxide .
 #
 # Run:
-#   docker run --rm --name flux-node-redirect -p 9000:80 <USERNAME>/<REPOSITORY>:redirect-maintenance
+#   docker run --rm --name flux-node-redirect -p 9000:80 <USERNAME>/<REPOSITORY>:redirect-noxide
 #
 # Verify:
-#   curl -s http://localhost:9000/ | grep -i "Temporarily Unavailable"
+#   curl -s http://localhost:9000/ | grep -i "moving to Noxide"
 
 FROM nginx:1.23.3
 
